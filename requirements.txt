@@ -1,0 +1,12 @@
+configparser
+sqlalchemy
+psycopg2
+psycopg2-binary
+shodan
+censys
+cryptography
+passgen
+dnsdumpster
+openpyxl
+psutil
+pytest

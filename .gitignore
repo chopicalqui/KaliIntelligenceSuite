@@ -1,0 +1,14 @@
+*/__pycache__/*
+*.ods
+*.pyc
+*.log
+*.swp
+*.bak
+.idea/
+tmp/
+.idea/
+build/
+dist/
+*.egg-info/
+Makefile
+tld.cache
