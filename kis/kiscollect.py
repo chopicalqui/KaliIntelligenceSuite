@@ -305,8 +305,8 @@ $ kisreport host -w $ws --text -X httpnikto httpgobuster
                             help="indefinitely repeat the execution of selected collectors")
         if os.geteuid() != 0:
             config = Collector()
-            print("{} must be executed with root privileges. if possible, then individual commands are executed "
-                  "with user '{}'".format(sys.argv[0], config.default_user), file=sys.stderr)
+            print("{} must be executed with root privileges. afterwards, it is possible to execute "
+                  "individual commands with lower privileged users like 'nobody'".format(sys.argv[0]), file=sys.stderr)
             sys.exit(1)
         args = parser.parse_args()
         if args.list:

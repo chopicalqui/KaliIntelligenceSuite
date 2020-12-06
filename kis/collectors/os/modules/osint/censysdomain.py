@@ -48,6 +48,7 @@ class CollectorClass(BaseKisImportDomain, DomainCollector):
                          argument_name="--censys-domain",
                          source=CensysCertificate.SOURCE,
                          delay_min=1,
+                         exec_user="kali",
                          **kwargs)
 
     @staticmethod

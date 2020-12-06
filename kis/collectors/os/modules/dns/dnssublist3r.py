@@ -70,13 +70,13 @@ class CollectorClass(BaseDnsCollector, DomainCollector):
         :return: List of Collector instances that shall be processed.
         """
         collectors = []
-        command = self._path_python3
+        command = self._path_sublist3r
         if not os.path.exists(self._path_sublist3r):
             raise FileNotFoundError("file '{}' does not exist".format(self._path_sublist3r))
         number_threads = 1 if self._delay.sleep_active() else 5
         if host_name.domain_name and host_name.name is None:
             os_command = [command,
-                          self._path_sublist3r,
+                          "-n",
                           "-d", host_name.full_name,
                           "-t", number_threads]
             collector = self._get_or_create_command(session, os_command, collector_name, host_name=host_name)

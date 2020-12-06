@@ -236,14 +236,14 @@ The column **User** specifies the user with which the respective operating syste
 | -        | sshhydra          | service         | Active   | IPv4, IPv6 | -       | nobody |
 | 125      | builtwith         | domain          | Active*  | -          | -       | nobody |
 | 127      | hostio            | domain          | Active*  | -          | -       | nobody |
-| 130      | censysdomain      | domain          | Active*  | -          | -       | nobody |
+| 130      | censysdomain      | domain          | Active*  | -          | -       | kali   |
 | 131      | securitytrails    | domain          | Active*  | -          | -       | nobody |
 | 132      | dnsdumpster       | domain          | Active*  | -          | -       | nobody |
 | 133      | certspotter       | domain          | Active*  | -          | -       | nobody |
 | 134      | crtshdomain       | domain          | Active*  | -          | -       | nobody |
 | 135      | virustotal        | domain          | Active*  | -          | -       | nobody |
 | 140      | dnssublist3r      | domain          | Active   | -          | -       | nobody |
-| 150      | theharvester      | domain          | Passive  | -          | -       | nobody |
+| 150      | theharvester      | domain          | Passive  | -          | -       | kali   |
 | 155      | awsslurp          | domain          | Active   |            | -       | nobody |
 | 160      | dnsenum           | domain          | Active   | -          | -       | nobody |
 | 170      | dnsgobuster       | domain          | Active   | -          | -       | nobody |

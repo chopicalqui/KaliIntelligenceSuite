@@ -129,9 +129,10 @@ class BaseCommand(Thread):
         self._start_time = None
         self._stop_time = None
         self._lock = Lock()
+        self._pwd = None
         if username:
-            user = pwd.getpwnam(username)
-            self._demote = demote(user.pw_uid, user.pw_gid)
+            self._pwd = pwd.getpwnam(username)
+            self._demote = demote(self._pwd.pw_uid, self._pwd.pw_gid)
         else:
             self._demote = None
 
@@ -364,6 +365,7 @@ class PopenCommand(BaseCommand):
                                           stderr=self._stderr,
                                           shell=False,
                                           cwd=self._cwd,
+                                          env={},
                                           preexec_fn=self._demote)
 
     def close(self) -> None:
@@ -440,6 +442,7 @@ class PopenCommandOpenSsl(PopenCommand):
                                           stderr=subprocess.PIPE,
                                           stdin=subprocess.PIPE,
                                           shell=False,
+                                          env={},
                                           cwd=self._cwd,
                                           preexec_fn=self._demote)
             self._stderr_list = [item.decode("utf-8").strip() for item in iter(self._proc.stderr.readline, b'')]
@@ -495,6 +498,7 @@ class PopenCommandWithOutputQueue(PopenCommand):
                                           stderr=self._stderr,
                                           shell=self._shell,
                                           cwd=self._cwd,
+                                          env={},
                                           preexec_fn=self._demote)
             self._stdout_reader = StdoutReader(self._proc)
             self._stderr_reader = StderrReader(self._proc)
@@ -541,6 +545,7 @@ class RunCommand(BaseCommand):
                                                    shell=False,
                                                    cwd=self._cwd,
                                                    check=self._check,
+                                                   env={},
                                                    preexec_fn=self._demote)
 
 

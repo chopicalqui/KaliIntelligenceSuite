@@ -51,6 +51,7 @@ class CollectorClass(BaseCollector, DomainCollector):
                          timeout=0,
                          active_collector=True,
                          delay_min=1,
+                         exec_user="kali",
                          **kwargs)
         self._re_email = re.compile("^{}$".format(EmailUtils.RE_EMAIL))
         self._re_domain_ip = re.compile("^{}\s?:\s?(?P<ipv4_address>.*)$".format(DomainUtils.RE_DOMAIN))
