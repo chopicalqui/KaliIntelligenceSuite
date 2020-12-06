@@ -347,6 +347,8 @@ class _HostReportGenerator(_BaseReportGenerator):
                    "Nmap Product",
                    "Version",
                    "Product Summary",
+                   "SMB Message Signing",
+                   "RDP NLA",
                    "Sources (Host Name)",
                    "Sources (Service)",
                    "Command Count (Service)"]]
@@ -394,6 +396,8 @@ class _HostReportGenerator(_BaseReportGenerator):
                                            service.nmap_product,
                                            service.nmap_version,
                                            service.nmap_product_version,
+                                           service.smb_message_signing,
+                                           service.rdp_nla,
                                            host_sources,
                                            service.sources_str,
                                            len(service.commands)])
@@ -413,7 +417,7 @@ class _HostReportGenerator(_BaseReportGenerator):
                                        host.is_up,
                                        host.reason_up,
                                        None, None, None, None, None, None, None, None, None, None, None, None, None,
-                                       None, host_sources, None, None])
+                                       None, host_sources, None, None, None, None])
         return rvalue
 
 
@@ -540,6 +544,8 @@ class _HostNameReportGenerator(_BaseReportGenerator):
                    "Nmap Product",
                    "Version",
                    "Product Summary",
+                   "SMB Message Signing",
+                   "RDP NLA",
                    "Sources (Host Name)",
                    "Sources (Service)",
                    "Command Count (Service)"]]
@@ -579,6 +585,8 @@ class _HostNameReportGenerator(_BaseReportGenerator):
                                                service.nmap_product,
                                                service.nmap_version,
                                                service.nmap_product_version,
+                                               service.smb_message_signing,
+                                               service.rdp_nla,
                                                host_name_sources,
                                                service.sources_str,
                                                len(service.commands)])
@@ -594,7 +602,7 @@ class _HostNameReportGenerator(_BaseReportGenerator):
                                            in_scope,
                                            host_name.summary,
                                            ipv4_addresses, None, None, None, None, None, None, None, None, None, None,
-                                           None, None, None, None, host_name_sources, None, None])
+                                           None, None, None, None, host_name_sources, None, None, None, None])
             return rvalue
 
 

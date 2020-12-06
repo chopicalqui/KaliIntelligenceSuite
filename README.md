@@ -305,6 +305,7 @@ The column **User** specifies the user with which the respective operating syste
 | 11700    | ipmi              | service         | Active   | IPv4, IPv6 | -       | root   |
 | 12100    | ftpfilelist       | service         | Active   | IPv4, IPv6 | -       | nobody |
 | 13000    | showmount         | service         | Active   | IPv4, IPv6 | 300     | nobody |
+| 13090    | smbcme            | service         | Active   | IPv4       | -       | kali   |
 | 13100    | smbclient         | service         | Active   | IPv4, IPv6 | -       | nobody |
 | 13200    | smbfilelist       | service         | Active   | IPv4, IPv6 | -       | nobody |
 | 13210    | smbmap            | service         | Active   | IPv4       | -       | nobody |

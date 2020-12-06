@@ -218,9 +218,9 @@ class ManageDatabase:
         elif self._arguments.setup or self._arguments.setup_dbg:
             debug = args.setup_dbg
             Setup(kis_scripts=["kiscollect.py", "kismanage.py", "kisreport.py"],
-                  kali_packages=["eyewitness", "gobuster", "nfs-common", "ftp", "ntpdate", "metagoofil", "csvkit",
+                  kali_packages=["eyewitness", "gobuster", "nfs-common", "ftp", "ntpdate", "csvkit",
                                  "wapiti", "changeme", "theharvester", "sidguesser", "smtp-user-enum",
-                                 "sublist3r", "tcptraceroute"],
+                                 "sublist3r", "tcptraceroute", "crackmapexec"],
                   debug=debug).execute()
         else:
             if self._arguments.drop:
@@ -660,7 +660,7 @@ $ kismanage workspace --add $workspace
                                    help="read the given IP addresses (one per line) from file IP and delete them "
                                         "together with all associated host information from workspace WORKSPACE")
     parser_host.add_argument('-s', '--scope', choices=[item.name for item in ReportScopeType],
-                             help="set the given hosts HOST in or out of scope. note that KIS only "
+                             help="set the given hosts IP in or out of scope. note that KIS only "
                                   "actively collects information from in-scope hosts and networks ",
                              default=ReportScopeType.within.name)
     parser_host_group.add_argument("--source", metavar="SOURCE", type=str,

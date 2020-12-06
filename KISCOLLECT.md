@@ -53,7 +53,7 @@ usage: kiscollect [-h] [--finger] [--ipmi] [--tcptraceroute] [--rdphydra]
                   [--ftpdotdotpwn] [--ftpfilelist] [--ftphydra] [--ftpnmap]
                   [--ldapnmap] [--ldapsearch] [--mysqlhydra] [--mysqlnmap]
                   [--nfsnmap] [--showmount] [--ntpdate] [--ntpq]
-                  [--enum4linux] [--msrpcenum] [--smbclient]
+                  [--enum4linux] [--msrpcenum] [--smbclient] [--smbcme]
                   [--smbfilelist] [--smbhydra] [--smbmap] [--smbmedusa]
                   [--smbnmap] [--telnetnmap] [--onesixtyone] [--snmpcheck]
                   [--snmphydra] [--snmpnmap] [--snmpwalk] [--nbtscan]
@@ -486,6 +486,8 @@ collectors:
                         arguments -u, -p, and -d to provide a user name,
                         password/NTLM hash, and domain/ workgroup for
                         authentication
+  --smbcme              run tool crackmapexec on each identified in-scope SMB
+                        service to obtain general SMB information
   --smbfilelist         run smbclient on each identified in-scope SMB network
                         share to get a directory listing. per default this
                         collector tests SMB services for NULL sessions.
@@ -849,7 +851,7 @@ $ kiscollect -w $ws --debug --strict -t5 --ftphydra --snmphydra --snmpcheck --on
 --finger --httpnmap --pop3nmap --imapnmap --tftpnmap --nfsnmap --x11nmap --msrpcenum --mysqlnmap --rdpnmap \
 --httpdavtest --httpwhatweb --httpeyewitness --tlsnmap --smbfilelist --sslyze --sslscan --sshchangeme --httpchangeme \
 --httpmsfrobotstxt --certnmap --ftpnmap --ldapnmap --dnsnmap --ldapnmap --snmpnmap --telnetnmap --vncnmap \
---ftpfilelist --certopenssl --httpntlmnmap --ikescan --anyservicenmap --httpburpsuitepro
+--ftpfilelist --certopenssl --httpntlmnmap --ikescan --anyservicenmap --smbcme
 
 export collected information into microsoft excel
 $ kisreport excel /tmp/kis-scan-results.xlsx -w $ws

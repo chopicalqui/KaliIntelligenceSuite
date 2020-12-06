@@ -166,7 +166,7 @@ $ kiscollect -w $ws --debug --strict -t5 --ftphydra --snmphydra --snmpcheck --on
 --finger --httpnmap --pop3nmap --imapnmap --tftpnmap --nfsnmap --x11nmap --msrpcenum --mysqlnmap --rdpnmap \\
 --httpdavtest --httpwhatweb --httpeyewitness --tlsnmap --smbfilelist --sslyze --sslscan --sshchangeme --httpchangeme \\
 --httpmsfrobotstxt --certnmap --ftpnmap --ldapnmap --dnsnmap --ldapnmap --snmpnmap --telnetnmap --vncnmap \\
---ftpfilelist --certopenssl --httpntlmnmap --ikescan --anyservicenmap --httpburpsuitepro
+--ftpfilelist --certopenssl --httpntlmnmap --ikescan --anyservicenmap --smbcme
 
 export collected information into microsoft excel
 $ kisreport excel /tmp/kis-scan-results.xlsx -w $ws

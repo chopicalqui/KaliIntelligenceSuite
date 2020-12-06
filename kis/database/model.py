@@ -2008,6 +2008,8 @@ class Service(DeclarativeBase):
     nmap_version = Column(Text, nullable=True, unique=False)
     nmap_tunnel = Column(Text, nullable=True, unique=False)
     nmap_os_type = Column(Text, nullable=True, unique=False)
+    smb_message_signing = Column(Boolean, nullable=True, unique=False)
+    rdp_nla = Column(Boolean, nullable=True, unique=False)
     host_id = Column(Integer, ForeignKey("host.id", ondelete='cascade'), nullable=True, unique=False)
     host_name_id = Column(Integer, ForeignKey("host_name.id", ondelete='cascade'), nullable=True, unique=False)
     creation_date = Column(DateTime, nullable=False, default=datetime.utcnow())

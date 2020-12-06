@@ -1768,7 +1768,7 @@ class SmbClientAuthenticationType(enum.Enum):
 
 class BaseSmbClient(BaseCollector):
     """
-    This class implements basic functionality for collectors that use Eyewitness
+    This class implements basic functionality for collectors that use smbclient
     """
 
     def __init__(self,
@@ -1849,6 +1849,86 @@ class BaseSmbClient(BaseCollector):
                         os_command += arguments
                         os_command += ["-L", "//{}{}".format(service.host.address, path)]
                         os_command += credentials
+                        collectors.append(self._get_or_create_command(session,
+                                                                      os_command,
+                                                                      collector_name,
+                                                                      service=service))
+        return collectors
+
+
+class BaseCrackMapExec(BaseCollector):
+    """
+    This class implements basic functionality for collectors that use CrackMapExec
+    """
+
+    def __init__(self,
+                 priority: int,
+                 timeout: int,
+                 service_descriptors: ServiceDescriptorBase,
+                 **kwargs):
+        super().__init__(priority=priority,
+                         timeout=timeout,
+                         service_descriptors=service_descriptors,
+                         **kwargs)
+
+    def _create_credential_arguments(self, user: str, password: str, domain: str, is_hash: bool):
+        """
+        This method creates the credential arguments for CrackMapExec based on the given arguments
+        :param user: The user name
+        :param password: The password
+        :param domain: The domain
+        :return:
+        """
+        result = []
+        result += ["-u", user]
+        if is_hash:
+            result += ["-H", password]
+        else:
+            result += ["-p='{}'".format(password)]
+        if domain:
+            result += ["-d", domain]
+        return result
+
+    def _create_commands(self,
+                         session: Session,
+                         service: Service,
+                         collector_name: CollectorName,
+                         module: str,
+                         arguments: List[str] = []) -> List[BaseCollector]:
+        """This method creates and returns a list of commands based on the given service.
+
+        This method determines whether the command exists already in the database. If it does, then it does nothing,
+        else, it creates a new Collector entry in the database for each new command as well as it creates a corresponding
+        operating system command and attaches it to the respective newly created Collector class.
+
+        :param session: Sqlalchemy session that manages persistence operations for ORM-mapped objects
+        :param service: The service based on which commands shall be created.
+        :param collector_name: The name of the collector as specified in table collector_name
+        :param module: Crackmapexec module to be used for collection
+        :return: List of Collector instances that shall be processed.
+        """
+        collectors = []
+        ipv4_address = service.host.ipv4_address
+        if ipv4_address and self.match_service_port(service):
+            os_command = [self._path_crackmapexec, module, "--port", service.port]
+            if not service.has_credentials and self._user and self._password:
+                os_command += self._create_credential_arguments(self._user, self._password, self._domain, self._hashes)
+                os_command += arguments
+                os_command.append(ipv4_address)
+                collectors.append(self._get_or_create_command(session, os_command, collector_name, service=service))
+            elif not service.has_credentials and not self._user and not self._password:
+                os_command += arguments
+                os_command.append(ipv4_address)
+                collectors.append(self._get_or_create_command(session, os_command, collector_name, service=service))
+            else:
+                for item in service.credentials:
+                    if item.complete:
+                        os_command += self._create_credential_arguments(item.username,
+                                                                        item.password,
+                                                                        item.domain,
+                                                                        item.type != CredentialType.Cleartext)
+                        os_command += arguments
+                        os_command.append(ipv4_address)
                         collectors.append(self._get_or_create_command(session,
                                                                       os_command,
                                                                       collector_name,
