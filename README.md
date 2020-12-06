@@ -333,7 +333,7 @@ The column **User** specifies the user with which the respective operating syste
 | 91100    | enum4linux        | service         | Active   | IPv4       | -       | nobody |
 | 91150    | httpchangeme      | service, vhost  | Active   | IPv4, IPv6 | -       | nobody |
 | 91200    | httpnikto         | service, vhost  | Active   | IPv4       | -       | nobody |
-| 91225    | httpburpsuitepro  | service, vhost  | Active   | IPv4, IPv6 | -       | nobody |
+| 91225    | httpburpsuitepro  | domain, host    | Active   | IPv4, IPv6 | -       | nobody |
 | 91250    | httpdavtest       | service, vhost  | Active   | IPv4, IPv6 | -       | nobody |
 | 91250    | httpwhatweb       | service         | Active   | IPv4, IPv6 | -       | nobody |
 | 91300    | httpsqlmap        | service, vhost  | Active   | IPv4, IPv6 | -       | nobody |

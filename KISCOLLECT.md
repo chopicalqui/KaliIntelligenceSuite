@@ -26,6 +26,7 @@ The script provides the following functionalities and some case studies are prov
 
 ```bash
 root@kali: ~ $ kiscollect -h
+/usr/bin/python3.8 /opt/KaliIntelligenceSuite/kis/kiscollect.py -h
 usage: kiscollect [-h] [--finger] [--ipmi] [--tcptraceroute] [--rdphydra]
                   [--rdpnmap] [--awsslurp] [--anyservicenmap]
                   [--icmpnmapnetwork] [--tcpmasscannetwork TYPE [TYPE ...]]
@@ -263,14 +264,14 @@ collectors:
                         number of domains in the current workspace, it might
                         be desired to limit the number of OS commands by using
                         the optional argument --filter
-  --httpburpsuitepro    submit in-scope web applications to Burp Suite
-                        Professional for scanning via Burp's REST API. use
-                        this collector with caution as these scans are
-                        aggressive and therefore, might case damage.
-                        therefore, it might be desired to limit the number of
-                        OS commands by using the optional argument --filter.
-                        note that Burp's scan results are not fed back into
-                        KIS
+  --httpburpsuitepro    submit in-scope web applications (except TCP ports
+                        5985 and 5986) to Burp Suite Professional for scanning
+                        via Burp's REST API. use this collector with caution
+                        as these scans are aggressive and therefore, might
+                        cause damage. therefore, it might be desired to limit
+                        the number of OS commands by using the optional
+                        argument --filter. note that Burp's scan results are
+                        not fed back into KIS
   --httpchangeme        run tool changeme on each identified in-scope HTTP(S)
                         service to test service for default credentials. use
                         optional argument --user-agent to specify a different
