@@ -53,11 +53,11 @@ from configs.config import SortingHelpFormatter
 from configs.config import BaseConfig
 from configs.config import Collector
 from collectors.os.collector import CollectorProducer
-from collectors.os.collector import VhostChoice
 from collectors.os.collector import CollectorConsumer
 from view.curses import CursesUiManager
 from view.core import PrintCommmandUi
 from database.model import CommandStatus
+from database.model import VhostChoice
 from database.utils import Engine
 from database.utils import DeclarativeBase
 

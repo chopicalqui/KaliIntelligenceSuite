@@ -26,7 +26,7 @@ import tempfile
 from typing import List
 from unittests.tests.collectors.core import CollectorProducerTestSuite
 from unittests.tests.collectors.kali.modules.core import BaseKaliCollectorTestCase
-from collectors.os.collector import VhostChoice
+from database.model import VhostChoice
 from database.model import Command
 from database.model import Network
 from database.model import HostName

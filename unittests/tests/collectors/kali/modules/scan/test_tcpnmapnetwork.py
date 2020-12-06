@@ -25,7 +25,7 @@ __version__ = 0.1
 from typing import List
 from unittests.tests.collectors.kali.modules.scan.core import BaseNmapCollectorTestCase
 from collectors.os.modules.scan.tcpnmapnetwork import CollectorClass as TcpNmapCollector
-from collectors.os.collector import VhostChoice
+from database.model import VhostChoice
 
 
 class BaseTcpNmapCollectorTestCase(BaseNmapCollectorTestCase):

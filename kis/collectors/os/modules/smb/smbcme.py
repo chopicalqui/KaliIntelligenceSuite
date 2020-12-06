@@ -41,7 +41,7 @@ class CollectorClass(BaseCrackMapExec, ServiceCollector):
     """This class implements a collector module that is automatically incorporated into the application."""
 
     def __init__(self, **kwargs):
-        super().__init__(priority=13100,
+        super().__init__(priority=13090,
                          timeout=0,
                          exec_user="kali",
                          service_descriptors=SmbServiceDescriptor(),

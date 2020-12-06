@@ -135,6 +135,11 @@ class MutableDict(Mutable, dict):
         self.changed()
 
 
+class VhostChoice(enum.Enum):
+    all = enum.auto()
+    domain = enum.auto()
+
+
 class Utils:
     """
     This class implements common functionality for all model classes

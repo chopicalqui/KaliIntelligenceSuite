@@ -67,6 +67,7 @@ from database.model import CertInfo
 from database.model import CommandStatus
 from database.model import IpSupport
 from database.model import ExecutionInfoType
+from database.model import VhostChoice
 from database.utils import Engine
 from database.utils import HostHostNameMapping
 from database.utils import HostNameHostNameMapping
@@ -347,6 +348,7 @@ class BaseCollector(config.Collector):
                  max_threads: int = 0,
                  analyze: bool = False,
                  ignore: bool = True,
+                 vhost: str = None,
                  execution_class: PopenCommand = PopenCommand,
                  exec_user: str = "nobody",
                  **kwargs):
@@ -420,6 +422,13 @@ class BaseCollector(config.Collector):
         self._proxychains = self.get_commandline_argument_value("proxychains")
         self._analyze = analyze
         self._ignore = ignore
+        if vhost:
+            if isinstance(vhost, VhostChoice):
+                self._vhost = vhost
+            elif isinstance(vhost, str):
+                self._vhost = VhostChoice[vhost]
+        else:
+            self._vhost = None
         tmp = self.get_commandline_argument_value("wordlist_files")
         self._wordlist_files = tmp if tmp else []
         self._print_commands = print_commands

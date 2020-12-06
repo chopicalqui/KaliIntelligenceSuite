@@ -27,9 +27,7 @@ import subprocess
 import logging
 import sqlalchemy
 import time
-import enum
 import sys
-import pwd
 import stat
 from argparse import _ArgumentGroup
 from view.core import BaseUiManager
@@ -51,6 +49,7 @@ from database.model import CollectorType
 from database.model import Email
 from database.model import Company
 from database.model import CommandStatus
+from database.model import VhostChoice
 from database.utils import Engine
 from sqlalchemy import and_
 from typing import Dict
@@ -130,11 +129,6 @@ class CommandQueueItem:
     @property
     def active_collector(self):
         return self._active_collector
-
-
-class VhostChoice(enum.Enum):
-    all = 0
-    domain = 10
 
 
 class CollectorProducer(Thread):
