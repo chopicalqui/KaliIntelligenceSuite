@@ -22,13 +22,17 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 __version__ = 0.1
 
+import os
 from typing import List
+from database.model import Service
 from collectors.os.modules.core import BaseCollector
 from collectors.os.modules.core import BaseHydra
 from collectors.os.modules.core import BaseEyeWitness
 from collectors.os.modules.core import BaseNmap
 from collectors.os.modules.core import ServiceDescriptorBase
-from collectors.filesystem.nmap import BaseExtraServiceInfoExtraction
+from collectors.os.modules.core import BaseExtraServiceInfoExtraction
+from collectors.core import XmlUtils
+from sqlalchemy.orm.session import Session
 
 
 class RdpServiceDescriptor(ServiceDescriptorBase):
@@ -91,3 +95,73 @@ class BaseRdpNmap(BaseNmap):
                          service_descriptors=RdpServiceDescriptor(),
                          nmap_xml_extractor_classes=nmap_xml_extractor_classes,
                          **kwargs)
+
+
+class RdpExtraInfoExtraction(BaseExtraServiceInfoExtraction):
+    """
+    This class extracts extra information disclosed by RDP service.
+    """
+    RDP_NTLM_INFO = "rdp-ntlm-info"
+    RDP_ENUM_ENCRYPTION = "rdp-enum-encryption"
+
+    def __init__(self, session: Session, service: Service, **args):
+        super().__init__(session, service, **args)
+
+    def _extract_ntlm_info(self, port_tag) -> None:
+        """This method extracts NTLM information"""
+        super()._extract_ntlm_info(port_tag, tag_id=RdpExtraInfoExtraction.RDP_NTLM_INFO)
+
+    def _extract_rdp_encryption(self, port_tag) -> None:
+        """This method extracts RDP encryption information"""
+        script = port_tag.findall("*/[@id='{}']".format(RdpExtraInfoExtraction.RDP_ENUM_ENCRYPTION))
+        if len(script) > 0:
+            output = XmlUtils.get_xml_attribute("output", script[0].attrib)
+            if output:
+                security_layer_section = False
+                encryption_level_section = False
+                protocol_version_section = False
+                rdp_security_layers = []
+                rdp_encryption_level = []
+                rdp_protocol_version = []
+                for line in output.split(os.linesep):
+                    line = line.strip()
+                    if line == "Security layer":
+                        security_layer_section = True
+                    elif line == "RDP Encryption level: Client Compatible":
+                        security_layer_section = False
+                        encryption_level_section = True
+                    elif line == "RDP Protocol Version:":
+                        security_layer_section = False
+                        encryption_level_section = False
+                        line = line.replace("RDP Protocol Version:", "").strip()
+                        rdp_protocol_version.append(line)
+                    elif security_layer_section:
+                        rdp_security_layers.append(line)
+                    elif encryption_level_section:
+                        rdp_encryption_level.append(line)
+                if rdp_security_layers:
+                    self._domain_utils.add_additional_info(session=self._session,
+                                                           name="RDP security layers",
+                                                           values=rdp_security_layers,
+                                                           source=self._source,
+                                                           service=self._service,
+                                                           report_item=self._report_item)
+                if rdp_encryption_level:
+                    self._domain_utils.add_additional_info(session=self._session,
+                                                           name="RDP encryption layers",
+                                                           values=rdp_encryption_level,
+                                                           source=self._source,
+                                                           service=self._service,
+                                                           report_item=self._report_item)
+                if rdp_protocol_version:
+                    self._domain_utils.add_additional_info(session=self._session,
+                                                           name="RDP protocol version",
+                                                           values=rdp_protocol_version,
+                                                           source=self._source,
+                                                           service=self._service,
+                                                           report_item=self._report_item)
+
+    def extract(self, **kwargs):
+        """This method extracts the required information."""
+        self._extract_ntlm_info(kwargs["port_tag"])
+        self._extract_rdp_encryption(kwargs["port_tag"])

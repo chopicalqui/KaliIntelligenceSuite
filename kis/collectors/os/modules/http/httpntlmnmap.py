@@ -24,9 +24,9 @@ import logging
 from typing import List
 from collectors.os.modules.core import HostNameServiceCollector
 from collectors.os.modules.core import ServiceCollector
-from collectors.os.modules.http.core import BaseHttpNmap
 from collectors.os.modules.core import BaseCollector
-from collectors.filesystem.nmap import HttpExtraInfoExtraction
+from collectors.os.modules.http.core import BaseHttpNmap
+from collectors.os.modules.http.core import HttpExtraInfoExtraction
 from database.model import Service
 from database.model import CollectorName
 from sqlalchemy.orm.session import Session

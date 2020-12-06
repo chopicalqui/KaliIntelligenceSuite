@@ -32,14 +32,46 @@ from database.model import Host
 from database.model import Command
 from database.model import CollectorName
 from database.model import ServiceState
+from database.utils import Engine
+from collectors.core import XmlUtils
 from collectors.os.modules.core import HostCollector
 from collectors.os.modules.core import BaseCollector
+from collectors.os.modules.core import BaseExtraServiceInfoExtraction
 from collectors.os.core import PopenCommand
-from collectors.core import CertificateUtils
 from view.core import ReportItem
 from sqlalchemy.orm.session import Session
 
 logger = logging.getLogger('tcptraceroute')
+
+
+class TracerouteExtraction(BaseExtraServiceInfoExtraction):
+    """
+    This class extracts extra information disclosed by traceroute.
+    """
+    TRACE_COMMAND = "trace"
+
+    def __init__(self, session, service: Service, **args):
+        super().__init__(session, service, **args)
+        self._source_traceroute = Engine.get_or_create(self._session, Source, name="nmap-traceroute")
+
+    def _extract_ipv4_addresses(self, host_tag) -> None:
+        """This method extracts IPv4 addresses from traceroute command"""
+        trace_tags = host_tag.findall("{}".format(TracerouteExtraction.TRACE_COMMAND))
+        for trace_tag in trace_tags:
+            for hop_tag in trace_tag.findall("hop"):
+                ipv4_address = XmlUtils.get_xml_attribute("ipaddr", hop_tag.attrib)
+                if ipv4_address:
+                    host = self._ip_utils.add_host(session=self._session,
+                                                   workspace=self._workspace,
+                                                   address=ipv4_address,
+                                                   source=self._source_traceroute,
+                                                   report_item=self._report_item)
+                    if not host:
+                        logger.debug("ignoring IPv4 address due to invalid format: {}".format(ipv4_address))
+
+    def extract(self, **kwargs):
+        """This method extracts the required information."""
+        self._extract_ipv4_addresses(kwargs["host_tag"])
 
 
 class CollectorClass(BaseCollector, HostCollector):

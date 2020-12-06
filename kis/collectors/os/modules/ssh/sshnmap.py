@@ -23,9 +23,9 @@ __version__ = 0.1
 import logging
 from typing import List
 from collectors.os.modules.core import ServiceCollector
-from collectors.os.modules.ssh.core import BaseSshNmap
 from collectors.os.modules.core import BaseCollector
-from collectors.filesystem.nmap import SshExtraInfoExtraction
+from collectors.os.modules.ssh.core import BaseSshNmap
+from collectors.os.modules.ssh.core import SshExtraInfoExtraction
 from collectors.os.core import PopenCommand
 from database.model import Service
 from database.model import CollectorName

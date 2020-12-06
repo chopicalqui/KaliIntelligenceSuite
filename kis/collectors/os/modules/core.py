@@ -71,7 +71,6 @@ from database.utils import Engine
 from database.utils import HostHostNameMapping
 from database.utils import HostNameHostNameMapping
 from database.utils import DnsResourceRecordType
-from collectors.filesystem.nmap import BaseExtraServiceInfoExtraction
 from threading import Lock
 from configs import config
 from collectors.os.core import PopenCommand
@@ -148,6 +147,81 @@ class Delay:
         """
         if self.sleep_time > 0:
             time.sleep(self.sleep_time)
+
+
+class BaseExtraServiceInfoExtraction:
+    """This base class provides base functionality to extract extra information from services."""
+
+    def __init__(self,
+                 session,
+                 service: Service,
+                 workspace: Workspace,
+                 source: Source,
+                 domain_utils: DomainUtils,
+                 ip_utils: IpUtils,
+                 stdout = None,
+                 report_item: ReportItem = None,
+                 command: Command = None,
+                 **args):
+        """
+
+        :param session: The database session to query or update information stored in the database.
+        :param service: The service instance for which information shall be extracted.
+        """
+        self._session = session
+        self._service = service
+        self._source = source
+        self._command = command
+        self._workspace = workspace
+        self._args = args
+        self._stdout = stdout
+        self._domain_utils = domain_utils
+        self._ip_utils = ip_utils
+        self._report_item = report_item
+
+    def _extract_ntlm_info(self, port_tag, tag_id: str) -> None:
+        """This method extracts NTLM information"""
+        for script_tag in port_tag.findall("*/[@id='{}']".format(tag_id)):
+            info = XmlUtils.get_element_text(script_tag, "./elem[@key='NetBIOS_Domain_Name']")
+            if info is not None and self._service.host:
+                self._service.host.workgroup = info
+            info = XmlUtils.get_element_text(script_tag, "./elem[@key='DNS_Computer_Name']")
+            if info is not None:
+                host_name = self._domain_utils.add_domain_name(session=self._session,
+                                                               workspace=self._workspace,
+                                                               item=info,
+                                                               host=self._service.host,
+                                                               source=self._source,
+                                                               verify=True,
+                                                               report_item=self._report_item)
+                if not host_name:
+                    logger.debug("ignoring computer name '{}' due to invalid format".format(info))
+            info = XmlUtils.get_element_text(script_tag, "./elem[@key='DNS_Domain_Name']")
+            if info is not None:
+                host_name = self._domain_utils.add_domain_name(session=self._session,
+                                                               workspace=self._workspace,
+                                                               item=info,
+                                                               host=self._service.host,
+                                                               source=self._source,
+                                                               verify=True,
+                                                               report_item=self._report_item)
+                if not host_name:
+                    logger.debug("ignoring domain name '{}' due to invalid format".format(info))
+            info = XmlUtils.get_element_text(script_tag, "./elem[@key='DNS_Tree_Name']")
+            if info is not None:
+                host_name = self._domain_utils.add_domain_name(session=self._session,
+                                                               workspace=self._workspace,
+                                                               item=info,
+                                                               host=self._service.host,
+                                                               source=self._source,
+                                                               verify=True,
+                                                               report_item=self._report_item)
+                if not host_name:
+                    logger.debug("ignoring tree name '{}' due to invalid format".format(info))
+
+    def extract(self, extra_info_tag):
+        """This method extracts the required information."""
+        raise NotImplementedError("This method must be implemented!")
 
 
 class ServiceDescriptorBase:

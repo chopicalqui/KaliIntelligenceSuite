@@ -26,9 +26,9 @@ import logging
 from typing import List
 from collectors.os.modules.core import ServiceCollector
 from collectors.os.modules.core import HostNameServiceCollector
-from collectors.os.modules.tls.core import BaseTlsNmap
 from collectors.os.modules.core import BaseCollector
-from collectors.filesystem.nmap import CertInfoExtraction
+from collectors.os.modules.tls.core import BaseTlsNmap
+from collectors.os.modules.tls.core import CertInfoExtraction
 from database.model import Service
 from database.model import CollectorName
 from database.model import Command

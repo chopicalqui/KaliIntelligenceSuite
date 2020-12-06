@@ -23,14 +23,11 @@ __version__ = 0.1
 import logging
 from typing import List
 from collectors.os.modules.core import ServiceCollector
-from collectors.os.modules.tftp.core import BaseTftpNmap
 from collectors.os.modules.core import BaseCollector
-from collectors.os.core import PopenCommand
-from collectors.filesystem.nmap import TftpExtraInfoExtraction
+from collectors.os.modules.tftp.core import BaseTftpNmap
+from collectors.os.modules.tftp.core import TftpExtraInfoExtraction
 from database.model import Service
-from database.model import Command
 from database.model import CollectorName
-from database.model import Source
 from sqlalchemy.orm.session import Session
 
 logger = logging.getLogger('tftpnmap')

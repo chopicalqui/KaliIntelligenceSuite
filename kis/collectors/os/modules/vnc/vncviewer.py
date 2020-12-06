@@ -29,7 +29,6 @@ from typing import List
 from collectors.os.modules.core import ServiceCollector
 from collectors.os.modules.vnc.core import BaseVncCollector
 from collectors.os.modules.core import BaseCollector
-from collectors.os.modules.core import CommandCreationFailed
 from collectors.os.core import PopenCommand
 from database.model import Service
 from database.model import Command

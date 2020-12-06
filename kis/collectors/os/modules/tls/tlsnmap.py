@@ -25,11 +25,11 @@ __version__ = 0.1
 
 import logging
 from typing import List
-from collectors.filesystem.nmap import TlsInfoExtraction
 from collectors.os.modules.core import ServiceCollector
 from collectors.os.modules.core import HostNameServiceCollector
-from collectors.os.modules.tls.core import BaseTlsNmap
 from collectors.os.modules.core import BaseCollector
+from collectors.os.modules.tls.core import BaseTlsNmap
+from collectors.os.modules.tls.core import TlsInfoExtraction
 from database.model import Service
 from database.model import CollectorName
 from database.model import Command

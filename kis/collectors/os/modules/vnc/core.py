@@ -28,7 +28,7 @@ from collectors.os.modules.core import BaseHydra
 from collectors.os.modules.core import BaseNmap
 from collectors.os.modules.core import BaseEyeWitness
 from collectors.os.modules.core import ServiceDescriptorBase
-from collectors.filesystem.nmap import BaseExtraServiceInfoExtraction
+from collectors.os.modules.core import BaseExtraServiceInfoExtraction
 
 
 class VncServiceDescriptor(ServiceDescriptorBase):

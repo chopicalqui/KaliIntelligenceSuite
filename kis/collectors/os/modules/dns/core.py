@@ -30,12 +30,12 @@ from collectors.os.modules.core import BaseNmap
 from collectors.os.modules.core import ServiceDescriptorBase
 from collectors.os.modules.core import CommandFailureRule
 from collectors.os.modules.core import OutputType
+from collectors.os.modules.core import BaseExtraServiceInfoExtraction
 from collectors.os.core import PopenCommand
 from database.model import Command
 from database.model import Source
 from database.model import DnsResourceRecordType
 from view.core import ReportItem
-from collectors.filesystem.nmap import BaseExtraServiceInfoExtraction
 from typing import List
 from sqlalchemy.orm.session import Session
 

@@ -22,9 +22,9 @@ __version__ = 0.1
 
 from typing import List
 from collectors.os.modules.core import ServiceCollector
-from collectors.os.modules.rpc.core import BaseRpcBindNmap
 from collectors.os.modules.core import BaseCollector
-from collectors.filesystem.nmap import RpcInfoExtraInfoExtraction
+from collectors.os.modules.rpc.core import BaseRpcBindNmap
+from collectors.os.modules.rpc.core import RpcInfoExtraInfoExtraction
 from database.model import Service
 from database.model import CollectorName
 from sqlalchemy.orm.session import Session

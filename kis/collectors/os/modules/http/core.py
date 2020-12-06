@@ -35,9 +35,13 @@ from collectors.os.modules.core import BaseCollector
 from collectors.os.modules.core import BaseHydra
 from collectors.os.modules.core import BaseDotDotPwn
 from collectors.os.modules.core import ServiceDescriptorBase
-from collectors.filesystem.nmap import BaseExtraServiceInfoExtraction
+from collectors.os.modules.core import BaseExtraServiceInfoExtraction
+from database.utils import Engine
 from database.model import CollectorName
 from database.model import Service
+from database.model import Source
+from database.model import PathType
+from collectors.core import XmlUtils
 from sqlalchemy.orm.session import Session
 
 
@@ -152,6 +156,7 @@ class BaseHttpDotDotPwn(BaseDotDotPwn):
                          module="http",
                          **kwargs)
 
+
 class BaseHttpGoBuster(BaseHttpCollector):
     """
     This class implements basic functionality for GoBuster web collectors
@@ -231,3 +236,186 @@ class BaseHttpGoBuster(BaseHttpCollector):
                 collector = self._get_or_create_command(session, os_command, collector_name, service=service)
                 collectors.append(collector)
         return collectors
+
+
+class HttpExtraInfoExtraction(BaseExtraServiceInfoExtraction):
+    """
+    This class extracts extra information from MS-SQL services.
+    """
+    HTTP_METHODS = "http-methods"
+    ROBOTS_TXT = "http-robots.txt"
+    WEB_PATHS = "web-paths"
+    HTTP_TITLE = "http-title"
+    HTTP_SERVER_HEADER = "http-server-header"
+    HTTP_AUTH_FINDER = "http-auth-finder"
+    HTTP_BACKUP_FINDER = "http-backup-finder"
+    HTTP_COMMENTS_DISPLAYER = "http-comments-displayer"
+    HTTP_NTLM_INFO = "http-ntlm-info"
+    HTTP_ENUM = "http-enum"
+    HTTP_SECURITY_HEADERS = "http-security-headers"
+
+    def __init__(self, session: Session, service: Service, **args):
+        super().__init__(session, service, **args)
+        self._re_http_auth_finder = re.compile("^\s*(?P<url>https?://.*?)\s+[A-Z].*$", re.IGNORECASE)
+        self._re_http_backup_finder = re.compile("^\s*(?P<url>https?://.*?)$", re.IGNORECASE)
+        self._re_comments_displayer_path = re.compile("^\s*Path:\s*(?P<url>https?://.*?)$", re.IGNORECASE)
+        self._re_http_enum = re.compile("^\s*(?P<path>.+?):.*$")
+        self._source_auth_finder = Engine.get_or_create(self._session,
+                                                        Source,
+                                                        name=HttpExtraInfoExtraction.HTTP_AUTH_FINDER)
+        self._source_robots_txt = Engine.get_or_create(self._session,
+                                                       Source,
+                                                       name=HttpExtraInfoExtraction.ROBOTS_TXT)
+
+    def _extract_http_title(self, port_tag: str) -> None:
+        """This method extracts the HTTP title"""
+        script = port_tag.findall("*/[@id='{}']".format(HttpExtraInfoExtraction.HTTP_TITLE))
+        if len(script) > 0:
+            output = XmlUtils.get_xml_attribute("output", script[0].attrib)
+            if output:
+                self._domain_utils.add_additional_info(session=self._session,
+                                                       name="HTTP title",
+                                                       values=[output],
+                                                       source=self._source,
+                                                       service=self._service,
+                                                       report_item=self._report_item)
+
+    def _extract_http_server_header(self, port_tag: str) -> None:
+        """This method extracts the HTTP title"""
+        script = port_tag.findall("*/[@id='{}']".format(HttpExtraInfoExtraction.HTTP_SERVER_HEADER))
+        if len(script) > 0:
+            output = XmlUtils.get_xml_attribute("output", script[0].attrib)
+            if output:
+                self._domain_utils.add_additional_info(session=self._session,
+                                                       name="HTTP server header",
+                                                       values=[output],
+                                                       source=self._source,
+                                                       service=self._service,
+                                                       report_item=self._report_item)
+
+    def _extract_robots_txt(self, port_tag: str) -> None:
+        """This method extracts web paths disclosed by the robots.txt file."""
+        script = port_tag.findall("*/[@id='{}']".format(HttpExtraInfoExtraction.ROBOTS_TXT))
+        if len(script) > 0:
+            output = XmlUtils.get_xml_attribute("output", script[0].attrib)
+            if output:
+                tmp = output.split(os.linesep)
+                for line in tmp[1:]:
+                    for item in line.split(" "):
+                        self._domain_utils.add_url(session=self._session,
+                                                   service=self._service,
+                                                   url=item,
+                                                   source=self._source_robots_txt,
+                                                   report_item=self._report_item)
+
+    def _extract_http_auth_finder(self, port_tag):
+        """This method extracts URLs"""
+        script = port_tag.findall(".//*[@id='{}']".format(HttpExtraInfoExtraction.HTTP_AUTH_FINDER))
+        if len(script) > 0:
+            output = XmlUtils.get_xml_attribute("output", script[0].attrib)
+            if output:
+                tmp = output.split(os.linesep)
+                for line in tmp:
+                    match = self._re_http_auth_finder.match(line)
+                    if match:
+                        self._domain_utils.add_url(session=self._session,
+                                                   service=self._service,
+                                                   url=match.group("url"),
+                                                   source=self._source_auth_finder,
+                                                   report_item=self._report_item)
+
+    def _extract_http_comments_displayer(self, port_tag):
+        """This method extracts URLs"""
+        script = port_tag.findall(".//*[@id='{}']".format(HttpExtraInfoExtraction.HTTP_COMMENTS_DISPLAYER))
+        if len(script) > 0:
+            output = XmlUtils.get_xml_attribute("output", script[0].attrib)
+            if output:
+                dedup = {}
+                for line in output.split(os.linesep):
+                    match = self._re_comments_displayer_path.match(line)
+                    if match:
+                        url = match.group("url")
+                        if url not in dedup:
+                            dedup[url] = True
+                            self._domain_utils.add_url(session=self._session,
+                                                       service=self._service,
+                                                       url=url,
+                                                       source=self._source_auth_finder,
+                                                       report_item=self._report_item)
+
+    def _extract_http_backup_finder(self, port_tag):
+        """This method extracts URLs"""
+        script = port_tag.findall(".//*[@id='{}']".format(HttpExtraInfoExtraction.HTTP_BACKUP_FINDER))
+        if len(script) > 0:
+            output = XmlUtils.get_xml_attribute("output", script[0].attrib)
+            if output:
+                tmp = output.split(os.linesep)
+                for line in tmp:
+                    match = self._re_http_backup_finder.match(line)
+                    if match:
+                        self._domain_utils.add_url(session=self._session,
+                                                   service=self._service,
+                                                   url=match.group("url"),
+                                                   source=self._source,
+                                                   report_item=self._report_item)
+
+    def _extract_http_methods(self, port_tag):
+        """This method extracts the HTTP methods supported by the web server."""
+        script = port_tag.findall(".//*[@key='Supported Methods']")
+        if len(script) > 0:
+            for item in script[0].findall("*"):
+                self._domain_utils.add_service_method(session=self._session,
+                                                      name=item.text,
+                                                      service=self._service)
+
+    def _extract_ntlm_info(self, port_tag) -> None:
+        """This method extracts NTLM information"""
+        super()._extract_ntlm_info(port_tag, tag_id=HttpExtraInfoExtraction.HTTP_NTLM_INFO)
+
+    def _extract_http_enum(self, port_tag: str) -> None:
+        """This method extracts the enumerated file paths"""
+        script = port_tag.findall("*/[@id='{}']".format(HttpExtraInfoExtraction.HTTP_ENUM))
+        if len(script) > 0:
+            output = XmlUtils.get_xml_attribute("output", script[0].attrib)
+            if output:
+                for line in output.split(os.linesep):
+                    match = self._re_http_enum.match(line)
+                    if match:
+                        path = match.group("path")
+                        self._domain_utils.add_path(session=self._session,
+                                                    service=self._service,
+                                                    path=path,
+                                                    path_type=PathType.Http,
+                                                    source=self._source,
+                                                    report_item=self._report_item)
+
+    def _extract_security_headers(self, port_tag: str) -> None:
+        """This security headers"""
+        for script_tag in port_tag.findall("script/[@id='{}']".format(HttpExtraInfoExtraction.HTTP_SECURITY_HEADERS)):
+            for table_tag in script_tag.findall("table"):
+                key = XmlUtils.get_xml_attribute("key", table_tag.attrib)
+                if key:
+                    key = key.strip()
+                    values = []
+                    for elem in table_tag.findall("elem"):
+                        values.append(elem.text.strip())
+                    if values:
+                        self._domain_utils.add_additional_info(session=self._session,
+                                                               name=key,
+                                                               values=values,
+                                                               source=self._source,
+                                                               service=self._service,
+                                                               report_item=self._report_item)
+
+    def extract(self, **kwargs):
+        """This method extracts HTTP information disclosed by the HTTP service."""
+        self._extract_robots_txt(kwargs["port_tag"])
+        self._extract_http_methods(kwargs["port_tag"])
+        self._extract_http_title(kwargs["port_tag"])
+        self._extract_http_server_header(kwargs["port_tag"])
+        self._extract_http_auth_finder(kwargs["port_tag"])
+        self._extract_http_backup_finder(kwargs["port_tag"])
+        self._extract_http_comments_displayer(kwargs["port_tag"])
+        self._extract_ntlm_info(kwargs["port_tag"])
+        self._extract_http_enum(kwargs["port_tag"])
+        self._extract_security_headers(kwargs["port_tag"])

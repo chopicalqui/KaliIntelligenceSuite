@@ -22,13 +22,18 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 __version__ = 0.1
 
+import os
 from typing import List
+from database.model import Service
+from database.model import PathType
 from collectors.os.modules.core import BaseCollector
 from collectors.os.modules.core import BaseHydra
 from collectors.os.modules.core import BaseNmap
 from collectors.os.modules.core import BaseDotDotPwn
 from collectors.os.modules.core import ServiceDescriptorBase
-from collectors.filesystem.nmap import BaseExtraServiceInfoExtraction
+from collectors.os.modules.core import BaseExtraServiceInfoExtraction
+from collectors.core import XmlUtils
+from sqlalchemy.orm.session import Session
 
 
 class TftpServiceDescriptor(ServiceDescriptorBase):
@@ -91,3 +96,32 @@ class BaseTftpDotDotPwn(BaseDotDotPwn):
                          service_descriptors=TftpServiceDescriptor(),
                          module="tftp",
                          **kwargs)
+
+
+class TftpExtraInfoExtraction(BaseExtraServiceInfoExtraction):
+    """
+    This class extracts extra information disclosed by TFTP service.
+    """
+    TFTP_ENUM = "tftp-enum"
+
+    def __init__(self, session: Session, service: Service, **args):
+        super().__init__(session, service, **args)
+
+    def _extract_tftp_paths(self, port_tag) -> None:
+        """This method extracts the supported SMTP commands disclosed by the SMTP service"""
+        script = port_tag.findall("*/[@id='{}']".format(TftpExtraInfoExtraction.TFTP_ENUM))
+        if len(script) > 0:
+            output = XmlUtils.get_xml_attribute("output", script[0].attrib)
+            if output:
+                for path_str in output.split(os.linesep):
+                    path_str = path_str.strip()
+                    self._domain_utils.add_path(session=self._session,
+                                                service=self._service,
+                                                path=path_str,
+                                                path_type=PathType.FileSystem,
+                                                source=self._source,
+                                                report_item=self._report_item)
+
+    def extract(self, **kwargs):
+        """This method extracts the required information."""
+        self._extract_tftp_paths(kwargs["port_tag"])

@@ -23,10 +23,10 @@ __version__ = 0.1
 import logging
 from typing import List
 from collectors.os.modules.core import ServiceCollector
-from collectors.os.modules.rdp.core import BaseRdpNmap
 from collectors.os.modules.core import BaseCollector
-from collectors.filesystem.nmap import RdpExtraInfoExtraction
-from collectors.filesystem.nmap import CertInfoExtraction
+from collectors.os.modules.rdp.core import BaseRdpNmap
+from collectors.os.modules.rdp.core import RdpExtraInfoExtraction
+from collectors.os.modules.tls.core import CertInfoExtraction
 from database.model import Service
 from database.model import CollectorName
 from sqlalchemy.orm.session import Session

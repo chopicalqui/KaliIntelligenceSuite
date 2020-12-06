@@ -23,9 +23,9 @@ __version__ = 0.1
 from typing import List
 import logging
 from collectors.os.modules.core import ServiceCollector
-from collectors.os.modules.email.core import BaseSmtpNmap
 from collectors.os.modules.core import BaseCollector
-from collectors.filesystem.nmap import SmtpExtraInfoExtraction
+from collectors.os.modules.email.core import BaseSmtpNmap
+from collectors.os.modules.email.core import SmtpExtraInfoExtraction
 from database.model import Service
 from database.model import CollectorName
 from sqlalchemy.orm.session import Session
