@@ -86,7 +86,7 @@ class CollectorClass(BaseNmap, ServiceCollector):
                 os_command.append("-6")
             os_command += self._nmap_config.nmap_general_settings
             os_command += nmap_options
-            os_command += ["--script={}".format(",".join(nse_scripts))]
+            os_command += ["--version-all", "--script={}".format(",".join(nse_scripts))]
             os_command += ["-oX", ExecutionInfoType.xml_output_file.argument]
             os_command.append(service.host.address)
             collector = self._get_or_create_command(session,

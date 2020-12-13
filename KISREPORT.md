@@ -4,9 +4,9 @@ This script implements all functionalities to query the KIS database and analyze
 
 ```bash
 root@kali: ~ $ kisreport -h
-usage: kisreport.py [-h] [--nocolor] [-l]
-                    {additional-info,breach,credential,command,domain,cname,email,company,excel,file,host,network,path,vhost,vulnerability,tls,cert}
-                    ...
+usage: kisreport [-h] [--nocolor] [-l]
+                 {additional-info,breach,credential,command,domain,cname,email,company,excel,file,host,network,path,vhost,vulnerability,tls,cert}
+                 ...
 
 this script implements all functionalities to query the KIS database and analyze
 the information gathering results
@@ -138,4 +138,9 @@ the following command exports all raw xml scan files of collector tcpnmap locate
 in workspace $workspace to the output directory $outdir
 
 $ kisreport file -w $workspace --type xml -I tcpnmap -o $outdir
+
+kisreport domain -w maurer --csv --scope within | csvcut -c 6,13,16 | csvlook
+
+Process finished with exit code 1
+
 ```

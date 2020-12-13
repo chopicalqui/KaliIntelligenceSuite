@@ -1213,6 +1213,10 @@ class BaseReportTestCase(BaseKisTestCase):
         parser_path.add_argument('--scope', choices=[item.name for item in ReportScopeType],
                                  help='return only information about in scope (within) or out of scope (outside) items. '
                                       'per default, all information is returned')
+        parser_path.add_argument('--type',
+                                 choices=[item.name for item in PathType],
+                                 nargs="+",
+                                 help='return only path items of the given type. per default, all information is returned')
         # setup credential parser
         parser_credential.add_argument("-w", "--workspaces",
                                        metavar="WORKSPACE",

@@ -41,6 +41,7 @@ class CollectorClass(BaseSshChangeme, ServiceCollector):
     def __init__(self, **kwargs):
         super().__init__(priority=11600,
                          timeout=0,
+                         exec_user="kali",
                          **kwargs)
 
     @staticmethod

@@ -43,7 +43,7 @@ document based on which already collected intelligence (source node) KIS is able
 ![KIS' data and collection model](images/data-collection-model.png "KIS' data and collection model")
 
 ## Scoping the Engagement
-Scoping is an essential feature of KIS, which specifies on which IP networks, IP addresses, and host names,  
+Scoping is an essential feature of KIS, which specifies on which IP networks, IP addresses, host names, etc.,  
 KIS is allowed to collect data (e.g., via OSINT or active scans) from. Before diving into scoping, it is important to 
 understand the following collection types, which are supported by KIS:
 
@@ -273,7 +273,7 @@ The column **User** specifies the user with which the respective operating syste
 | 1300     | tcpmasscannetwork | network         | Active   | IPv4       | -       | root   |
 | 1350     | anyservicenmap    | service         | Active   | IPv4, IPv6 | -       | root   |
 | 1820     | tcptraceroute     | host            | Active   | IPv4, IPv6 | -       | nobody |
-| 1900     | httpmsfrobotstxt  | service, vhost  | Active   | IPv4, IPv6 | -       | root   |
+| 1900     | httpmsfrobotstxt  | service, vhost  | Active   | IPv4, IPv6 | -       | kali   |
 | 2000     | dnsnmap           | service         | Active   | IPv4, IPv6 | -       | root   |
 | 2020     | telnetnmap        | service         | Active   | IPv4, IPv6 | -       | root   |
 | 2040     | vncnmap           | service         | Active   | IPv4, IPv6 | -       | root   |
@@ -293,16 +293,16 @@ The column **User** specifies the user with which the respective operating syste
 | 3100     | finger            | service         | Active   | IPv4       | -       | nobody |
 | 3200     | ntpdate           | service         | Active   | IPv4, IPv6 | -       | nobody |
 | 3300     | ntpq              | service         | Active   | IPv4, IPv6 | -       | nobody |
-| 4000     | h323version       | service         | Active   | IPv4, IPv6 | -       | root   |
+| 4000     | h323version       | service         | Active   | IPv4, IPv6 | -       | kali   |
 | 4100     | sipnmap           | service         | Active   | IPv4, IPv6 | -       | root   |
-| 4120     | sipmsf            | service         | Active   | IPv4, IPv6 | -       | root   |
+| 4120     | sipmsf            | service         | Active   | IPv4, IPv6 | -       | kali   |
 | 4200     | stunnmap          | service         | Active   | IPv4, IPv6 | -       | root   |
 | 11100    | ftphydra          | service         | Active   | IPv4, IPv6 | -       | nobody |
 | 11200    | mssqlhydra        | service         | Active   | IPv4, IPv6 | -       | nobody |
 | 11400    | pgsqlhydra        | service         | Active   | IPv4, IPv6 | -       | nobody |
 | 11500    | snmphydra         | service         | Active   | IPv4, IPv6 | -       | nobody |
-| 11600    | sshchangeme       | service         | Active   | IPv4, IPv6 | -       | nobody |
-| 11700    | ipmi              | service         | Active   | IPv4, IPv6 | -       | root   |
+| 11600    | sshchangeme       | service         | Active   | IPv4, IPv6 | -       | kali   |
+| 11700    | ipmi              | service         | Active   | IPv4, IPv6 | -       | kali   |
 | 12100    | ftpfilelist       | service         | Active   | IPv4, IPv6 | -       | nobody |
 | 13000    | showmount         | service         | Active   | IPv4, IPv6 | 300     | nobody |
 | 13090    | smbcme            | service         | Active   | IPv4       | -       | kali   |
@@ -331,7 +331,7 @@ The column **User** specifies the user with which the respective operating syste
 | 71100    | ikescan           | service         | Active   | IPv4       | -       | root   |
 | 91050    | httpwpscan        | service         | Active   | IPv4, IPv6 | -       | nobody |
 | 91100    | enum4linux        | service         | Active   | IPv4       | -       | nobody |
-| 91150    | httpchangeme      | service, vhost  | Active   | IPv4, IPv6 | -       | nobody |
+| 91150    | httpchangeme      | service, vhost  | Active   | IPv4, IPv6 | -       | kali   |
 | 91200    | httpnikto         | service, vhost  | Active   | IPv4       | -       | nobody |
 | 91225    | httpburpsuitepro  | domain, host    | Active   | IPv4, IPv6 | -       | nobody |
 | 91250    | httpdavtest       | service, vhost  | Active   | IPv4, IPv6 | -       | nobody |
@@ -410,12 +410,12 @@ After the setup, the following KIS commands are available.
     * Raw: Export of additionally collected files like JSON objects from APIs like Shodan.io, certificate files,
     or screenshots made by screenshotting tools like Eyewitness.
 
-   For more information refer to [kisreport](https://github.com/chopicalqui/KaliIntelligenceSuite/blob/master/KISREPORT.md)
+   For more information refer to [kisreport](https://gith ub.com/chopicalqui/KaliIntelligenceSuite/blob/master/KISREPORT.md)
 
    
 ## Author
 
-  * **Lukas Reiter** - *Initial Work* - [Kali Intelligence Suite](https://github.com/chopicalqui/KaliIntelligenceSuite)
+**Lukas Reiter** (@chopicalquy) - [Turbo Data Miner](https://github.com/chopicalqui/TurboDataMiner)
 
 ## License
 

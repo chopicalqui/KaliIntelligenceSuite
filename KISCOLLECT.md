@@ -26,7 +26,6 @@ The script provides the following functionalities and some case studies are prov
 
 ```bash
 root@kali: ~ $ kiscollect -h
-/usr/bin/python3.8 /opt/KaliIntelligenceSuite/kis/kiscollect.py -h
 usage: kiscollect [-h] [--finger] [--ipmi] [--tcptraceroute] [--rdphydra]
                   [--rdpnmap] [--awsslurp] [--anyservicenmap]
                   [--icmpnmapnetwork] [--tcpmasscannetwork TYPE [TYPE ...]]
@@ -772,7 +771,10 @@ $ kismanage workspace --add $ws
 $ kismanage domain -w $ws --add $domain
 $ kismanage network -w $ws --add 0.0.0.0/0     # Any IPv4 address is in scope
 $ kiscollect -w $ws -t4 --debug --vhost domain --dnshost --dnssublist3r --crtshdomain --dnsgobuster \ 
-    --tcpnmapdomain 80 443 8080 8443 --httpmsfrobotstxt --httpgobuster --httpeyewitness --crtshcompany
+    --tcpnmapdomain 80 443 8080 8443 --httpnmap --httpmsfrobotstxt --httpgobuster
+    
+collect screenshots with aquatone
+$ kisreport path -w apbank --scope within --type Http --csv | csvcut -H -c 15 | aquatone -out aquatone
 
 obtain CSV list of identified IPv4/IPv6 addresses and services
 $ kisreport host -w $ws --csv
@@ -782,9 +784,6 @@ $ kisreport path -w $ws --csv
 
 obtain report about all executed httpgobuster commands (option -I)
 $ kisreport host -w $ws --text -I httpgobuster
-
-export screenshots to $workdir for manual review
-$ kisreport file -w $ws --type screenshot -O $workdir
 
 - II. semi-passive subdomain gathering
 
@@ -850,7 +849,7 @@ $ kiscollect -w $ws --debug --strict -t5 --ftphydra --snmphydra --snmpcheck --on
 --nbtscan --ikescan --ldapsearch --oraclesidguess --ntpq --sshnmap --httpgobuster --httpnikto --httphydra --smtpnmap \
 --mysqlhydra --pgsqlhydra --smbnmap --smbmap --smbclient --rpcclient --rpcnmap --rpcinfo --mssqlhydra --mssqlnmap \
 --finger --httpnmap --pop3nmap --imapnmap --tftpnmap --nfsnmap --x11nmap --msrpcenum --mysqlnmap --rdpnmap \
---httpdavtest --httpwhatweb --httpeyewitness --tlsnmap --smbfilelist --sslyze --sslscan --sshchangeme --httpchangeme \
+--httpdavtest --httpwhatweb --tlsnmap --smbfilelist --sslyze --sslscan --sshchangeme --httpchangeme \
 --httpmsfrobotstxt --certnmap --ftpnmap --ldapnmap --dnsnmap --ldapnmap --snmpnmap --telnetnmap --vncnmap \
 --ftpfilelist --certopenssl --httpntlmnmap --ikescan --anyservicenmap --smbcme
 

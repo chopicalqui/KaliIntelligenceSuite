@@ -45,6 +45,7 @@ class CollectorClass(BaseHttpChangeme, ServiceCollector, HostNameServiceCollecto
     def __init__(self, **kwargs):
         super().__init__(priority=91150,
                          timeout=0,
+                         exec_user="kali",
                          **kwargs)
 
     @staticmethod

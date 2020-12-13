@@ -2125,6 +2125,8 @@ class BaseChangeme(BaseCollector):
         code etc.
         """
         found_credentials = False
+        if command.return_code != 0:
+            self._set_execution_failed(session, command)
         for json_object in command.json_output:
             if "results" in json_object:
                 found_credentials = True
@@ -2161,7 +2163,7 @@ class BaseMsfConsole(BaseCollector):
                  **kwargs):
         super().__init__(priority=priority,
                          timeout=timeout,
-                         exec_user="root",
+                         exec_user="kali",
                          service_descriptors=service_descriptors,
                          **kwargs)
         self._ip_support = ip_support

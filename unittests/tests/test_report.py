@@ -1302,6 +1302,23 @@ class TestPathReport(BaseReportTestCase):
                                                    ipv4_address="192.168.10.1",
                                                    path="/path1"),
                               expected_result=False)
+            self._test_filter(session=session,
+                              workspace_str=workspace,
+                              argument_list=["path", "-w", workspace, "--csv", "--scope", "within", "--type", "Http"],
+                              item=self.query_path(session=session,
+                                                   workspace_str=workspace,
+                                                   ipv4_address="192.168.0.1",
+                                                   path="/path1"),
+                              expected_result=True)
+            self._test_filter(session=session,
+                              workspace_str=workspace,
+                              argument_list=["path", "-w", workspace, "--csv", "--scope", "within", "--type",
+                                             "Smb_Share"],
+                              item=self.query_path(session=session,
+                                                   workspace_str=workspace,
+                                                   ipv4_address="192.168.0.1",
+                                                   path="/path1"),
+                              expected_result=False)
 
     def test_filter_hostname_in_scope(self):
         """
@@ -1323,6 +1340,23 @@ class TestPathReport(BaseReportTestCase):
             self._test_filter(session=session,
                               workspace_str=workspace,
                               argument_list=["path", "-w", workspace, "--csv", "--scope", "within"],
+                              item=self.query_path(session=session,
+                                                   workspace_str=workspace,
+                                                   host_name="www.test2.com",
+                                                   path="/path1"),
+                              expected_result=False)
+            self._test_filter(session=session,
+                              workspace_str=workspace,
+                              argument_list=["path", "-w", workspace, "--csv", "--scope", "within", "--type", "Http"],
+                              item=self.query_path(session=session,
+                                                   workspace_str=workspace,
+                                                   host_name="inscope.test1.com",
+                                                   path="/path1"),
+                              expected_result=True)
+            self._test_filter(session=session,
+                              workspace_str=workspace,
+                              argument_list=["path", "-w", workspace, "--csv", "--scope", "within", "--type",
+                                             "Smb_Share"],
                               item=self.query_path(session=session,
                                                    workspace_str=workspace,
                                                    host_name="www.test2.com",

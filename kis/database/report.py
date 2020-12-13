@@ -54,6 +54,8 @@ from database.model import DnsResourceRecordType
 from database.model import Service
 from database.model import CertType
 from database.model import FontColor
+from database.model import PathType
+from database.model import ServiceState
 from collectors.core import BaseUtils
 from collectors.apis.haveibeenpwned import HaveIBeenPwnedPasteAcccount
 from collectors.apis.haveibeenpwned import HaveIBeenPwnedBreachedAcccount
@@ -349,6 +351,8 @@ class _HostReportGenerator(_BaseReportGenerator):
                    "Product Summary",
                    "SMB Message Signing",
                    "RDP NLA",
+                   "OS Family",
+                   "OS Details",
                    "Sources (Host Name)",
                    "Sources (Service)",
                    "Command Count (Service)"]]
@@ -398,6 +402,8 @@ class _HostReportGenerator(_BaseReportGenerator):
                                            service.nmap_product_version,
                                            service.smb_message_signing,
                                            service.rdp_nla,
+                                           host.os_family,
+                                           host.os_details,
                                            host_sources,
                                            service.sources_str,
                                            len(service.commands)])
@@ -416,8 +422,27 @@ class _HostReportGenerator(_BaseReportGenerator):
                                        host.os_family,
                                        host.is_up,
                                        host.reason_up,
-                                       None, None, None, None, None, None, None, None, None, None, None, None, None,
-                                       None, host_sources, None, None, None, None])
+                                       None,
+                                       None,
+                                       None,
+                                       None,
+                                       None,
+                                       None,
+                                       None,
+                                       None,
+                                       None,
+                                       None,
+                                       None,
+                                       None,
+                                       None,
+                                       None,
+                                       None,
+                                       None,
+                                       None,
+                                       None,
+                                       host_sources,
+                                       None,
+                                       None])
         return rvalue
 
 
@@ -602,7 +627,7 @@ class _HostNameReportGenerator(_BaseReportGenerator):
                                            in_scope,
                                            host_name.summary,
                                            ipv4_addresses, None, None, None, None, None, None, None, None, None, None,
-                                           None, None, None, None, host_name_sources, None, None, None, None])
+                                           None, None, None, None, None, None, host_name_sources, None, None])
             return rvalue
 
 
@@ -720,7 +745,9 @@ class _DomainNameReportGenerator(_BaseReportGenerator):
                  "Resolves To",
                  "Resolves To In Scope",
                  "Resolves to Network",
-                 "Resolves to Companies"]]
+                 "Resolves to Companies",
+                 "Number of Open Services",
+                 "Number of Closed Services"]]
         for workspace in self._workspaces:
             for domain in workspace.domain_names:
                 if self._filter(domain):
@@ -751,9 +778,15 @@ class _DomainNameReportGenerator(_BaseReportGenerator):
                                          mapping.resolved_host_name.in_scope(CollectorType.host_name_service),
                                          None,
                                          mapping.resolved_host_name.domain_name.companies_str
-                                         if mapping.resolved_host_name.domain_name else None])
+                                         if mapping.resolved_host_name.domain_name else None,
+                                         None,
+                                         None])
                         for mapping in host_name.host_host_name_mappings:
                             printed = True
+                            open_services = len([service for service in mapping.host.services
+                                                 if service.state == ServiceState.Open])
+                            closed_services = len([service for service in mapping.host.services
+                                                   if service.state == ServiceState.Closed])
                             rows.append([domain.id,
                                          host_name.id,
                                          workspace.name,
@@ -770,7 +803,9 @@ class _DomainNameReportGenerator(_BaseReportGenerator):
                                          mapping.host.in_scope,
                                          mapping.host.ipv4_network.network if mapping.host.ipv4_network else None,
                                          mapping.host.ipv4_network.companies_str
-                                         if mapping.host.ipv4_network else None])
+                                         if mapping.host.ipv4_network else None,
+                                         open_services,
+                                         closed_services])
                         if not printed:
                             rows.append([domain.id,
                                          host_name.id,
@@ -783,6 +818,8 @@ class _DomainNameReportGenerator(_BaseReportGenerator):
                                          domain.companies_str,
                                          sources,
                                          production,
+                                         None,
+                                         None,
                                          None,
                                          None,
                                          None,
@@ -874,12 +911,16 @@ class _PathReportGenerator(_BaseReportGenerator):
                          description="The table provides an overview of all identified URLs and network shares. You "
                                      "can use column 'Path Type' to filter for specific paths (e.g., URLs).",
                          **kwargs)
+        self._path_types = []
+        if "type" in args and args.type:
+            self._path_types = [PathType[item] for item in args.type]
 
     def _filter(self, path: Path) -> bool:
         """
         Method determines whether the given item shall be included into the report
         """
-        return path.is_processable(included_items=self._included_items,
+        return (not self._path_types or path.type in self._path_types) and \
+               path.is_processable(included_items=self._included_items,
                                    excluded_items=self._excluded_items,
                                    scope=self._scope)
 
