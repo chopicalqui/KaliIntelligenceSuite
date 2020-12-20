@@ -431,7 +431,7 @@ After the setup, the following KIS commands are available.
     * Raw: Export of additionally collected files like JSON objects from APIs like Shodan.io, certificate files,
     or screenshots made by screenshotting tools like Eyewitness.
 
-   For more information refer to [kisreport](https://gith ub.com/chopicalqui/KaliIntelligenceSuite/blob/master/KISREPORT.md)
+   For more information refer to [kisreport](https://github.com/chopicalqui/KaliIntelligenceSuite/blob/master/KISREPORT.md)
 
    
 ## Author

@@ -10,3 +10,4 @@ dnsdumpster
 openpyxl
 psutil
 pytest
+pysqlcipher3
