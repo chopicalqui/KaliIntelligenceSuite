@@ -22,8 +22,14 @@ __version__ = 0.1
 
 import sqlalchemy
 import sys
+import passgen
+import shutil
 from sqlalchemy import create_engine
 from configs import config
+from configs.config import Database as DatabaseConfig
+from configs.config import Collector as CollectorConfig
+from configs.config import ApiConfig
+from collectors.os.core import SetupCommand
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
@@ -2660,3 +2666,169 @@ $$ LANGUAGE PLPGSQL;""")
                                     enc_algorithm=SymmetricAlgorithm.chacha20_poly1305, enc_algorithm_bits=256,
                                     aead=True, hash_algorithm=HashAlgorithm.sha256,
                                     security=CipherSuiteSecurity.recommended))
+
+
+class Setup:
+    """
+    This class implements the initial setup for KIS
+    """
+    def __init__(self,
+                 kis_scripts: List[str],
+                 kali_packages: List[str],
+                 debug: bool = False):
+        self._debug = debug
+        self._db_config = DatabaseConfig()
+        self._databases = [self._db_config.config.get("production", "database"),
+                           self._db_config.config.get("unittesting", "database")]
+        self._git_repositories = ["https://github.com/danielmiessler/SecLists.git",
+                                  "https://github.com/aboul3la/Sublist3r.git"]
+        self._setup_commands = []
+        self._db_config.password = passgen.passgen(30)
+        if not self._debug:
+            self._db_config.write()
+        for file in kis_scripts:
+            base_name = os.path.splitext(file)[0]
+            real_path = os.path.abspath(os.path.dirname(__file__))
+            python_script = os.path.join(real_path, file)
+            os_command = ["ln", "-sT", python_script, os.path.join("/usr/bin", base_name)]
+            self._setup_commands.append(SetupCommand(description="creating link file for {}".format(python_script),
+                                                     command=os_command))
+        self._setup_commands.append(SetupCommand(description="adding PostgresSql database to auto start",
+                                                 command=["update-rc.d", "postgresql", "enable"],
+                                                 return_code=0))
+        self._setup_commands.append(SetupCommand(description="starting PostgreSql database",
+                                                 command=["service", "postgresql", "start"],
+                                                 return_code=0))
+        self._setup_commands.append(SetupCommand(description="adding PostgreSql database user '{}'"
+                                                 .format(self._db_config.username),
+                                                 command=["sudo", "-u", "postgres", "createuser",
+                                                          self._db_config.username]))
+        self._setup_commands.append(SetupCommand(description="setting PostgreSql database user '{}' password"
+                                                 .format(self._db_config.username),
+                                                 command=["sudo", "-u", "postgres", "psql", "-c",
+                                                          "alter user {} with encrypted password '{}'"
+                                                          .format(self._db_config.database, self._db_config.password)]))
+        for database in self._databases:
+            self._setup_commands.append(SetupCommand(description=
+                                                     "creating PostgreSql database '{}'".format(database),
+                                                     command=["sudo", "-u", "postgres", "createdb", database]))
+            self._setup_commands.append(SetupCommand(description="setting PostgreSql database user '{}' "
+                                                                 "permissions on database '{}'"
+                                                     .format(self._db_config.username, database),
+                                                     command=["sudo", "-u", "postgres", "psql", "-c",
+                                                              "grant all privileges on database {} to {}"
+                                                              .format(database, self._db_config.username)],
+                                                     return_code=0))
+        self._setup_commands.append(SetupCommand(description="creating the tables, triggers, views, etc. in database {}"
+                                                 .format(self._db_config.database),
+                                                 command=["kismanage", "database", "--drop", "--init"]))
+        if kali_packages:
+            apt_command = ["apt-get", "install", "-q", "--yes"]
+            apt_command.extend(kali_packages)
+            self._setup_commands.append(SetupCommand(description="installing additional Kali packages",
+                                                     command=apt_command,
+                                                     return_code=0))
+        for repo in self._git_repositories:
+            repo_name = repo.split("/")[-1]
+            repo_name = os.path.splitext(repo_name)[0]
+            git_command = ["git", "clone", repo, os.path.join(self._db_config.get_repo_home(), repo_name)]
+            self._setup_commands.append(SetupCommand(description="clone git repository: {}".format(repo_name),
+                                                     command=git_command,
+                                                     return_code=0))
+
+    def execute(self) -> None:
+        """Executes the setup"""
+        ok = True
+        for command in self._setup_commands:
+            if ok:
+                ok = command.execute(self._debug)
+
+    def _print(self, message: str, status: str = None, color: FontColor = None, throw_exception: bool = False):
+        """
+        Prints the given message to stdout
+        :param message: The message to be printed.
+        :param status: The message's status.
+        :param color: The font color of the status.
+        :return:
+        """
+        if not throw_exception:
+            columns, _ = shutil.get_terminal_size()
+            if status:
+                status = "{}[{}]{}".format(color, status, FontColor.END)
+                spaces = columns - len(message) - len(status)
+                spaces = spaces if spaces > 0 else 1
+                print("{}{}{}".format(message, " " * spaces, status))
+            else:
+                print(message)
+
+    def _check_exists(self, path: str, text: str = None, throw_exception: bool = False):
+        """
+        This method checks whether the given path exists. Depending on whether it exists or not it prints a message or
+        throws an exception.
+        :param path: The path that shall be checked.
+        :param text: The message that shall be printed for the check. If None, then the path is printed.
+        :param throw_exception: If True, then an exception is thrown instead of a message is printed.
+        :return:
+        """
+
+        message = text if text else path
+        full_path = str(path)
+        status_text = "installed"
+        status_color = FontColor.GREEN
+        if not os.path.exists(full_path):
+            full_path = shutil.which(full_path)
+            if not full_path:
+                if throw_exception:
+                    raise ModuleNotFoundError("{} not found".format(message))
+                status_text = "missing"
+                status_color = FontColor.RED
+        self._print(message, status_text, status_color, throw_exception=throw_exception)
+
+    def test(self, throw_exception: bool = False) -> None:
+        """This method tests the setup"""
+        api_config = ApiConfig()
+        collector_config = CollectorConfig()
+        os_info = os.uname()
+        self._print("check os", throw_exception=throw_exception)
+        os_info_str = " ".join([item for item in os_info])
+        if not os_info.nodename or os_info.nodename.lower() != "kali":
+            if throw_exception:
+                raise NotImplementedError("The used operating system is unspported.")
+            self._print(os_info_str, "unsupported", FontColor.RED, throw_exception=throw_exception)
+        else:
+            self._print(os_info_str, "supported", FontColor.GREEN, throw_exception=throw_exception)
+        self._print("", throw_exception=throw_exception)
+        self._print("check tools (see section 'file_paths' in: {})".format(collector_config.full_path),
+                    throw_exception=throw_exception)
+        # manually check tools
+        self._check_exists("psql", "postgresql", throw_exception=throw_exception)
+        self._check_exists("kiscollect", throw_exception=throw_exception)
+        self._check_exists("kisreport", throw_exception=throw_exception)
+        # check tool paths
+        for tool, path in collector_config.config.items("file_paths"):
+            self._check_exists(collector_config.get_config_str("file_paths", tool),
+                               tool,
+                               throw_exception=throw_exception)
+        # check default wordlist paths
+        self._print("", throw_exception=throw_exception)
+        self._print("check default wordlists (see section 'default_wordlists' in: {})"
+                    .format(collector_config.full_path), throw_exception=throw_exception)
+        for wordlist, path in collector_config.config.items("default_wordlists"):
+            self._check_exists(collector_config.get_config_str("default_wordlists", wordlist),
+                               throw_exception=throw_exception)
+        # check API
+        self._print("", throw_exception=throw_exception)
+        self._print("check API settings (see sections in: {})".format(api_config.full_path),
+                    throw_exception=throw_exception)
+        for section in api_config.config.sections():
+            complete = True
+            if section == "http-proxy":
+                continue
+            for _, value in api_config.config.items(section):
+                complete = complete and value.split("#")[0].strip()
+                if not complete:
+                    break
+            if complete:
+                self._print(section, "complete", FontColor.GREEN, throw_exception=throw_exception)
+            else:
+                self._print(section, "missing", FontColor.ORANGE, throw_exception=throw_exception)

@@ -35,6 +35,7 @@ from database.model import Company
 from database.model import Service
 from database.model import ScopeType
 from database.model import ProtocolType
+from database.utils import Setup
 from collectors.core import IpUtils
 from kismanage import ManageDatabase
 from unittests.tests.core import BaseKisTestCase
@@ -92,6 +93,9 @@ class BaseKismanageTestCase(BaseKisTestCase):
         parser_database.add_argument("--setup-dbg",
                                      action="store_true",
                                      help="like --setup but just prints commands for initial setup for KIS")
+        parser_database.add_argument("--test",
+                                     action="store_true",
+                                     help="test the existing KIS setup")
         # setup network parser
         parser_network.add_argument('NETWORK', type=str, nargs="+")
         parser_network.add_argument("-w", "--workspace",
@@ -1069,3 +1073,11 @@ class TestCompanyModule(BaseKismanageTestCase):
             session.query(Company)\
                 .join((DomainName, Company.domain_names)).filter(Company.name == company,
                                                                  DomainName.name == domain_name2).one()
+
+
+class TestKisSetup(BaseKismanageTestCase):
+
+    def test_setup(self):
+        Setup(kis_scripts=ManageDatabase.KIS_SCRIPTS,
+              kali_packages=ManageDatabase.KALI_PACKAGES,
+              debug=True).test(throw_exception=True)

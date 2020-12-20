@@ -66,6 +66,7 @@ class FontColor:
     BLUE = '\033[94m'
     GREEN = '\033[92m'
     GRAY = '\033[90m'
+    ORANGE = '\033[33m'
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
     END = '\033[0m'

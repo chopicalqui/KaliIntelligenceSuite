@@ -168,7 +168,6 @@ class Collector(BaseConfig):
         self._path_dnsrecon = self.get_config_str("file_paths", "dnsrecon")
         self._path_dnsenum = self.get_config_str("file_paths", "dnsenum")
         self._path_nbtscan = self.get_config_str("file_paths", "nbtscan")
-        self._path_customcollector = self.get_config_str("file_paths", "customcollector")
         self._path_sqlmap = self.get_config_str("file_paths", "sqlmap")
         self._path_msfconsole = self.get_config_str("file_paths", "msfconsole")
         self._path_ikescan = self.get_config_str("file_paths", "ikescan")

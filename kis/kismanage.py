@@ -36,6 +36,7 @@ import json
 import logging
 from configs.config import SortingHelpFormatter
 from database.utils import Engine
+from database.utils import Setup
 from database.utils import DeclarativeBase
 from database.model import HostNotFound
 from database.model import ScopeType
@@ -68,87 +69,9 @@ from collectors.apis.certspotter import Certspotter
 from collectors.apis.crtsh import CrtshDomain
 from collectors.apis.crtsh import CrtshCompany
 from collectors.apis.viewdns import ViewDns
-from collectors.os.core import SetupCommand
-from configs.config import Database
 from configs.config import BaseConfig
 from sqlalchemy.orm.session import Session
 from typing import List
-
-
-class Setup:
-    """
-    This class implements the initial setup for KIS
-    """
-    def __init__(self,
-                 kis_scripts: List[str],
-                 kali_packages: List[str],
-                 debug: bool = False):
-        self._debug = debug
-        self._db_config = Database()
-        self._databases = [self._db_config.config.get("production", "database"),
-                           self._db_config.config.get("unittesting", "database")]
-        self._git_repositories = ["https://github.com/danielmiessler/SecLists.git",
-                                  "https://github.com/aboul3la/Sublist3r.git"]
-        self._setup_commands = []
-        self._db_config.password = passgen.passgen(30)
-        if not self._debug:
-            self._db_config.write()
-        for file in kis_scripts:
-            base_name = os.path.splitext(file)[0]
-            real_path = os.path.abspath(os.path.dirname(__file__))
-            python_script = os.path.join(real_path, file)
-            os_command = ["ln", "-sT", python_script, os.path.join("/usr/bin", base_name)]
-            self._setup_commands.append(SetupCommand(description="creating link file for {}".format(python_script),
-                                                     command=os_command))
-        self._setup_commands.append(SetupCommand(description="adding PostgresSql database to auto start",
-                                                 command=["update-rc.d", "postgresql", "enable"],
-                                                 return_code=0))
-        self._setup_commands.append(SetupCommand(description="starting PostgreSql database",
-                                                 command=["service", "postgresql", "start"],
-                                                 return_code=0))
-        self._setup_commands.append(SetupCommand(description="adding PostgreSql database user '{}'"
-                                                 .format(self._db_config.username),
-                                                 command=["sudo", "-u", "postgres", "createuser",
-                                                          self._db_config.username]))
-        self._setup_commands.append(SetupCommand(description="setting PostgreSql database user '{}' password"
-                                                 .format(self._db_config.username),
-                                                 command=["sudo", "-u", "postgres", "psql", "-c",
-                                                          "alter user {} with encrypted password '{}'"
-                                                          .format(self._db_config.database, self._db_config.password)]))
-        for database in self._databases:
-            self._setup_commands.append(SetupCommand(description=
-                                                     "creating PostgreSql database '{}'".format(database),
-                                                     command=["sudo", "-u", "postgres", "createdb", database]))
-            self._setup_commands.append(SetupCommand(description="setting PostgreSql database user '{}' "
-                                                                 "permissions on database '{}'"
-                                                     .format(self._db_config.username, database),
-                                                     command=["sudo", "-u", "postgres", "psql", "-c",
-                                                              "grant all privileges on database {} to {}"
-                                                              .format(database, self._db_config.username)],
-                                                     return_code=0))
-        self._setup_commands.append(SetupCommand(description="creating the tables, triggers, views, etc. in database {}"
-                                                 .format(self._db_config.database),
-                                                 command=["kismanage", "database", "--drop", "--init"]))
-        if kali_packages:
-            apt_command = ["apt-get", "install", "-q", "--yes"]
-            apt_command.extend(kali_packages)
-            self._setup_commands.append(SetupCommand(description="installing additional Kali packages",
-                                                     command=apt_command,
-                                                     return_code=0))
-        for repo in self._git_repositories:
-            repo_name = repo.split("/")[-1]
-            repo_name = os.path.splitext(repo_name)[0]
-            git_command = ["git", "clone", repo, os.path.join(self._db_config.get_repo_home(), repo_name)]
-            self._setup_commands.append(SetupCommand(description="clone git repository: {}".format(repo_name),
-                                                     command=git_command,
-                                                     return_code=0))
-
-    def execute(self) -> None:
-        """Executes the setup"""
-        ok = True
-        for command in self._setup_commands:
-            if ok:
-                ok = command.execute(self._debug)
 
 
 class KisImportArgumentParser(argparse.ArgumentParser):
@@ -192,6 +115,10 @@ class KisImportArgumentParser(argparse.ArgumentParser):
 
 
 class ManageDatabase:
+    KIS_SCRIPTS = ["kiscollect.py", "kismanage.py", "kisreport.py"]
+    KALI_PACKAGES = ["eyewitness", "gobuster", "nfs-common", "ftp", "ntpdate", "csvkit", "wapiti",
+                     "changeme", "theharvester", "sidguesser", "smtp-user-enum", "sublist3r",
+                     "tcptraceroute", "crackmapexec", "dotdotpwn"]
 
     def __init__(self, engine: Engine, arguments: argparse.Namespace, parser):
         self._parser = parser
@@ -217,11 +144,13 @@ class ManageDatabase:
             engine.restore_backup(args.restore)
         elif self._arguments.setup or self._arguments.setup_dbg:
             debug = args.setup_dbg
-            Setup(kis_scripts=["kiscollect.py", "kismanage.py", "kisreport.py"],
-                  kali_packages=["eyewitness", "gobuster", "nfs-common", "ftp", "ntpdate", "csvkit",
-                                 "wapiti", "changeme", "theharvester", "sidguesser", "smtp-user-enum",
-                                 "sublist3r", "tcptraceroute", "crackmapexec"],
+            Setup(kis_scripts=ManageDatabase.KIS_SCRIPTS,
+                  kali_packages=ManageDatabase.KALI_PACKAGES,
                   debug=debug).execute()
+        elif self._arguments.test:
+            Setup(kis_scripts=ManageDatabase.KIS_SCRIPTS,
+                  kali_packages=ManageDatabase.KALI_PACKAGES,
+                  debug=True).test()
         else:
             if self._arguments.drop:
                 self._engine.recreate_database()
@@ -593,6 +522,9 @@ $ kismanage workspace --add $workspace
     parser_database.add_argument("--setup-dbg",
                                  action="store_true",
                                  help="like --setup but just prints commands for initial setup for KIS")
+    parser_database.add_argument("--test",
+                                 action="store_true",
+                                 help="test the existing KIS setup")
     # setup network parser
     parser_network.add_argument('NETWORK', type=str, nargs="+")
     parser_network.add_argument("-w", "--workspace",

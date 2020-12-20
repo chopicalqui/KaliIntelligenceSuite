@@ -347,6 +347,10 @@ The column **User** specifies the user with which the respective operating syste
 
 ## Installing KIS
 
+Note that KIS is only tested on Kali Linux and it has the following minimum system requirements:
+ - 2 CPUs
+ - 2048 MB RAM
+
 In order to use KIS, the following configuration steps must be successfully accomplished beforehand:
 
  -  [mandatory] Clone the repository to a directory you prefere. Depending on your location preference, you might have 
@@ -386,6 +390,23 @@ In order to use KIS, the following configuration steps must be successfully acco
    [collectors.config](https://github.com/chopicalqui/KaliIntelligenceSuite/blob/master/kis/configs/collectors.config), 
    section `[default_wordlists]`, entry `slurp_permutations_file`.
 
+ - [mandatory] Check KIS setup to determine potential issues
+
+    ```bash
+    kali@kali: ~ $ sudo pip3 install -r /opt/kaliintelsuite/requirements.txt
+    check os
+    Linux kali 5.8.0-kali2-amd64 #1 SMP Debian 5.8.10-1kali1 (2020-09-22) x86_64     [supported]
+    
+    check tools (see section 'file_paths' in: /opt/kaliintelsuite/kis/configs/collectors.config)
+    postgresql                                                                       [installed]
+    kiscollect                                                                       [installed]
+    kisreport                                                                        [installed]
+    enum4linux                                                                       [installed]
+    gobuster                                                                         [installed]
+    medusa                                                                           [installed]
+    [...]
+    ```
+    Review the above output; there should not be any red entries.
 
 ## Usage
 
@@ -415,7 +436,7 @@ After the setup, the following KIS commands are available.
    
 ## Author
 
-**Lukas Reiter** (@chopicalquy) - [Turbo Data Miner](https://github.com/chopicalqui/TurboDataMiner)
+**Lukas Reiter** (@chopicalquy) - [Kali Intelligence Suite](https://github.com/chopicalqui/KaliIntelligenceSuite)
 
 ## License
 
