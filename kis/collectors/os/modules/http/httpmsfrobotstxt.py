@@ -117,7 +117,7 @@ class CollectorClass(BaseHttpMsfConsole, ServiceCollector, HostNameServiceCollec
                                                collector_name=collector_name,
                                                module="scanner/http/robots_txt",
                                                rhosts=service.address,
-                                               port=service.port,
+                                               rport=service.port,
                                                ssl=service.tls,
                                                additional_commands=[additional_command])
         return collectors

@@ -98,20 +98,21 @@ class DatabaseImporter(BaseDatabaseXmlImporter):
                                           "implemented!")
             host.mac_address = mac_address
             for port in host_tag.findall('*/port'):
-                port_state = DatabaseImporter.get_xml_attribute("state", port.findall("state[1]")[0].attrib)
-                if "open" in port_state.lower():
+                port_state_tag = port.findall("state[1]")[0].attrib
+                port_state = DatabaseImporter.get_xml_attribute("state", port_state_tag)
+                port_state = Service.get_service_state(port_state)
+                if port_state == ServiceState.Open:
                     service_protocol = DatabaseImporter.get_xml_attribute("protocol", port.attrib)
                     service_port = DatabaseImporter.get_xml_attribute("portid", port.attrib)
                     service_protocol = Service.get_protocol_type(service_protocol)
-                    service = self._session.query(Service) \
-                        .filter(Service.port == service_port,
-                                Service.protocol == service_protocol,
-                                Service.host_id == host.id).one_or_none()
-                    if not service:
-                        self._domain_utils.add_service(session=self._session,
-                                                       port=service_port,
-                                                       protocol_type=service_protocol,
-                                                       state=ServiceState.Open,
-                                                       host=host,
-                                                       source=source,
-                                                       report_item=self._report_item)
+                    service = self._domain_utils.add_service(session=self._session,
+                                                             port=service_port,
+                                                             protocol_type=service_protocol,
+                                                             state=port_state,
+                                                             host=host,
+                                                             source=source,
+                                                             report_item=self._report_item)
+                    service.nmap_service_state_reason = DatabaseImporter.get_xml_attribute("reason", port_state_tag)
+                    if port.findall("service[@name='ssl']"):
+                        service.nmap_tunnel = "ssl"
+

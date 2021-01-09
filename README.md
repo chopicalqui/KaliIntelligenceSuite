@@ -71,11 +71,11 @@ Scopes can be set on the following items by using the script
       The following listing provides an example on how this scope type is set during the initial intel collection setup:
       ```bash
       # create a new workspace example
-      root@kali: ~ $ kismanage workspace -a example
+      kali@kali: ~ $ kismanage workspace -a example
       # add the network 192.168.1.0/24 to workspace example and set the scope to all (default)
-      root@kali: ~ $ kismanage network -w example -a 192.168.1.0/24
+      kali@kali: ~ $ kismanage network -w example -a 192.168.1.0/24
       # add new IP address 192.168.1.1 to workspace example. IP address is automatically in scope due to the network's scope all
-      root@kali: ~ $ kismanage host -w example -a 192.168.1.1
+      kali@kali: ~ $ kismanage host -w example -a 192.168.1.1
       ```
     * `strict`: Sets the given IP network (e.g., 192.168.1.0/24) in scope. In contrast to type `all`, IP addresses 
     (e.g., 192.168.1.1), which are within this network range, are not automatically in scope, unless they are explicitly 
@@ -89,11 +89,11 @@ Scopes can be set on the following items by using the script
       The following listing provides an example on how this scope type is set during the initial intel collection setup:
       ```bash
       # create a new workspace example
-      root@kali: ~ $ kismanage workspace -a example
+      kali@kali: ~ $ kismanage workspace -a example
       # add the network 192.168.1.0/24 to workspace example and set the scope to strict
-      root@kali: ~ $ kismanage network -w example -a 192.168.1.0/24 -s strict
+      kali@kali: ~ $ kismanage network -w example -a 192.168.1.0/24 -s strict
       # add new IP address 192.168.1.1 to workspace example and set it in scope (default)
-      root@kali: ~ $ kismanage host -w example -a 192.168.1.1
+      kali@kali: ~ $ kismanage host -w example -a 192.168.1.1
       ```
     * `exclude`: Sets the given IP network (e.g., 192.168.1.0/24) together with all IP addresses (e.g., 192.168.1.1) 
     that are within this network range out of scope. As a result, KIS does not execute any active and active* 
@@ -113,9 +113,9 @@ Scopes can be set on the following items by using the script
       The following listing provides an example on how this scope type is set during the initial intel collection setup:
       ```bash
       # create a new workspace example
-      root@kali: ~ $ kismanage workspace -a example
+      kali@kali: ~ $ kismanage workspace -a example
       # add the second-level domain megacorpone.com to workspace example and set the scope to all (default)
-      root@kali: ~ $ kismanage domain -w example -a megacorpone.com
+      kali@kali: ~ $ kismanage domain -w example -a megacorpone.com
       ```
     * `strict`: Sets the given second-level domains (e.g., megacorpone.com) in scope. In contrast to type `all`, any 
     sub-level domains (e.g., www.megacorpone.com) are not automatically in scope, unless they are explicitly added.
@@ -127,9 +127,9 @@ Scopes can be set on the following items by using the script
       The following listing provides an example on how this scope type is set during the initial intel collection setup:
       ```bash
       # create a new workspace example
-      root@kali: ~ $ kismanage workspace -a example
+      kali@kali: ~ $ kismanage workspace -a example
       # add the network 192.168.1.0/24 to workspace example and set the scope to strict
-      root@kali: ~ $ kismanage domain -w example -a www.megacorpone.com ftp.megacorpone.com -s strict
+      kali@kali: ~ $ kismanage domain -w example -a www.megacorpone.com ftp.megacorpone.com -s strict
       ```
     * `exclude`: Sets the given second-level domains (e.g., megacorpone.com) together with all sub-level domains 
     out of scope. As a result, KIS does not execute any active and active* collectors on these second-level domains.
@@ -149,9 +149,9 @@ Scopes can be set on the following items by using the script
    
      ```bash
      # create a new workspace example
-     root@kali: ~ $ kismanage workspace -a example
+     kali@kali: ~ $ kismanage workspace -a example
      # add the second-level domain google.com to workspace example and set the scope to all (default)
-     root@kali: ~ $ kismanage domain -w example -a google.com
+     kali@kali: ~ $ kismanage domain -w example -a google.com
      ```
      
      In this case, KIS is able to, among other things, enumerate any sub-level domains as well as resolve their 
@@ -160,7 +160,7 @@ Scopes can be set on the following items by using the script
      
      ```bash
      # add the network 172.217.0.0/16 to workspace example and set the scope to all (default)
-     root@kali: ~ $ kismanage network -w example -a 172.217.0.0/16
+     kali@kali: ~ $ kismanage network -w example -a 172.217.0.0/16
      ```
      
    * Example 2: Let's assume the second-level domain google.com together with all sub-level domains that resolve to 
@@ -169,9 +169,9 @@ Scopes can be set on the following items by using the script
      
      ```bash
      # create a new workspace example
-     root@kali: ~ $ kismanage workspace -a example
+     kali@kali: ~ $ kismanage workspace -a example
      # add the second-level domain google.com to workspace example and set the scope to all (default)
-     root@kali: ~ $ kismanage domain -w example -a google.com
+     kali@kali: ~ $ kismanage domain -w example -a google.com
      ```
      
      In this case, KIS is able to, among other things, enumerate any sub-level domains as well as resolve their 
@@ -180,7 +180,7 @@ Scopes can be set on the following items by using the script
      
      ```bash
      # add network 0.0.0.0/0 to workspace example and set the scope to all (default)
-     root@kali: ~ $ kismanage network -w example -a 0.0.0.0/0
+     kali@kali: ~ $ kismanage network -w example -a 0.0.0.0/0
      ```
 
 
@@ -349,7 +349,7 @@ The column **User** specifies the user with which the respective operating syste
 
 Note that KIS is only tested on Kali Linux and it has the following minimum system requirements:
  - 2 CPUs
- - 2048 MB RAM
+ - 4096 MB RAM
 
 In order to use KIS, the following configuration steps must be successfully accomplished beforehand:
 
@@ -370,7 +370,7 @@ In order to use KIS, the following configuration steps must be successfully acco
     OS commands first
 
     ```bash
-    root@kali: ~ $ sudo /opt/kaliintelsuite/kis/kismanage.py database --setup
+    kali@kali: ~ $ sudo /opt/kaliintelsuite/kis/kismanage.py database --setup
     ```
 
  - [optional] Setup connection to APIs: In order to access the APIs of censys.io, hunter.io, securitytrails.com, or
@@ -393,7 +393,7 @@ In order to use KIS, the following configuration steps must be successfully acco
  - [mandatory] Check KIS setup to determine potential issues
 
     ```bash
-    kali@kali: ~ $ sudo pip3 install -r /opt/kaliintelsuite/requirements.txt
+    kali@kali: ~ $ sudo kismanage database --test
     check os
     Linux kali 5.8.0-kali2-amd64 #1 SMP Debian 5.8.10-1kali1 (2020-09-22) x86_64     [supported]
     
@@ -412,31 +412,29 @@ In order to use KIS, the following configuration steps must be successfully acco
 
 After the setup, the following KIS commands are available.
 
- - [kismanage](https://github.com/chopicalqui/KaliIntelligenceSuite/blob/master/KISMANAGE.md): This tool allows:
+ - **kismanage**: This tool allows:
+    * setting up and testing KIS
     * managing the database (re-creation, creating backups, restoring backups, etc.)
     * creating workspaces, networks, host names, emails, and companies
     * importing Nmap, Nessus, and Masscan scan results
     * defining the scope
 
-   For more information refer to [kismanage](https://github.com/chopicalqui/KaliIntelligenceSuite/blob/master/KISMANAGE.md)
- - [kiscollect](https://github.com/chopicalqui/KaliIntelligenceSuite/blob/master/KISCOLLECT.md): This tool performs the
- automated intelligence collection based on the already collected data. For more information refer to
+ - **[kiscollect](https://github.com/chopicalqui/KaliIntelligenceSuite/blob/master/KISCOLLECT.md)**: This tool performs 
+ the automated intelligence collection based on the already collected data. For more information, refer to
  [kiscollect](https://github.com/chopicalqui/KaliIntelligenceSuite/blob/master/KISCOLLECT.md)
- - [kisreport](https://github.com/chopicalqui/KaliIntelligenceSuite/blob/master/KISREPORT.md): This tool allows the analysis
+ - **kisreport**: This tool allows the analysis
  of the collected data via various filtering options. Supported report formats are:
-    * Character-separated values (CSV): Export of the collected intelligence format in the structured CSV format.
-    This allows further processing via tools like `grep` or `csvcut`
+    * Character-separated values (CSV): Export of the collected intelligence in the structured CSV format.
+    This allows further processing via tools like grep, csvcut, or Aquatone
     * Microsoft Excel: Export of all collected intelligence into a Microsoft Excel file.
     * Text: Export of the collected raw text intelligence (e.g., text output of tool Nikto)
-    * Raw: Export of additionally collected files like JSON objects from APIs like Shodan.io, certificate files,
-    or screenshots made by screenshotting tools like Eyewitness.
-
-   For more information refer to [kisreport](https://github.com/chopicalqui/KaliIntelligenceSuite/blob/master/KISREPORT.md)
+    * Raw: Export of additionally collected files like JSON objects from APIs like Shodan.io, or certificate files.
 
    
 ## Author
 
-**Lukas Reiter** (@chopicalquy) - [Kali Intelligence Suite](https://github.com/chopicalqui/KaliIntelligenceSuite)
+**Lukas Reiter** ([@chopicalquy](https://twitter.com/chopicalquy)) - 
+[Kali Intelligence Suite](https://github.com/chopicalqui/KaliIntelligenceSuite)
 
 ## License
 

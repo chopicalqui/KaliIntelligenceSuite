@@ -71,36 +71,7 @@ if __name__ == "__main__":
         producer = CollectorProducer(engine, commands_queue, ui_manager)
         epilog='''---- USE CASES ----
 
-- I. http directory brute-force and screenshoting
-
-identify subdomains for a given second-level domain using gobuster, crts.sh, and sublist3r; scan the identified host 
-names for web services (TCP ports 80, 443, 8080, and 8443) using nmap; do a directory brute force on each identified 
-web service using gobuster; and create screenshots for each identified URL using eyewitness
-
-before starting, specify a workspace $ws (e.g., ws=test) as well as a domain/host name (e.g., 
-domains=megacorpone.com or domains=www.megacorpone.com). in addition, all IPv4/IPv6 addresses to which host 
-names resolve (0.0.0.0/0) are in scope
-
-import networks into database and execute collection
-$ kismanage workspace --add $ws
-$ kismanage domain -w $ws --add $domain
-$ kismanage network -w $ws --add 0.0.0.0/0     # Any IPv4 address is in scope
-$ kiscollect -w $ws -t4 --debug --vhost domain --dnshost --dnssublist3r --crtshdomain --dnsgobuster \\ 
-    --tcpnmapdomain 80 443 8080 8443 --httpnmap --httpmsfrobotstxt --httpgobuster
-    
-collect screenshots with aquatone
-$ kisreport path -w apbank --scope within --type Http --csv | csvcut -H -c 15 | aquatone -out aquatone
-
-obtain CSV list of identified IPv4/IPv6 addresses and services
-$ kisreport host -w $ws --csv
-
-obtain list of identified paths
-$ kisreport path -w $ws --csv
-
-obtain report about all executed httpgobuster commands (option -I)
-$ kisreport host -w $ws --text -I httpgobuster
-
-- II. semi-passive subdomain gathering
+- I. semi-passive subdomain gathering
 
 conservatively collect information (e.g., subdomains, email addresses, IPv4/IPv6 addresses, or IPv4/IPv6 address 
 ownerships) about second-level domains using whois, theharvester, and sublist3r as well as via the APIs provided by 
@@ -113,10 +84,10 @@ investigate (e.g., domains=megacorpone.com or domains=www.megacorpone.com)
 import domains into database and execute collection
 $ kismanage workspace --add $ws
 $ kismanage domain -w $ws --add $domains
-$ kiscollect -w $ws --debug --whoisdomain --whoishost --theharvester --dnsdumpster --reversewhois \\
-    --securitytrails --censysdomain --hunter --haveibeenbreach --haveibeenpaste --builtwith --crtshdomain \\
-    --virustotal --certspotter --dnssublist3r --dnsspf --dnsdkim --dnsdmark --hostio --dnshostpublic --awsslurp \\
-    --crtshcompany
+$ kiscollect -w $ws --debug --whoisdomain --whoishost --theharvester --dnsdumpster --reversewhois \
+--securitytrails --censysdomain --hunter --haveibeenbreach --haveibeenpaste --builtwith --crtshdomain \
+--virustotal --certspotter --dnssublist3r --dnsspf --dnsdkim --dnsdmark --hostio --dnshostpublic --awsslurp \
+--crtshcompany
 
 obtain CSV list of identified host names
 $ kisreport domain -w $ws --csv
@@ -124,31 +95,12 @@ $ kisreport domain -w $ws --csv
 obtain CSV list of identified IPv4/IPv6 addresses
 $ kisreport host -w $ws --csv
 
-- III. passive information gathering using censys.io and shodan.io
 
-passively collect information (e.g., subdomains from certificates or service information) about IPv4/IPv6 networks/
-addresses using the APIs provided by censys.io and shodan.io
-
-before the start: specify a workspace $ws (e.g., ws=osint) and the list of public 
-IPv4/IPv6 networks/addresses $networks to investigate
-
-import IPv4/IPv6 networks/addresses into database and execute collection
-
-$ kismanage workspace --add $ws
-$ kismanage network -w $ws --add $networks
-$ kiscollect -w $ws --debug --censyshost --shodannetwork
-
-export collected information into microsoft excel
-$ kisreport excel /tmp/kis-scan-results.xlsx -w $ws
-
-review scan results of all hosts
-$ kisreport host -w $ws --text | less -R
-
-- IV. active intel gathering during penetration test
+- II. active intel gathering during internal penetration test
 
 check services (e.g., FTP, SNMP, MSSQL, etc.) for default credentials using hydra; check access to file sharing 
 services (e.g., NFS and SMB) using smbclient, enum4linux, or showmount; check web applications using gobuster, nikto, 
-davtest, and eyewitness; obtain TLS information using sslscan, sslyze, and nmap. the collection is performed on 
+and davtest; obtain TLS information using sslscan, sslyze, and nmap. the collection is performed on 
 previously executed nmap scans and a list of in-scope IPv4/IPv6 networks/addresses
 
 before you  start: specify a workspace $ws (e.g., ws=pentest), the paths to the nmap XML files 
@@ -160,19 +112,19 @@ import nmap scan results as well as in-scope IPv4/IPv6 networks/addresses into d
 $ kismanage workspace --add $ws
 $ kismanage network -w $ws --add $networks
 $ kismanage scan -w $ws --nmap $nmap_paths
-$ kiscollect -w $ws --debug --strict -t5 --ftphydra --snmphydra --snmpcheck --onesixtyone --showmount --ipmi \\
---nbtscan --ikescan --ldapsearch --oraclesidguess --ntpq --sshnmap --httpgobuster --httpnikto --httphydra --smtpnmap \\
---mysqlhydra --pgsqlhydra --smbnmap --smbmap --smbclient --rpcclient --rpcnmap --rpcinfo --mssqlhydra --mssqlnmap \\
---finger --httpnmap --pop3nmap --imapnmap --tftpnmap --nfsnmap --x11nmap --msrpcenum --mysqlnmap --rdpnmap \\
---httpdavtest --httpwhatweb --tlsnmap --smbfilelist --sslyze --sslscan --sshchangeme --httpchangeme \\
---httpmsfrobotstxt --certnmap --ftpnmap --ldapnmap --dnsnmap --ldapnmap --snmpnmap --telnetnmap --vncnmap \\
+$ kiscollect -w $ws --debug --strict -t5 --ftphydra --snmphydra --snmpcheck --onesixtyone --showmount --ipmi \
+--nbtscan --ikescan --ldapsearch --oraclesidguess --ntpq --sshnmap --httpgobuster --httpnikto --httphydra --smtpnmap \
+--mysqlhydra --pgsqlhydra --smbnmap --smbmap --smbclient --rpcclient --rpcnmap --rpcinfo --mssqlhydra --mssqlnmap \
+--finger --httpnmap --pop3nmap --imapnmap --tftpnmap --nfsnmap --x11nmap --msrpcenum --mysqlnmap --rdpnmap \
+--httpdavtest --httpwhatweb --tlsnmap --smbfilelist --sslyze --sslscan --sshchangeme --httpchangeme \
+--httpmsfrobotstxt --certnmap --ftpnmap --ldapnmap --dnsnmap --ldapnmap --snmpnmap --telnetnmap --vncnmap \
 --ftpfilelist --certopenssl --httpntlmnmap --ikescan --anyservicenmap --smbcme
 
 export collected information into microsoft excel
 $ kisreport excel /tmp/kis-scan-results.xlsx -w $ws
 
-export screenshots to $workdir for manual review
-$ kisreport file -w $ws --file screenshot -O $workdir
+collect screenshots with aquatone
+$ kisreport path -w $ws --scope within --type Http --csv | csvcut -H -c 15 | aquatone -out aquatone
 
 review scan results of hosts with IPv4/IPv6 addresses $ip1 and $ip2
 $ kisreport host -w $ws --text --filter +$ip1 +$ip2
