@@ -116,9 +116,10 @@ class KisImportArgumentParser(argparse.ArgumentParser):
 
 class ManageDatabase:
     KIS_SCRIPTS = ["kiscollect.py", "kismanage.py", "kisreport.py"]
+    GIT_REPOSITORIES = []
     KALI_PACKAGES = ["eyewitness", "gobuster", "nfs-common", "ftp", "ntpdate", "csvkit", "wapiti",
                      "changeme", "theharvester", "sidguesser", "smtp-user-enum", "sublist3r",
-                     "tcptraceroute", "crackmapexec", "dotdotpwn"]
+                     "tcptraceroute", "crackmapexec", "dotdotpwn", "seclists"]
 
     def __init__(self, engine: Engine, arguments: argparse.Namespace, parser):
         self._parser = parser
@@ -146,10 +147,12 @@ class ManageDatabase:
             debug = args.setup_dbg
             Setup(kis_scripts=ManageDatabase.KIS_SCRIPTS,
                   kali_packages=ManageDatabase.KALI_PACKAGES,
+                  git_repositories=ManageDatabase.GIT_REPOSITORIES,
                   debug=debug).execute()
         elif self._arguments.test:
             Setup(kis_scripts=ManageDatabase.KIS_SCRIPTS,
                   kali_packages=ManageDatabase.KALI_PACKAGES,
+                  git_repositories=ManageDatabase.GIT_REPOSITORIES,
                   debug=True).test()
         else:
             if self._arguments.drop:

@@ -1080,4 +1080,5 @@ class TestKisSetup(BaseKismanageTestCase):
     def test_setup(self):
         Setup(kis_scripts=ManageDatabase.KIS_SCRIPTS,
               kali_packages=ManageDatabase.KALI_PACKAGES,
+              git_repositories=ManageDatabase.GIT_REPOSITORIES,
               debug=True).test(throw_exception=True)

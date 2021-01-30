@@ -213,7 +213,6 @@ class BaseHttpGoBuster(BaseHttpCollector):
                 os_command = [command,
                               self._mode,
                               '-z',
-                              '-q',
                               '-t', number_threads,
                               '-w', wordlist]
                 os_command += additional_arguments

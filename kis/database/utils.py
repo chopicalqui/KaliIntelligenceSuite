@@ -2675,13 +2675,13 @@ class Setup:
     def __init__(self,
                  kis_scripts: List[str],
                  kali_packages: List[str],
+                 git_repositories: List[str],
                  debug: bool = False):
         self._debug = debug
         self._db_config = DatabaseConfig()
         self._databases = [self._db_config.config.get("production", "database"),
                            self._db_config.config.get("unittesting", "database")]
-        self._git_repositories = ["https://github.com/danielmiessler/SecLists.git",
-                                  "https://github.com/aboul3la/Sublist3r.git"]
+        self._git_repositories = git_repositories
         self._setup_commands = []
         self._db_config.password = passgen.passgen(30)
         if not self._debug:

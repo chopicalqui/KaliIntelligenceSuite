@@ -77,6 +77,7 @@ class CollectorClass(BaseDnsCollector, DomainCollector):
                 session.add(dkim_host_name)
                 session.flush()
             os_command = [self._path_dig,
+                          '+short',
                           '-t', "TXT",
                           dkim_host_name.full_name]
             if self._dns_server:

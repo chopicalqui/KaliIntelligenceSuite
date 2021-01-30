@@ -1637,3 +1637,80 @@ class HostScopingTestCases(BaseKisTestCase):
                              ipv4_address=ipv4_address,
                              ipv4_network=ipv4_network,
                              in_scope=False)
+
+    def test_network_assignment(self):
+        self.init_db()
+        with self._engine.session_scope() as session:
+            workspace = self._domain_utils.add_workspace(session, self._workspaces[0])
+            self._ip_utils.add_host(session=session,
+                                    workspace=workspace,
+                                    address="10.10.0.1")
+            network_id = self._ip_utils.add_network(session=session,
+                                                    workspace=workspace,
+                                                    network="10.10.0.1",
+                                                    scope=ScopeType.all).id
+        with self._engine.session_scope() as session:
+            host = session.query(Host).filter_by(address="10.10.0.1").one()
+            self.assertIsNotNone(host.ipv4_network_id)
+            host_network_id = host.ipv4_network_id
+            self.assertEquals(network_id, host_network_id)
+        with self._engine.session_scope() as session:
+            workspace = self._domain_utils.add_workspace(session, self._workspaces[0])
+            self._ip_utils.add_network(session=session,
+                                       workspace=workspace,
+                                       network="10.10.0.0/29",
+                                       scope=ScopeType.all)
+        with self._engine.session_scope() as session:
+            host = session.query(Host).filter_by(address="10.10.0.1").one()
+            self.assertIsNotNone(host.ipv4_network_id)
+            host_network_id = host.ipv4_network_id
+            self.assertEquals(network_id, host_network_id)
+
+    def test_network_assignment2(self):
+        self.init_db()
+        with self._engine.session_scope() as session:
+            workspace = self._domain_utils.add_workspace(session, self._workspaces[0])
+            self._ip_utils.add_host(session=session,
+                                    workspace=workspace,
+                                    address="10.10.0.1")
+            network_id = self._ip_utils.add_network(session=session,
+                                                    workspace=workspace,
+                                                    network="10.10.0.1",
+                                                    scope=ScopeType.all).id
+            self._ip_utils.add_network(session=session,
+                                       workspace=workspace,
+                                       network="10.10.0.0/29",
+                                       scope=ScopeType.all)
+        with self._engine.session_scope() as session:
+            host = session.query(Host).filter_by(address="10.10.0.1").one()
+            self.assertIsNotNone(host.ipv4_network_id)
+            host_network_id = host.ipv4_network_id
+            self.assertEquals(network_id, host_network_id)
+
+    def test_network_assignment3(self):
+        self.init_db()
+        with self._engine.session_scope() as session:
+            workspace = self._domain_utils.add_workspace(session, self._workspaces[0])
+            self._ip_utils.add_host(session=session,
+                                    workspace=workspace,
+                                    address="10.10.0.1")
+            network_id = self._ip_utils.add_network(session=session,
+                                                    workspace=workspace,
+                                                    network="10.10.0.0/29",
+                                                    scope=ScopeType.all).id
+        with self._engine.session_scope() as session:
+            host = session.query(Host).filter_by(address="10.10.0.1").one()
+            self.assertIsNotNone(host.ipv4_network_id)
+            host_network_id = host.ipv4_network_id
+            self.assertEquals(network_id, host_network_id)
+        with self._engine.session_scope() as session:
+            workspace = self._domain_utils.add_workspace(session, self._workspaces[0])
+            network_id = self._ip_utils.add_network(session=session,
+                                                    workspace=workspace,
+                                                    network="10.10.0.1",
+                                                    scope=ScopeType.all).id
+        with self._engine.session_scope() as session:
+            host = session.query(Host).filter_by(address="10.10.0.1").one()
+            self.assertIsNotNone(host.ipv4_network_id)
+            host_network_id = host.ipv4_network_id
+            self.assertEquals(network_id, host_network_id)

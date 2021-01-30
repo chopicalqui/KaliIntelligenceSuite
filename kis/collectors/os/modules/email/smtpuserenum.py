@@ -32,7 +32,10 @@ from collectors.os.modules.core import BaseCollector
 from collectors.os.core import PopenCommand
 from database.model import Command
 from database.model import CollectorName
-from database.model import ServiceMethod
+from database.model import Email
+from database.model import HostName
+from database.model import DomainName
+from database.model import Workspace
 from database.model import Service
 from database.model import Source
 from view.core import ReportItem
@@ -71,22 +74,41 @@ class CollectorClass(BaseSmtpCollector, ServiceCollector):
         collectors = []
         ipv4_address = service.host.ipv4_address
         command = self._path_smtpusername
-        if not self._wordlist_files:
+        if self._wordlist_files:
+            wordlists = self._wordlist_files
+        else:
+            emails = []
+            dedup = {}
+            for item in session.query(Email) \
+                .join(HostName) \
+                .join(DomainName) \
+                .join(Workspace).filter(Workspace.name == service.workspace.name, HostName._in_scope).all():
+                emails.append(item.email_address)
+                # Create email per in-scope to domain that does not exist for negative test
+                domain_name = item.host_name.domain_name.name
+                if domain_name not in dedup:
+                    dedup[domain_name] = None
+                    emails.append("doesnotexistdoesnotexist123456@" + domain_name)
+            # Write wordlist to filesystem
+            file_path = self.create_text_file_path(service=service,
+                                                   delete_existing=True,
+                                                   file_suffix="emails")
+            with open(file_path, "w") as file:
+                file.write(os.linesep.join(emails))
+            wordlists = [file_path]
+        if not wordlists:
             raise ValueError("wordlist must not be empty for collector smtpuserenum!")
-        for wordlist in self._wordlist_files:
+        for wordlist in wordlists:
             if not os.path.isfile(wordlist):
                 raise FileNotFoundError("user list '{}' does not exist!".format(wordlist))
             if ipv4_address and self.match_nmap_service_name(service):
                 for item in ["VRFY", "EXPN", "RCPT", "EXPN"]:
-                    method = session.query(ServiceMethod)\
-                        .filter_by(service_id=service.id, name=item).first()
-                    if method:
-                        os_command = [command,
-                                      "-M", method.name,
-                                      "-U", wordlist,
-                                      "-t", ipv4_address]
-                        collector = self._get_or_create_command(session, os_command, collector_name, service=service)
-                        collectors.append(collector)
+                    os_command = [command,
+                                  "-M", item,
+                                  "-U", wordlist,
+                                  "-t", ipv4_address]
+                    collector = self._get_or_create_command(session, os_command, collector_name, service=service)
+                    collectors.append(collector)
         return collectors
 
     def verify_results(self, session: Session,

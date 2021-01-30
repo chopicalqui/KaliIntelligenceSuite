@@ -63,7 +63,7 @@ class CollectorClass(BaseHttpNmap, ServiceCollector, HostNameServiceCollector):
         :return: List of Collector instances that shall be processed.
         """
         result = []
-        if service.host_name.name:
+        if service.host_name:
             result = self.create_service_commands(session, service, collector_name)
         return result
 

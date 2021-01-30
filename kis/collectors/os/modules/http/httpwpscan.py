@@ -45,6 +45,7 @@ class CollectorClass(BaseHttpCollector, ServiceCollector, HostNameServiceCollect
 
     def __init__(self, **kwargs):
         super().__init__(priority=91050,
+                         exec_user="kali",
                          timeout=0,
                          **kwargs)
 

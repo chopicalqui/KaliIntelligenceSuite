@@ -27,6 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 __version__ = 0.1
 
 import re
+import os
 import logging
 from typing import List
 from collectors.os.modules.core import ServiceCollector
@@ -114,7 +115,7 @@ class CollectorClass(BaseHttpGoBuster, ServiceCollector, HostNameServiceCollecto
                                                    delete_existing=True,
                                                    file_suffix="wordlist")
             with open(file_path, "w") as file:
-                file.writelines(host_names)
+                file.write(os.linesep.join(host_names))
             # Create commands
             if not service.has_credentials:
                 tmp = self._get_commands(session,

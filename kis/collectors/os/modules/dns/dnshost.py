@@ -31,7 +31,6 @@ from collectors.os.modules.dns.core import BaseDnsHost
 from collectors.os.modules.core import BaseCollector
 from database.model import HostName
 from database.model import CollectorName
-from database.model import DnsResourceRecordType
 from sqlalchemy.orm.session import Session
 
 logger = logging.getLogger('dnshost')

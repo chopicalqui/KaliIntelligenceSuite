@@ -74,6 +74,7 @@ class CollectorClass(BaseDnsCollector, DomainCollector):
         collectors = []
         if host_name and host_name.name is None:
             os_command = [self._path_dig,
+                          '+short',
                           '-t', "TXT",
                           host_name.full_name]
             if self._dns_server:

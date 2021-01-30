@@ -329,7 +329,7 @@ The column **User** specifies the user with which the respective operating syste
 | 61400    | rpcclient         | service         | Active   | IPv4, IPv6 | -       | nobody |
 | 61500    | rpcinfo           | service         | Active   | IPv4, IPv6 | -       | nobody |
 | 71100    | ikescan           | service         | Active   | IPv4       | -       | root   |
-| 91050    | httpwpscan        | service         | Active   | IPv4, IPv6 | -       | nobody |
+| 91050    | httpwpscan        | service         | Active   | IPv4, IPv6 | -       | kali   |
 | 91100    | enum4linux        | service         | Active   | IPv4       | -       | nobody |
 | 91150    | httpchangeme      | service, vhost  | Active   | IPv4, IPv6 | -       | kali   |
 | 91200    | httpnikto         | service, vhost  | Active   | IPv4       | -       | nobody |

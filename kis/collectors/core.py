@@ -1408,6 +1408,22 @@ class BaseUtils:
                     dedup[item] = True
         return list(dedup.values())
 
+    def get_second_level_domain_name(self, domain_name: DomainName) -> str:
+        """
+        This method removes the TLD and just returns the second level domain.
+        :param domain_name:
+        :return:
+        """
+        result = None
+        if domain_name.name:
+            tld = self.matches_tld(domain_name.name)
+            if tld:
+                result = domain_name.name.rstrip(tld)
+                result = result.rstrip(".")
+            else:
+                result = ".".join(domain_name.name.split(".")[0:-1])
+        return result
+
     def split_host_name(self, host_name: str) -> List[str]:
         """
         This method splits the given host name into domain name and host names.
@@ -1762,7 +1778,7 @@ class BaseUtils:
         """
         rvalue = None
         if not verify or (verify and self.is_valid_email(text)):
-            email, host_name = text.split("@")
+            email, host_name = text.lower().split("@")
             host_name = self.add_domain_name(session=session,
                                              workspace=workspace,
                                              item=host_name,

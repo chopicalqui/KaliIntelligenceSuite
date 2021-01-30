@@ -199,6 +199,8 @@ class Collector(BaseConfig):
         self._path_changeme = self.get_config_str("file_paths", "changeme")
         self._path_masscan = self.get_config_str("file_paths", "masscan")
         self._path_crackmapexec = self.get_config_str("file_paths", "crackmapexec")
+        self._path_amass = self.get_config_str("file_paths", "amass")
+        self._path_crobat = self.get_config_str("file_paths", "crobat")
         self._eyewitness_proxy_ip = self.get_config_str("eyewitness", "proxy_ip")
         self._eyewitness_proxy_port = self.get_config_str("eyewitness", "proxy_port")
         self._wordlist_gobuster_dir = self.get_config_str("default_wordlists", "gobuster_dir")
