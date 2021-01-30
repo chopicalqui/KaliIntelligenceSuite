@@ -225,124 +225,130 @@ Column **Timeout** specifies the number of seconds after which the collector is 
 
 The column **User** specifies the user with which the respective operating system commands are executed.
 
-| Priority | Name              | Level           | Type     | IP Support | Timeout | User   |
-| --------:| ----------------- |:---------------:|:--------:| ---------- | ------- | ------ |
-| -        | ftpdotdotpwn      | service         | Active   | IPv4       | -       | nobody |
-| -        | httpdotdotpwn     | service         | Active   | IPv4, IPv6 | -       | nobody |
-| -        | httphydra         | service         | Active   | IPv4, IPv6 | -       | nobody |
-| -        | rdphydra          | service         | Active   | IPv4, IPv6 | -       | nobody |
-| -        | smbhydra          | service         | Active   | IPv4, IPv6 | -       | nobody |
-| -        | smbmedusa         | service         | Active   | IPv4       | -       | nobody |
-| -        | sshhydra          | service         | Active   | IPv4, IPv6 | -       | nobody |
-| 125      | builtwith         | domain          | Active*  | -          | -       | nobody |
-| 127      | hostio            | domain          | Active*  | -          | -       | nobody |
-| 130      | censysdomain      | domain          | Active*  | -          | -       | kali   |
-| 131      | securitytrails    | domain          | Active*  | -          | -       | nobody |
-| 132      | dnsdumpster       | domain          | Active*  | -          | -       | nobody |
-| 133      | certspotter       | domain          | Active*  | -          | -       | nobody |
-| 134      | crtshdomain       | domain          | Active*  | -          | -       | nobody |
-| 135      | virustotal        | domain          | Active*  | -          | -       | nobody |
-| 140      | dnssublist3r      | domain          | Active   | -          | -       | nobody |
-| 150      | theharvester      | domain          | Passive  | -          | -       | kali   |
-| 155      | awsslurp          | domain          | Active   |            | -       | nobody |
-| 160      | dnsenum           | domain          | Active   | -          | -       | nobody |
-| 170      | dnsgobuster       | domain          | Active   | -          | -       | nobody |
-| 210      | whoisdomain       | domain          | Active   | -          | 10      | nobody |
-| 215      | dnsspf            | domain          | Active   | -          | -       | nobody |
-| 220      | dnsdmark          | domain          | Active   | -          | -       | nobody |
-| 235      | dnsdkim           | domain          | Active   | -          | -       | nobody |
-| 240      | dnstakeover       | domain          | Active   | -          | -       | nobody |
-| 310      | dnshost           | domain          | Active   | -          | -       | nobody |
-| 312      | dnshostpublic     | domain          | Passive  | -          | -       | nobody |
-| 320      | dnsreverselookup  | host            | Active   | IPv4, IPv6 | -       | nobody |
-| 410      | hunter            | domain          | Active*  | -          | -       | nobody |
-| 420      | haveibeenbreach   | email           | Active*  | -          | -       | nobody |
-| 430      | haveibeenpaste    | email           | Active*  | -          | -       | nobody |
-| 510      | whoishost         | host            | Passive  | IPv4, IPv6 | -       | nobody |
-| 512      | whoisnetwork      | network         | Passive  | IPv4, IPv6 | -       | nobody |
-| 515      | reversewhois      | company         | Active*  | -          | -       | nobody |
-| 520      | shodanhost        | host            | Active*  | IPv4, IPv6 | -       | nobody |
-| 521      | shodannetwork     | network         | Active*  | IPv4, IPv6 | -       | nobody |
-| 530      | censyshost        | host            | Active*  | IPv4       | -       | nobody |
-| 540      | crtshcompany      | company         | Active*  | -          | -       | root   |
-| 1100     | tcpnmapnetwork    | network         | Active   | IPv4, IPv6 | -       | root   |
-| 1150     | tcpnmapdomain     | domain          | Active   | IPv4, IPv6 | -       | root   |
-| 1200     | udpnmapnetwork    | network         | Active   | IPv4, IPv6 | -       | root   |
-| 1250     | udpnmapdomain     | domain          | Active   | IPv4, IPv6 | -       | root   |
-| 1270     | icmpnmapnetwork   | network         | Active   | IPv4, IPv6 | -       | root   |
-| 1300     | tcpmasscannetwork | network         | Active   | IPv4       | -       | root   |
-| 1350     | anyservicenmap    | service         | Active   | IPv4, IPv6 | -       | root   |
-| 1820     | tcptraceroute     | host            | Active   | IPv4, IPv6 | -       | nobody |
-| 1900     | httpmsfrobotstxt  | service, vhost  | Active   | IPv4, IPv6 | -       | kali   |
-| 2000     | dnsnmap           | service         | Active   | IPv4, IPv6 | -       | root   |
-| 2020     | telnetnmap        | service         | Active   | IPv4, IPv6 | -       | root   |
-| 2040     | vncnmap           | service         | Active   | IPv4, IPv6 | -       | root   |
-| 2100     | mssqlnmap         | service         | Active   | IPv4, IPv6 | -       | root   |
-| 2150     | mysqlnmap         | service         | Active   | IPv4, IPv6 | -       | root   |
-| 2200     | smbnmap           | service         | Active   | IPv4, IPv6 | -       | root   |
-| 2250     | ftpnmap           | service         | Active   | IPv4, IPv6 | -       | root   |
-| 2300     | smtpnmap          | service         | Active   | IPv4, IPv6 | -       | root   |
-| 2400     | rpcnmap           | service         | Active   | IPv4, IPv6 | -       | root   |
-| 2500     | rdpnmap           | service         | Active   | IPv4, IPv6 | -       | root   |
-| 2700     | pop3nmap          | service         | Active   | IPv4, IPv6 | -       | root   |
-| 2750     | msrpcenum         | service         | Active   | IPv4, IPv6 | -       | root   |
-| 2800     | imapnmap          | service         | Active   | IPv4, IPv6 | -       | root   |
-| 2850     | x11nmap           | service         | Active   | IPv4, IPv6 | -       | root   |
-| 2900     | tftpnmap          | service         | Active   | IPv4, IPv6 | -       | root   |
-| 2950     | nfsnmap           | service         | Active   | IPv4, IPv6 | -       | root   |
-| 3100     | finger            | service         | Active   | IPv4       | -       | nobody |
-| 3200     | ntpdate           | service         | Active   | IPv4, IPv6 | -       | nobody |
-| 3300     | ntpq              | service         | Active   | IPv4, IPv6 | -       | nobody |
-| 4000     | h323version       | service         | Active   | IPv4, IPv6 | -       | kali   |
-| 4100     | sipnmap           | service         | Active   | IPv4, IPv6 | -       | root   |
-| 4120     | sipmsf            | service         | Active   | IPv4, IPv6 | -       | kali   |
-| 4200     | stunnmap          | service         | Active   | IPv4, IPv6 | -       | root   |
-| 11100    | ftphydra          | service         | Active   | IPv4, IPv6 | -       | nobody |
-| 11200    | mssqlhydra        | service         | Active   | IPv4, IPv6 | -       | nobody |
-| 11400    | pgsqlhydra        | service         | Active   | IPv4, IPv6 | -       | nobody |
-| 11500    | snmphydra         | service         | Active   | IPv4, IPv6 | -       | nobody |
-| 11600    | sshchangeme       | service         | Active   | IPv4, IPv6 | -       | kali   |
-| 11700    | ipmi              | service         | Active   | IPv4, IPv6 | -       | kali   |
-| 12100    | ftpfilelist       | service         | Active   | IPv4, IPv6 | -       | nobody |
-| 13000    | showmount         | service         | Active   | IPv4, IPv6 | 300     | nobody |
-| 13090    | smbcme            | service         | Active   | IPv4       | -       | kali   |
-| 13100    | smbclient         | service         | Active   | IPv4, IPv6 | -       | nobody |
-| 13200    | smbfilelist       | service         | Active   | IPv4, IPv6 | -       | nobody |
-| 13210    | smbmap            | service         | Active   | IPv4       | -       | nobody |
-| 21500    | nbtscan           | service         | Active   | IPv4       | -       | nobody |
-| 21600    | ldapsearch        | service         | Active   | IPv4, IPv6 | -       | nobody |
-| 21610    | ldapnmap          | service         | Active   | IPv4, IPv6 | -       | root   |
-| 31100    | snmpcheck         | service         | Active   | IPv4       | 300     | nobody |
-| 31110    | snmpnmap          | service         | Active   | IPv4, IPv6 | -       | root   |
-| 31200    | onesixtyone       | service         | Active   | IPv4       | 60      | nobody |
-| 31300    | snmpwalk          | service         | Active   | IPv4       | -       | nobody |
-| 31400    | oraclesidguess    | service         | Active   | IPv4       | -       | nobody |
-| 41100    | sslyze            | service, vhost  | Active   | IPv4       | -       | nobody |
-| 41200    | sshnmap           | service         | Active   | IPv4, IPv6 | -       | root   |
-| 41300    | certnmap          | service, vhost  | Active   | IPv4, IPv6 | -       | root   |
-| 41305    | certopenssl       | service, vhost  | Active   | IPv4, IPv6 | 120     | nobody |
-| 41310    | tlsnmap           | service, vhost  | Active   | IPv4, IPv6 | -       | root   |
-| 41400    | sslscan           | service, vhost  | Active   | IPv4, IPv6 | -       | nobody |
-| 51100    | httpgobuster      | service, vhost  | Active   | IPv4, IPv6 | -       | nobody |
-| 51200    | httpnmap          | service, vhost  | Active   | IPv4, IPv6 | -       | root   |
-| 51205    | httpntlmnmap      | service, vhost  | Active   | IPv4, IPv6 | -       | root   |
-| 61400    | rpcclient         | service         | Active   | IPv4, IPv6 | -       | nobody |
-| 61500    | rpcinfo           | service         | Active   | IPv4, IPv6 | -       | nobody |
-| 71100    | ikescan           | service         | Active   | IPv4       | -       | root   |
-| 91050    | httpwpscan        | service         | Active   | IPv4, IPv6 | -       | kali   |
-| 91100    | enum4linux        | service         | Active   | IPv4       | -       | nobody |
-| 91150    | httpchangeme      | service, vhost  | Active   | IPv4, IPv6 | -       | kali   |
-| 91200    | httpnikto         | service, vhost  | Active   | IPv4       | -       | nobody |
-| 91225    | httpburpsuitepro  | domain, host    | Active   | IPv4, IPv6 | -       | nobody |
-| 91250    | httpdavtest       | service, vhost  | Active   | IPv4, IPv6 | -       | nobody |
-| 91250    | httpwhatweb       | service         | Active   | IPv4, IPv6 | -       | nobody |
-| 91300    | httpsqlmap        | service, vhost  | Active   | IPv4, IPv6 | -       | nobody |
-| 91400    | smtpuserenum      | service         | Active   | IPv4       | -       | nobody |
-| 91600    | mysqlhydra        | service         | Active   | IPv4, IPv6 | -       | nobody |
-| 92200    | httpwapiti        | service, vhost  | Active   | IPv4, IPv6 | -       | nobody |
-| 100000   | vncviewer         | service         | Active   | IPv4       | -       | nobody |
-| 100100   | httpeyewitness    | service, vhost  | Active   | IPv4, IPv6 | 3600    | kali   |
-| 114200   | dnsrecon          | domain          | Active   | -          | -       | nobody |
+| Priority | Name                      | Level           | Type     | IP Support | Timeout | User   |
+| --------:| ------------------------- |:---------------:|:--------:| ---------- | ------- | ------ |
+| -        | ftpdotdotpwn              | service         | Active   | IPv4       | -       | nobody |
+| -        | httpdotdotpwn             | service         | Active   | IPv4, IPv6 | -       | nobody |
+| -        | httphydra                 | service         | Active   | IPv4, IPv6 | -       | nobody |
+| -        | rdphydra                  | service         | Active   | IPv4, IPv6 | -       | nobody |
+| -        | smbhydra                  | service         | Active   | IPv4, IPv6 | -       | nobody |
+| -        | smbmedusa                 | service         | Active   | IPv4       | -       | nobody |
+| -        | sshhydra                  | service         | Active   | IPv4, IPv6 | -       | nobody |
+| 125      | builtwith                 | domain          | Active*  | -          | -       | nobody |
+| 127      | hostio                    | domain          | Active*  | -          | -       | nobody |
+| 130      | censysdomain              | domain          | Active*  | -          | -       | kali   |
+| 131      | securitytrails            | domain          | Active*  | -          | -       | nobody |
+| 132      | dnsdumpster               | domain          | Active*  | -          | -       | nobody |
+| 133      | certspotter               | domain          | Active*  | -          | -       | nobody |
+| 134      | crtshdomain               | domain          | Active*  | -          | -       | nobody |
+| 135      | virustotal                | domain          | Active*  | -          | -       | nobody |
+| 140      | dnssublist3r              | domain          | Active   | -          | -       | nobody |
+| 141      | dnsamasspassive           | domain          | Active*  | -          | -       | nobody |
+| 142      | dnsamassactive            | domain          | Active   | -          | -       | nobody |
+| 143      | dnscrobatdomain           | domain          | Active*  | -          | -       | nobody |
+| 144      | dnscrobattld              | domain          | Active*  | -          | -       | nobody |
+| 150      | theharvester              | domain          | Passive  | -          | -       | kali   |
+| 155      | awsslurp                  | domain          | Active   |            | -       | nobody |
+| 160      | dnsenum                   | domain          | Active   | -          | -       | nobody |
+| 170      | dnsgobuster               | domain          | Active   | -          | -       | nobody |
+| 210      | whoisdomain               | domain          | Active   | -          | 10      | nobody |
+| 215      | dnsspf                    | domain          | Active   | -          | -       | nobody |
+| 220      | dnsdmark                  | domain          | Active   | -          | -       | nobody |
+| 235      | dnsdkim                   | domain          | Active   | -          | -       | nobody |
+| 240      | dnstakeover               | domain          | Active   | -          | -       | nobody |
+| 310      | dnshost                   | domain          | Active   | -          | -       | nobody |
+| 312      | dnshostpublic             | domain          | Passive  | -          | -       | nobody |
+| 320      | dnsreverselookup          | host            | Active   | IPv4, IPv6 | -       | nobody |
+| 360      | dnscrobatreversehost      | host            | Active*  | IPv4, IPv6 | -       | nobody |
+| 410      | hunter                    | domain          | Active*  | -          | -       | nobody |
+| 420      | haveibeenbreach           | email           | Active*  | -          | -       | nobody |
+| 430      | haveibeenpaste            | email           | Active*  | -          | -       | nobody |
+| 510      | whoishost                 | host            | Passive  | IPv4, IPv6 | -       | nobody |
+| 512      | whoisnetwork              | network         | Passive  | IPv4, IPv6 | -       | nobody |
+| 515      | reversewhois              | company         | Active*  | -          | -       | nobody |
+| 520      | shodanhost                | host            | Active*  | IPv4, IPv6 | -       | nobody |
+| 521      | shodannetwork             | network         | Active*  | IPv4, IPv6 | -       | nobody |
+| 530      | censyshost                | host            | Active*  | IPv4       | -       | nobody |
+| 540      | crtshcompany              | company         | Active*  | -          | -       | root   |
+| 550      | dnscrobatreversenetwork   | network         | Active*  | IPv4, IPv6 | -       | nobody |
+| 1100     | tcpnmapnetwork            | network         | Active   | IPv4, IPv6 | -       | root   |
+| 1150     | tcpnmapdomain             | domain          | Active   | IPv4, IPv6 | -       | root   |
+| 1200     | udpnmapnetwork            | network         | Active   | IPv4, IPv6 | -       | root   |
+| 1250     | udpnmapdomain             | domain          | Active   | IPv4, IPv6 | -       | root   |
+| 1270     | icmpnmapnetwork           | network         | Active   | IPv4, IPv6 | -       | root   |
+| 1300     | tcpmasscannetwork         | network         | Active   | IPv4       | -       | root   |
+| 1350     | anyservicenmap            | service         | Active   | IPv4, IPv6 | -       | root   |
+| 1820     | tcptraceroute             | host            | Active   | IPv4, IPv6 | -       | nobody |
+| 1900     | httpmsfrobotstxt          | service, vhost  | Active   | IPv4, IPv6 | -       | kali   |
+| 2000     | dnsnmap                   | service         | Active   | IPv4, IPv6 | -       | root   |
+| 2020     | telnetnmap                | service         | Active   | IPv4, IPv6 | -       | root   |
+| 2040     | vncnmap                   | service         | Active   | IPv4, IPv6 | -       | root   |
+| 2100     | mssqlnmap                 | service         | Active   | IPv4, IPv6 | -       | root   |
+| 2150     | mysqlnmap                 | service         | Active   | IPv4, IPv6 | -       | root   |
+| 2200     | smbnmap                   | service         | Active   | IPv4, IPv6 | -       | root   |
+| 2250     | ftpnmap                   | service         | Active   | IPv4, IPv6 | -       | root   |
+| 2300     | smtpnmap                  | service         | Active   | IPv4, IPv6 | -       | root   |
+| 2400     | rpcnmap                   | service         | Active   | IPv4, IPv6 | -       | root   |
+| 2500     | rdpnmap                   | service         | Active   | IPv4, IPv6 | -       | root   |
+| 2700     | pop3nmap                  | service         | Active   | IPv4, IPv6 | -       | root   |
+| 2750     | msrpcenum                 | service         | Active   | IPv4, IPv6 | -       | root   |
+| 2800     | imapnmap                  | service         | Active   | IPv4, IPv6 | -       | root   |
+| 2850     | x11nmap                   | service         | Active   | IPv4, IPv6 | -       | root   |
+| 2900     | tftpnmap                  | service         | Active   | IPv4, IPv6 | -       | root   |
+| 2950     | nfsnmap                   | service         | Active   | IPv4, IPv6 | -       | root   |
+| 3100     | finger                    | service         | Active   | IPv4       | -       | nobody |
+| 3200     | ntpdate                   | service         | Active   | IPv4, IPv6 | -       | nobody |
+| 3300     | ntpq                      | service         | Active   | IPv4, IPv6 | -       | nobody |
+| 4000     | h323version               | service         | Active   | IPv4, IPv6 | -       | kali   |
+| 4100     | sipnmap                   | service         | Active   | IPv4, IPv6 | -       | root   |
+| 4120     | sipmsf                    | service         | Active   | IPv4, IPv6 | -       | kali   |
+| 4200     | stunnmap                  | service         | Active   | IPv4, IPv6 | -       | root   |
+| 11100    | ftphydra                  | service         | Active   | IPv4, IPv6 | -       | nobody |
+| 11200    | mssqlhydra                | service         | Active   | IPv4, IPv6 | -       | nobody |
+| 11400    | pgsqlhydra                | service         | Active   | IPv4, IPv6 | -       | nobody |
+| 11500    | snmphydra                 | service         | Active   | IPv4, IPv6 | -       | nobody |
+| 11600    | sshchangeme               | service         | Active   | IPv4, IPv6 | -       | kali   |
+| 91100    | enum4linux                | service         | Active   | IPv4       | -       | nobody |
+| 11610    | httpchangeme              | service, vhost  | Active   | IPv4, IPv6 | -       | kali   |
+| 11700    | ipmi                      | service         | Active   | IPv4, IPv6 | -       | kali   |
+| 12100    | ftpfilelist               | service         | Active   | IPv4, IPv6 | -       | nobody |
+| 13000    | showmount                 | service         | Active   | IPv4, IPv6 | 300     | nobody |
+| 13090    | smbcme                    | service         | Active   | IPv4       | -       | kali   |
+| 13100    | smbclient                 | service         | Active   | IPv4, IPv6 | -       | nobody |
+| 13200    | smbfilelist               | service         | Active   | IPv4, IPv6 | -       | nobody |
+| 13210    | smbmap                    | service         | Active   | IPv4       | -       | nobody |
+| 21500    | nbtscan                   | service         | Active   | IPv4       | -       | nobody |
+| 21600    | ldapsearch                | service         | Active   | IPv4, IPv6 | -       | nobody |
+| 21610    | ldapnmap                  | service         | Active   | IPv4, IPv6 | -       | root   |
+| 31100    | snmpcheck                 | service         | Active   | IPv4       | 300     | nobody |
+| 31110    | snmpnmap                  | service         | Active   | IPv4, IPv6 | -       | root   |
+| 31200    | onesixtyone               | service         | Active   | IPv4       | 60      | nobody |
+| 31300    | snmpwalk                  | service         | Active   | IPv4       | -       | nobody |
+| 31400    | oraclesidguess            | service         | Active   | IPv4       | -       | nobody |
+| 41100    | sslyze                    | service, vhost  | Active   | IPv4       | -       | nobody |
+| 41200    | sshnmap                   | service         | Active   | IPv4, IPv6 | -       | root   |
+| 41300    | certnmap                  | service, vhost  | Active   | IPv4, IPv6 | -       | root   |
+| 41305    | certopenssl               | service, vhost  | Active   | IPv4, IPv6 | 120     | nobody |
+| 41310    | tlsnmap                   | service, vhost  | Active   | IPv4, IPv6 | -       | root   |
+| 41400    | sslscan                   | service, vhost  | Active   | IPv4, IPv6 | -       | nobody |
+| 51100    | httpgobuster              | service, vhost  | Active   | IPv4, IPv6 | -       | nobody |
+| 51200    | httpnmap                  | service, vhost  | Active   | IPv4, IPv6 | -       | root   |
+| 51205    | httpntlmnmap              | service, vhost  | Active   | IPv4, IPv6 | -       | root   |
+| 61400    | rpcclient                 | service         | Active   | IPv4, IPv6 | -       | nobody |
+| 61500    | rpcinfo                   | service         | Active   | IPv4, IPv6 | -       | nobody |
+| 71100    | ikescan                   | service         | Active   | IPv4       | -       | root   |
+| 91050    | httpwpscan                | service         | Active   | IPv4, IPv6 | -       | kali   |
+| 91200    | httpnikto                 | service, vhost  | Active   | IPv4       | -       | nobody |
+| 91225    | httpburpsuitepro          | domain, host    | Active   | IPv4, IPv6 | -       | nobody |
+| 91250    | httpdavtest               | service, vhost  | Active   | IPv4, IPv6 | -       | nobody |
+| 91250    | httpwhatweb               | service         | Active   | IPv4, IPv6 | -       | nobody |
+| 91300    | httpsqlmap                | service, vhost  | Active   | IPv4, IPv6 | -       | nobody |
+| 91400    | smtpuserenum              | service         | Active   | IPv4       | -       | nobody |
+| 91600    | mysqlhydra                | service         | Active   | IPv4, IPv6 | -       | nobody |
+| 92200    | httpwapiti                | service, vhost  | Active   | IPv4, IPv6 | -       | nobody |
+| 100000   | vncviewer                 | service         | Active   | IPv4       | -       | nobody |
+| 100100   | httpeyewitness            | service, vhost  | Active   | IPv4, IPv6 | 3600    | kali   |
+| 114200   | dnsrecon                  | domain          | Active   | -          | -       | nobody |
 
 
 ## Installing KIS

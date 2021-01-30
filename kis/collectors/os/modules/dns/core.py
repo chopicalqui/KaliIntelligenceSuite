@@ -24,6 +24,8 @@ __version__ = 0.1
 
 import re
 import logging
+import ipaddress
+from collectors.os.modules.core import DomainCollector
 from collectors.os.modules.core import BaseCollector
 from collectors.os.modules.core import BaseHydra
 from collectors.os.modules.core import BaseNmap
@@ -33,6 +35,10 @@ from collectors.os.modules.core import OutputType
 from collectors.os.modules.core import BaseExtraServiceInfoExtraction
 from collectors.os.core import PopenCommand
 from database.model import Command
+from database.model import Host
+from database.model import HostName
+from database.model import Network
+from database.model import CollectorName
 from database.model import Source
 from database.model import DnsResourceRecordType
 from view.core import ReportItem
@@ -240,3 +246,122 @@ class BaseDnsHost(BaseDnsCollector):
                                                          source=source,
                                                          mapping_type=DnsResourceRecordType.cname,
                                                          report_item=report_item)
+
+
+class BaseAmass(BaseDnsCollector, DomainCollector):
+    """This class implements the base class for Amass."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._re_dns = re.compile('^\\[(?P<source>.*)\\]\\s+(?P<domain>.+)$')
+
+    def create_domain_commands(self,
+                               session: Session,
+                               host_name: HostName,
+                               collector_name: CollectorName,
+                               additional_arguments: List[str]=[]) -> List[BaseCollector]:
+        """This method creates and returns a list of commands based on the given service.
+
+        This method determines whether the command exists already in the database. If it does, then it does nothing,
+        else, it creates a new Collector entry in the database for each new command as well as it creates a corresponding
+        operating system command and attaches it to the respective newly created Collector class.
+
+        :param session: Sqlalchemy session that manages persistence operations for ORM-mapped objects
+        :param host_name: The host name based on which commands shall be created.
+        :param collector_name: The name of the collector as specified in table collector_name
+        :return: List of Collector instances that shall be processed.
+        """
+        collectors = []
+        if host_name and host_name.name is None:
+            os_command = [self._path_amass, "enum"]
+            output_path = self.create_path(host_name=host_name, sub_directory="output", create_new=True)
+            if additional_arguments:
+                os_command += additional_arguments
+            os_command += ["-nocolor", "-src", "-nolocaldb", "-dir", output_path, "-d", host_name.full_name]
+            collector = self._get_or_create_command(session, os_command, collector_name, host_name=host_name)
+            collectors.append(collector)
+        return collectors
+
+    def verify_results(self, session: Session,
+                       command: Command,
+                       source: Source,
+                       report_item: ReportItem,
+                       process: PopenCommand = None, **kwargs) -> None:
+        """This method analyses the results of the command execution.
+
+        After the execution, this method checks the OS command's results to determine the command's execution status as
+        well as existing vulnerabilities (e.g. weak login credentials, NULL sessions, hidden Web folders). The
+        stores the output in table command. In addition, the collector might add derived information to other tables as
+        well.
+
+        :param session: Sqlalchemy session that manages persistence operations for ORM-mapped objects
+        :param command: The command instance that contains the results of the command execution
+        :param source: The source object of the current collector
+        :param report_item: Item that can be used for reporting potential findings in the UI
+        :param process: The PopenCommand object that executed the given result. This object holds stderr, stdout, return
+        code etc.
+        """
+        if command.return_code != 0:
+            self._set_execution_failed(session, command)
+        for line in command.stdout_output:
+            match_dns = self._re_dns.match(line)
+            if match_dns:
+                domain_name = match_dns.group("domain").strip()
+                if domain_name:
+                    # Add host name to database
+                    host_name = self.add_host_name(session=session,
+                                                   command=command,
+                                                   source=source,
+                                                   host_name=domain_name,
+                                                   report_item=report_item)
+                    if not host_name:
+                        logger.debug("ignoring host name due to invalid domain in line: {}".format(line))
+
+
+class BaseCrobat(BaseDnsCollector):
+    """This class implements the base class for Crobat."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def create_commands(self,
+                        session: Session,
+                        collector_name: CollectorName,
+                        argument: str,
+                        host_name: HostName = None,
+                        host: Host = None,
+                        network: Network = None) -> List[BaseCollector]:
+        """This method creates and returns a list of commands based on the given service.
+
+        This method determines whether the command exists already in the database. If it does, then it does nothing,
+        else, it creates a new Collector entry in the database for each new command as well as it creates a corresponding
+        operating system command and attaches it to the respective newly created Collector class.
+
+        :param session: Sqlalchemy session that manages persistence operations for ORM-mapped objects
+        :param collector_name: The name of the collector as specified in table collector_name
+        :param argument: The Crobat argument (e.g., -r)
+        :param host_name: The host name based on which commands shall be created.
+        :param host: The host based on which commands shall be created.
+        :return: List of Collector instances that shall be processed.
+        """
+        collectors = []
+        os_command = [self._path_crobat, argument]
+        if host_name and host_name.name is None:
+            if argument == "-t":
+                sld_name = self._domain_utils.get_second_level_domain_name(host_name.domain_name)
+                os_command.append(sld_name)
+            else:
+                os_command.append(host_name.full_name)
+            collector = self._get_or_create_command(session, os_command, collector_name, host_name=host_name)
+            collectors.append(collector)
+        elif host and ipaddress.ip_address(host.address).is_global:
+            os_command.append(host.ip_address)
+            collector = self._get_or_create_command(session, os_command, collector_name, host=host)
+            collectors.append(collector)
+        elif network and network.network != "0.0.0.0/0" and \
+                network.network != "::/0" and \
+                ipaddress.ip_network(network.network).is_global:
+            os_command.append(network.network)
+            collector = self._get_or_create_command(session, os_command, collector_name, network=network)
+            collectors.append(collector)
+        return collectors

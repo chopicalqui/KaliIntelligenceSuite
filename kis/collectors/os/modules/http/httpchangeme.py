@@ -43,7 +43,7 @@ class CollectorClass(BaseHttpChangeme, ServiceCollector, HostNameServiceCollecto
     """This class implements a collector module that is automatically incorporated into the application."""
 
     def __init__(self, **kwargs):
-        super().__init__(priority=91150,
+        super().__init__(priority=11610,
                          timeout=0,
                          exec_user="kali",
                          **kwargs)
