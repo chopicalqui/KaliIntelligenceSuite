@@ -276,6 +276,7 @@ class BaseUtils:
                     host_name: HostName = None,
                     email: Email = None,
                     company: Company = None,
+                    path: Path = None,
                     xml_file: str = None,
                     json_file: str = None,
                     binary_file: str = None,
@@ -292,6 +293,7 @@ class BaseUtils:
         :param network: The IPv4 network object to which the collector belongs
         :param email: The email object to which the collector belongs
         :param company: The company object to which the collector belongs
+        :param path: The path object to which the collector belongs
         :param collector_name: The name of the collector
         :param xml_file: Path to the command's XML output file
         :param json_file: Path to the command's JSON output file
@@ -308,9 +310,11 @@ class BaseUtils:
         tmp = [str(item) for item in os_command]
         # todo: update for new collector
         if (service and host) or (service and host_name) or (service and network) or (service and email) or \
-            (service and company) or (host and host_name) or (host and network) or (host and email) or \
-            (host and company) or (host_name and network) or (host_name and email) or (host_name and company) or \
-            (network and email) or (network and company) or (email and company):
+            (service and company) or (service and path) or (host and host_name) or (host and network) or \
+            (host and email) or (host and company) or (host and path) or (host_name and network) or \
+            (host_name and email) or (host_name and company) or (host_name and path) or \
+            (network and email) or (network and company) or (network and path) or (email and company) or \
+            (email and path) or (company and path):
             raise ValueError("command must be assigned either to a service, host, host name or "
                              "to an IPv4 network")
         if service:
@@ -385,6 +389,18 @@ class BaseUtils:
                                   company=company)
                 session.add(command)
                 session.flush()
+        elif path:
+            command = session.query(Path) \
+                .join((Path, Command.path)) \
+                .filter(Command.os_command.op('=')(tmp),
+                        Command.collector_name_id == collector_name.id,
+                        path.id == path.id).one_or_none()
+            if not command:
+                command = Command(os_command=tmp,
+                                  collector_name=collector_name,
+                                  path=path)
+                session.add(command)
+                session.flush()
         else:
             raise ValueError("command must be assigned to a service, host,  host name, or IPv4 network")
         if xml_file:
@@ -415,9 +431,9 @@ class BaseUtils:
 
     def add_source(self, session: Session, name: str) -> Source:
         """
-        This method adds the given company to the database
+        This method adds the given source to the database
         :param session: The database session used for addition the IPv4 network
-        :param name: The name of the company that should be added
+        :param name: The name of the source that should be added
         :return:
         """
         source = session.query(Source).filter_by(name=name).one_or_none()

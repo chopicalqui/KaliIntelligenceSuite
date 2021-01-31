@@ -301,10 +301,13 @@ $ kisreport file -w $ws --type xml -I tcpnmap -o $outdir
                              nargs="+",
                              required=True,
                              type=str)
-    parser_path.add_argument('--csv',
-                             required=True,
-                             action='store_true',
-                             help='returns gathered information in csv format')
+    parser_path_group = parser_path.add_mutually_exclusive_group(required=True)
+    parser_path_group.add_argument('--csv',
+                                   action='store_true',
+                                   help='returns gathered information in csv format')
+    parser_path_group.add_argument('--text',
+                                   action='store_true',
+                                   help='returns gathered information including all collector outputs as text')
     parser_path.add_argument('--filter', metavar='IP|NETWORK|DOMAIN|HOSTNAME', type=str, nargs='*',
                              help='list of IP addresses, IP networks, second-level domains (e.g., megacorpone.com), or '
                                   'host names (e.g., www.megacorpone.com) whose information shall be returned.'

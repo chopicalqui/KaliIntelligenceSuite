@@ -1282,6 +1282,7 @@ class BaseCollector(config.Collector):
                              host_name: HostName = None,
                              domain_name: DomainName = None,
                              company: Company = None,
+                             path: Path = None,
                              file_suffix: str = None,
                              sub_directory: str = None,
                              create_new: bool = False,
@@ -1297,6 +1298,7 @@ class BaseCollector(config.Collector):
         :param domain_name: The domain name for which the path shall be created
         :param file_suffix: Information that will be appended to the file name and before the file extension
         :param company: The company for which the path shall be created
+        :param path: The path for which the path shall be created
         :param sub_directory: Creates the given sub directory in the respective IP address directory
         :param create_new: If the sub directory already exist, then it creates a new one
         :param delete_existing: Deletes the file if it already exists
@@ -1309,6 +1311,7 @@ class BaseCollector(config.Collector):
                                      host_name=host_name,
                                      domain_name=domain_name,
                                      company=company,
+                                     path=path,
                                      file_suffix=file_suffix,
                                      file_extension="xml",
                                      sub_directory=sub_directory,
@@ -1324,6 +1327,7 @@ class BaseCollector(config.Collector):
                               host_name: HostName = None,
                               domain_name: DomainName = None,
                               company: Company = None,
+                              path: Path = None,
                               file_suffix: str = None,
                               sub_directory: str = None,
                               create_new: bool = False,
@@ -1338,6 +1342,7 @@ class BaseCollector(config.Collector):
         :param host_name: The host name for which the path shall be created
         :param domain_name: The domain name for which the path shall be created
         :param company: The company for which the path shall be created
+        :param path: The path for which the path shall be created
         :param file_suffix: Information that will be appended to the file name and before the file extension
         :param sub_directory: Creates the given sub directory in the respective IP address directory
         :param create_new: If the sub directory already exist, then it creates a new one
@@ -1351,6 +1356,7 @@ class BaseCollector(config.Collector):
                                      host_name=host_name,
                                      domain_name=domain_name,
                                      company=company,
+                                     path=path,
                                      file_suffix=file_suffix,
                                      file_extension="txt",
                                      sub_directory=sub_directory,
@@ -1366,6 +1372,7 @@ class BaseCollector(config.Collector):
                               host_name: HostName = None,
                               domain_name: DomainName = None,
                               company: Company = None,
+                              path: Path = None,
                               file_suffix: str = None,
                               sub_directory: str = None,
                               create_new: bool = False,
@@ -1380,6 +1387,7 @@ class BaseCollector(config.Collector):
         :param host_name: The host name for which the path shall be created
         :param domain_name: The domain name for which the path shall be created
         :param company: The company for which the path shall be created
+        :param path: The path for which the path shall be created
         :param file_suffix: Information that will be appended to the file name and before the file extension
         :param sub_directory: Creates the given sub directory in the respective IP address directory
         :param create_new: If the sub directory already exist, then it creates a new one
@@ -1393,6 +1401,7 @@ class BaseCollector(config.Collector):
                                      host_name=host_name,
                                      domain_name=domain_name,
                                      company=company,
+                                     path=path,
                                      file_suffix=file_suffix,
                                      file_extension="json",
                                      sub_directory=sub_directory,
@@ -1408,6 +1417,7 @@ class BaseCollector(config.Collector):
                          host_name: HostName = None,
                          domain_name: DomainName = None,
                          company: Company = None,
+                         path: Path = None,
                          file_suffix: str = None,
                          file_extension: str = None,
                          sub_directory: str = None,
@@ -1423,6 +1433,7 @@ class BaseCollector(config.Collector):
         :param host_name: The host name for which the path shall be created
         :param domain_name: The domain name for which the path shall be created
         :param company: The company for which the path shall be created
+        :param path: The path for which the path shall be created
         :param file_suffix: Information that will be appended to the file name and before the file extension
         :param file_extension: File extension
         :param sub_directory: Creates the given sub directory in the respective IP address directory
@@ -1437,6 +1448,7 @@ class BaseCollector(config.Collector):
                                                     host_name=host_name,
                                                     domain_name=domain_name,
                                                     company=company,
+                                                    path=path,
                                                     file_suffix=file_suffix,
                                                     file_extension=file_extension,
                                                     sub_directory=sub_directory,
@@ -1453,6 +1465,7 @@ class BaseCollector(config.Collector):
                                 host_name: HostName = None,
                                 domain_name: DomainName = None,
                                 company: Company = None,
+                                path: Path = None,
                                 file_suffix: str = None,
                                 file_extension: str = None,
                                 sub_directory: str = None,
@@ -1468,21 +1481,23 @@ class BaseCollector(config.Collector):
         :param host_name: The host name for which the path shall be created
         :param domain_name: The domain name for which the path shall be created
         :param company: The company for which the path shall be created
+        :param path: The path for which the path shall be created
         :param file_suffix: Information that will be appended to the file name and before the file extension
         :param file_extension: File extension
         :param sub_directory: Creates the given sub directory in the respective IP address directory
         :param create_new: If the sub directory already exist, then it creates a new one
         :return: Path of the file
         """
-        path = self.create_path(service=service,
-                                host=host,
-                                network=network,
-                                email=email,
-                                host_name=host_name,
-                                domain_name=domain_name,
-                                company=company,
-                                sub_directory=sub_directory,
-                                create_new=create_new)
+        path_str = self.create_path(service=service,
+                                    host=host,
+                                    network=network,
+                                    email=email,
+                                    host_name=host_name,
+                                    domain_name=domain_name,
+                                    company=company,
+                                    path=path,
+                                    sub_directory=sub_directory,
+                                    create_new=create_new)
         if service:
             log_file = "{}_{}-{}-{}".format(self.name, service.address, service.protocol.name, service.port)
         elif host:
@@ -1497,13 +1512,16 @@ class BaseCollector(config.Collector):
             log_file = "{}_{}".format(self.name, email.email_address)
         elif company:
             log_file = "{}_{}".format(self.name, company.name.replace(" ", "-"))
+        elif path:
+            log_file = path.get_path()
         else:
             raise NotImplementedError("case not implemented")
+        log_file = re.sub("[\\\\/\"'*?<>|]", "_", log_file)
         if file_suffix:
             log_file = "{}-{}".format(log_file, file_suffix)
         if file_extension:
             log_file = "{}.{}".format(log_file, file_extension)
-        log_file_path = os.path.join(path, log_file)
+        log_file_path = os.path.join(path_str, log_file)
         if os.path.isfile(log_file_path):
             if delete_existing:
                 os.remove(log_file_path)
@@ -1520,6 +1538,7 @@ class BaseCollector(config.Collector):
                     host_name: HostName = None,
                     domain_name: DomainName = None,
                     company: Company = None,
+                    path: Path = None,
                     sub_directory: str = None,
                     create_new: bool = False) -> str:
         """
@@ -1531,6 +1550,7 @@ class BaseCollector(config.Collector):
         :param host_name: The host name for which the path shall be created
         :param domain_name: The domain name for which the path shall be created
         :param company: The company for which the path shall be created
+        :param path: The path for which the path shall be created
         :param sub_directory: Creates the given sub directory in the respective IP address directory
         :param create_new: If the sub directory already exist, then it creates a new one
         :return: Path of the file
@@ -1544,25 +1564,29 @@ class BaseCollector(config.Collector):
         elif domain_name:
             item = domain_name.name
         elif network:
-            item = network.network.replace("/", "_")
+            item = network.network
         elif email:
             item = email.email_address
         elif company:
-            item = company.name.replace(" ", "-")
+            item = company.name
+        elif path:
+            item = path.name
         else:
             raise NotImplementedError("case not implemented")
-        path = os.path.join(self.output_dir, item)
-        if not os.path.exists(path):
-            os.makedirs(path)
-            os.chmod(path, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
+        item = item.replace(" ", "-")
+        item = re.sub("[\\\\/\"'*?<>|]", "_", item)
+        result = os.path.join(self.output_dir, item)
+        if not os.path.exists(result):
+            os.makedirs(result)
+            os.chmod(result, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
         if sub_directory:
-            sub_path = os.path.join(path, sub_directory)
+            sub_path = os.path.join(result, sub_directory)
             i = 1
             while os.path.exists(sub_path) and create_new:
-                sub_path = "{}/{}_{:03d}".format(path, sub_directory, i)
+                sub_path = os.path.join(result, "{}_{:03d}".format(sub_directory, i))
                 i = i + 1
-            path = sub_path
-        return path
+            result = sub_path
+        return result
 
     def import_output_files(self, command: Command):
         """
@@ -1612,7 +1636,7 @@ class BaseCollector(config.Collector):
                                      collector_name=command.collector_name.name,
                                      port=command.service.port if command.service else None,
                                      protocol=command.service.protocol_str if command.service else None)
-        elif command.collector_name.type == CollectorType.ipv4_network:
+        elif command.collector_name.type == CollectorType.network:
             report_item = ReportItem(ip=command.ipv4_network.network,
                                      collector_name=command.collector_name.name)
         elif command.collector_name.type == CollectorType.host_name_service or \
@@ -1627,6 +1651,11 @@ class BaseCollector(config.Collector):
         elif command.collector_name.type == CollectorType.company:
             report_item = ReportItem(ip=command.company.name,
                                      collector_name=command.collector_name.name)
+        elif command.collector_name.type == CollectorType.path:
+            report_item = ReportItem(ip=command.path.get_path(),
+                                     collector_name=command.collector_name.name)
+        else:
+            raise NotImplementedError("case not implemented")
         return report_item
 
     def add_execution_info_str(self, os_command: Command, key: str, value: str) -> None:
@@ -1684,6 +1713,7 @@ class BaseCollector(config.Collector):
                                host_name: HostName = None,
                                email: Email = None,
                                company: Company = None,
+                               path: Path = None,
                                xml_file: str = None,
                                json_file: str = None,
                                output_path: str = None,
@@ -1698,6 +1728,7 @@ class BaseCollector(config.Collector):
         :param network: The IPv4 network object to which the collector belongs
         :param email: The email object to which the collector belongs
         :param company: The company object to which the collector belongs
+        :param path: The path object to which the collector belongs
         :param collector_name: The name of the collector
         :param xml_file: Path to the command's XML output file
         :param json_file: Path to the command's JSON output file
@@ -1717,7 +1748,8 @@ class BaseCollector(config.Collector):
                                              host=host,
                                              host_name=host_name,
                                              email=email,
-                                             company=company)
+                                             company=company,
+                                             path=path)
         return self._domain_utils.add_command(session=session,
                                               os_command=os_command,
                                               collector_name=collector_name,
@@ -1727,6 +1759,7 @@ class BaseCollector(config.Collector):
                                               host_name=host_name,
                                               email=email,
                                               company=company,
+                                              path=path,
                                               xml_file=xml_file,
                                               json_file=json_file,
                                               output_path=output_path,
@@ -3101,6 +3134,33 @@ class CompanyCollector(BaseCollectorType):
 
         :param session: Sqlalchemy session that manages persistence operations for ORM-mapped objects
         :param company: The company object based on which commands shall be created.
+        :param collector_name: The name of the collector as specified in table collector_name
+        :return: List of Collector instances that shall be processed.
+        """
+        raise NotImplementedError("the function is not implemented!")
+
+
+class PathCollector(BaseCollectorType):
+    """
+    Collectors that operate on a path level must be a sub class of this class
+    """
+
+    @staticmethod
+    def get_collector_type_name() -> str:
+        return "company"
+
+    def create_path_commands(self,
+                             session: Session,
+                             path: Path,
+                             collector_name: CollectorName) -> List[BaseCollector]:
+        """This method creates and returns a list of commands based on the given path.
+
+        This method determines whether the command exists already in the database. If it does, then it does nothing,
+        else, it creates a new Collector entry in the database for each new command as well as it creates a corresponding
+        operating system command and attaches it to the respective newly created Collector class.
+
+        :param session: Sqlalchemy session that manages persistence operations for ORM-mapped objects
+        :param path: The path object based on which commands shall be created.
         :param collector_name: The name of the collector as specified in table collector_name
         :return: List of Collector instances that shall be processed.
         """

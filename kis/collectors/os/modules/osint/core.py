@@ -51,6 +51,7 @@ from database.model import IpSupport
 from database.model import PathType
 from database.model import ExecutionInfoType
 from database.model import CertType
+from database.model import Path
 from view.core import ReportItem
 from sqlalchemy.orm.session import Session
 
@@ -90,7 +91,8 @@ class BaseKisImport(BaseCollector):
                       host_name: HostName = None,
                       email: Email = None,
                       company: Company = None,
-                      service: Service = None) -> List[BaseCollector]:
+                      service: Service = None,
+                      path: Path = None) -> List[BaseCollector]:
         """Returns a list of commands based on the provided information."""
         collectors = []
         python3_command = self._path_python3
@@ -112,8 +114,10 @@ class BaseKisImport(BaseCollector):
             target = company.name
         elif service:
             target = service.get_urlparse().geturl()
+        elif path:
+            target = path.get_path()
         else:
-            raise ValueError("parameter host, host_name, email, company, or service is required")
+            raise ValueError("parameter host, host_name, email, company, service, or path is required")
         if not os.path.isfile(kisimport_command):
             raise FileNotFoundError("script '{}' does not exist".format(kisimport_command))
         # Create command
@@ -138,6 +142,7 @@ class BaseKisImport(BaseCollector):
                                               company=company,
                                               output_path=output_path,
                                               service=service,
+                                              path=path,
                                               input_file=input_file)
         command.execution_info[ExecutionInfoType.command_id.name] = str(command.id)
         collectors.append(command)

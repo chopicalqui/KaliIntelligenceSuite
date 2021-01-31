@@ -367,7 +367,7 @@ class BaseKisTestCase(unittest.TestCase):
                                                workspace_str=workspace_str,
                                                network=ipv4_network_str,
                                                scope=scope)
-            collector_name_type = CollectorType.ipv4_network
+            collector_name_type = CollectorType.network
         elif host_name_str:
             host_name = self.create_hostname(session=session,
                                              workspace_str=workspace_str,
@@ -688,7 +688,7 @@ class BaseKisTestCase(unittest.TestCase):
                         CollectorName.name == collector_name,
                         Workspace.name == workspace_str).one_or_none()
         if ipv4_network:
-            collector_name_type = collector_name_type if collector_name_type else CollectorType.ipv4_network
+            collector_name_type = collector_name_type if collector_name_type else CollectorType.network
             rvalue = session.query(Command) \
                 .join(CollectorName) \
                 .join((Network, Command.ipv4_network)) \
@@ -830,7 +830,7 @@ class BaseKisTestCase(unittest.TestCase):
                                        collector_name=self._engine.get_or_create(session,
                                                                                  CollectorName,
                                                                                  name="tcpnmap",
-                                                                                 type=CollectorType.ipv4_network),
+                                                                                 type=CollectorType.network),
                                        network=network)
         command = self._domain_utils.add_command(session=session,
                                                  os_command=["whois", "10"],

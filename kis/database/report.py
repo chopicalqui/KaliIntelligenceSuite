@@ -924,6 +924,26 @@ class _PathReportGenerator(_BaseReportGenerator):
                                    excluded_items=self._excluded_items,
                                    scope=self._scope)
 
+    def get_text(self) -> List[str]:
+        """
+        This method returns all information as a list of text.
+        :return:
+        """
+        rvalue = []
+        for workspace in self._workspaces:
+            for domain in workspace.domain_names:
+                for host_name in domain.host_names:
+                    for service in host_name.services:
+                        for path in service.paths:
+                            if path.commands and self._filter(path):
+                                rvalue.extend(path.get_text(ident=0,
+                                                            scope=self._scope,
+                                                            exclude_collectors=self._excluded_collectors,
+                                                            include_collectors=self._included_collectors,
+                                                            report_visibility=self._visibility,
+                                                            color=self._color))
+        return rvalue
+
     def get_csv(self) -> List[List[str]]:
         """
         This method returns all information as CSV.

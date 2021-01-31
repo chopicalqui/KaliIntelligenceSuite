@@ -36,6 +36,7 @@ from database.model import DomainName
 from database.model import Network
 from database.model import Email
 from database.model import Company
+from database.model import Path
 from database.model import CommandStatus
 from collectors.os.collector import CollectorProducer
 from collectors.os.modules.core import Ipv4NetworkCollector
@@ -45,6 +46,7 @@ from collectors.os.modules.core import DomainCollector
 from collectors.os.modules.core import HostNameServiceCollector
 from collectors.os.modules.core import EmailCollector
 from collectors.os.modules.core import CompanyCollector
+from collectors.os.modules.core import PathCollector
 from view.core import ReportItem
 from view.core import BaseUiManager
 from sqlalchemy import and_
@@ -268,6 +270,28 @@ class StatWindow(BaseWindow):
                                     .join((CollectorName, Command.collector_name)) \
                                     .join((Company, Command.company)) \
                                     .join((Workspace, Company.workspace)) \
+                                    .filter(and_(Workspace.name == self._producer_thread.workspace,
+                                                 CollectorName.name == collector.name,
+                                                 Command.status == item)) \
+                                    .group_by(Command.status).scalar()
+                            if issubclass(collector.collector_class, PathCollector):
+                                count = session.query(func.count(Command.status)) \
+                                    .join((CollectorName, Command.collector_name)) \
+                                    .join((Path, Command.path)) \
+                                    .join((Service, Path.service)) \
+                                    .join((Host, Service.host)) \
+                                    .join((Workspace, Host.workspace)) \
+                                    .filter(and_(Workspace.name == self._producer_thread.workspace,
+                                                 CollectorName.name == collector.name,
+                                                 Command.status == item)) \
+                                    .group_by(Command.status).scalar()
+                                count += session.query(func.count(Command.status)) \
+                                    .join((CollectorName, Command.collector_name)) \
+                                    .join((Path, Command.path)) \
+                                    .join((Service, Path.service)) \
+                                    .join((HostName, Service.host_name)) \
+                                    .join((DomainName, HostName.domain_name)) \
+                                    .join((Workspace, Host.workspace)) \
                                     .filter(and_(Workspace.name == self._producer_thread.workspace,
                                                  CollectorName.name == collector.name,
                                                  Command.status == item)) \

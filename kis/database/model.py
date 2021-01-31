@@ -27,7 +27,7 @@ import urllib
 import logging
 import subprocess
 import ipaddress
-import stat
+import re
 import pwd
 import sqlalchemy as sa
 from sqlalchemy import Column
@@ -292,17 +292,19 @@ class DnsResourceRecordType(enum.Flag):
     ns = 16
     mx = 32
     alias = 64
+    vhost = 128
 
 
 class CollectorType(enum.Enum):
-    service = 10
-    host = 20
+    service = enum.auto()
+    host = enum.auto()
     # todo: update for new collector
-    domain = 30
-    ipv4_network = 40
-    host_name_service = 50
-    email = 60
-    company = 70
+    domain = enum.auto()
+    network = enum.auto()
+    host_name_service = enum.auto()
+    email = enum.auto()
+    company = enum.auto()
+    path = enum.auto()
 
 
 class ProtocolType(enum.Enum):
@@ -327,6 +329,7 @@ class TlsPreference(enum.Enum):
     client = enum.auto()
     indeterminate = enum.auto()
 # sudo -u postgres psql kis -c "alter type public.tlspreference add value 'indeterminate';"
+
 
 class CipherSuiteSecurity(enum.Enum):
     insecure = enum.auto()
@@ -2554,10 +2557,12 @@ class Command(DeclarativeBase):
                              unique=False)
     email_id = Column(Integer, ForeignKey("email.id", ondelete='cascade'), nullable=True, unique=False)
     company_id = Column(Integer, ForeignKey("company.id", ondelete='cascade'), nullable=True, unique=False)
+    path_id = Column(Integer, ForeignKey("path.id", ondelete='cascade'), nullable=True, unique=False)
     creation_date = Column(DateTime, nullable=False, default=datetime.utcnow())
     last_modified = Column(DateTime, nullable=True, onupdate=datetime.utcnow())
     start_time = Column(DateTime, nullable=True, unique=False)
     stop_time = Column(DateTime, nullable=True, unique=False)
+    # todo: update for new collector
     host = relationship(Host,
                         backref=backref("commands",
                                         cascade="all",
@@ -2582,6 +2587,10 @@ class Command(DeclarativeBase):
                            backref=backref("commands",
                                            cascade="all",
                                            order_by="asc(Command.collector_name_id)"))
+    path = relationship("Path",
+                        backref=backref("commands",
+                                        cascade="all",
+                                        order_by="asc(Command.collector_name_id)"))
     collector_name = relationship(CollectorName, backref=backref("commands"))
     files = relationship('File', cascade='all', secondary='command_file_mapping', back_populates="commands")
     # todo: update for new collector
@@ -2600,15 +2609,19 @@ class Command(DeclarativeBase):
                                        'company_id', name='_command_company_unique'),
                       UniqueConstraint('os_command',
                                        'collector_name_id',
+                                       'path_id', name='_command_path_unique'),
+                      UniqueConstraint('os_command',
+                                       'collector_name_id',
                                        'service_id',
                                        'host_name_id', name='_command_service_host_name_unique'),
-                      CheckConstraint('(case when not service_id is null and not host_id is null and host_name_id is null and network_id is null and email_id is null and company_id is null then 1 else 0 end'
-                                      '+case when not service_id is null and host_id is null and not host_name_id is null and network_id is null and email_id is null and company_id is null then 1 else 0 end'
-                                      '+case when service_id is null and not host_id is null and host_name_id is null and network_id is null and email_id is null and company_id is null then 1 else 0 end'
-                                      '+case when service_id is null and host_id is null and not host_name_id is null and network_id is null and email_id is null and company_id is null then 1 else 0 end'
-                                      '+case when service_id is null and host_id is null and host_name_id is null and not network_id is null and email_id is null and company_id is null then 1 else 0 end'
-                                      '+case when service_id is null and host_id is null and host_name_id is null and network_id is null and not email_id is null and company_id is null then 1 else 0 end'
-                                      '+case when service_id is null and host_id is null and host_name_id is null and network_id is null and email_id is null and company_id is not null then 1 else 0 end) = 1',
+                      CheckConstraint('(case when not service_id is null and not host_id is null and host_name_id is null and network_id is null and email_id is null and company_id is null and path_id is null then 1 else 0 end'
+                                      '+case when not service_id is null and host_id is null and not host_name_id is null and network_id is null and email_id is null and company_id is null and path_id is null then 1 else 0 end'
+                                      '+case when service_id is null and not host_id is null and host_name_id is null and network_id is null and email_id is null and company_id is null and path_id is null then 1 else 0 end'
+                                      '+case when service_id is null and host_id is null and not host_name_id is null and network_id is null and email_id is null and company_id is null and path_id is null then 1 else 0 end'
+                                      '+case when service_id is null and host_id is null and host_name_id is null and not network_id is null and email_id is null and company_id is null and path_id is null then 1 else 0 end'
+                                      '+case when service_id is null and host_id is null and host_name_id is null and network_id is null and not email_id is null and company_id is null and path_id is null then 1 else 0 end'
+                                      '+case when service_id is null and host_id is null and host_name_id is null and network_id is null and email_id is null and company_id is null and not path_id is null then 1 else 0 end'
+                                      '+case when service_id is null and host_id is null and host_name_id is null and network_id is null and email_id is null and company_id is not null and path_id is null then 1 else 0 end) = 1',
                                       name='_command_mutex_constraint'),)
 
     def __init__(self,
@@ -2619,7 +2632,8 @@ class Command(DeclarativeBase):
                  host_name: Host = None,
                  ipv4_network: Network = None,
                  email: Email = None,
-                 company = None):
+                 company = None,
+                 path = None):
         # todo: update for new collector
         self.os_command = os_command
         self.collector_name = collector_name
@@ -2641,6 +2655,8 @@ class Command(DeclarativeBase):
             self.email = email
         elif company:
             self.company = company
+        elif path:
+            self.path = path
 
     @property
     def workspace(self) -> Workspace:
@@ -2655,12 +2671,14 @@ class Command(DeclarativeBase):
         elif self.collector_name.type == CollectorType.host or \
                 self.collector_name.type == CollectorType.service:
             workspace = self.host.workspace
-        elif self.collector_name.type == CollectorType.ipv4_network:
+        elif self.collector_name.type == CollectorType.network:
             workspace = self.ipv4_network.workspace
         elif self.collector_name.type == CollectorType.email:
             workspace = self.email.host_name.domain_name.workspace
         elif self.collector_name.type == CollectorType.company:
             workspace = self.company.workspace
+        elif self.collector_name.type == CollectorType.path:
+            workspace = self.path.service.workspace
         else:
             raise NotImplementedError("case not implemented")
         return workspace
@@ -2678,12 +2696,14 @@ class Command(DeclarativeBase):
         elif self.collector_name.type == CollectorType.host or \
                 self.collector_name.type == CollectorType.service:
             item = self.host.address
-        elif self.collector_name.type == CollectorType.ipv4_network:
+        elif self.collector_name.type == CollectorType.network:
             item = self.ipv4_network.network
         elif self.collector_name.type == CollectorType.email:
             item = self.email.email_address
         elif self.collector_name.type == CollectorType.company:
             item = self.company.name
+        elif self.collector_name.type == CollectorType.path:
+            item = self.path.get_path()
         else:
             raise NotImplementedError("case not implemented")
         return item
@@ -2757,15 +2777,28 @@ class Command(DeclarativeBase):
             file_name = "{}-{}-{}-{}".format(self.collector_name.name,
                                              self.host.address,
                                              self.service.protocol_str, self.service.port)
-        elif self.collector_name.type == CollectorType.ipv4_network:
+        elif self.collector_name.type == CollectorType.network:
             file_name = "{}-{}".format(self.collector_name.name, self.ipv4_network.network.replace("/", "-"))
         elif self.collector_name.type == CollectorType.email:
             file_name = "{}-{}".format(self.collector_name.name, self.email.email_address)
         elif self.collector_name.type == CollectorType.company:
             file_name = "{}-{}".format(self.collector_name.name, self.company.name)
+        elif self.collector_name.type == CollectorType.path:
+            if self.path.service.host_name is not None:
+                file_name = "{}-{}-{}-{}:{}".format(self.collector_name.name,
+                                                    self.path.service.host_name.full_name,
+                                                    self.path.service.protocol_str, self.path.service.port,
+                                                    self.path.name)
+            elif self.path.service.host is not None:
+                file_name = "{}-{}-{}-{}:{}".format(self.collector_name.name,
+                                                    self.path.service.host.full_name,
+                                                    self.path.service.protocol_str, self.path.service.port,
+                                                    self.path.name)
+            else:
+                raise NotImplementedError("case not implemented")
         else:
             raise NotImplementedError("case not implemented")
-        return file_name
+        return re.sub("[\\\\/\"'*?<>|]", "_", file_name)
 
     @property
     def execution_info(self) -> Dict[str, str]:
@@ -2975,6 +3008,10 @@ class Command(DeclarativeBase):
             rvalue = rvalue and self.company.is_processable(included_items=included_items,
                                                             excluded_items=excluded_items,
                                                             scope=scope)
+        if self.path is not None:
+            rvalue = rvalue and self.path.is_processable(included_items=included_items,
+                                                         excluded_items=excluded_items,
+                                                         scope=scope)
         return rvalue
 
     def get_text(self,

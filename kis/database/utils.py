@@ -157,9 +157,32 @@ class Engine:
                 .join((DomainName, HostName.domain_name)) \
                 .join((Workspace, DomainName.workspace)) \
                 .filter(Workspace.name == workspace, Command.status == CommandStatus.pending)
+            commands_company = session.query(Command.id) \
+                .join((CollectorName, Command.collector_name)) \
+                .join((Company, Command.company)) \
+                .join((Workspace, Company.workspace)) \
+                .filter(Workspace.name == workspace, Command.status == CommandStatus.pending)
+            commands_host_path = session.query(Command.id) \
+                .join((CollectorName, Command.collector_name)) \
+                .join((Path, Command.path)) \
+                .join((Service, Path.service)) \
+                .join((Host, Service.host)) \
+                .join((Workspace, Host.workspace)) \
+                .filter(Workspace.name == workspace, Command.status == CommandStatus.pending)
+            commands_host_name_path = session.query(Command.id) \
+                .join((CollectorName, Command.collector_name)) \
+                .join((Path, Command.path)) \
+                .join((Service, Path.service)) \
+                .join((HostName, Service.host_name)) \
+                .join((DomainName, HostName.domain_name)) \
+                .join((Workspace, DomainName.workspace)) \
+                .filter(Workspace.name == workspace, Command.status == CommandStatus.pending)
             command_ids = commands_host.union(commands_host_name) \
                 .union(commands_ipv4_network) \
-                .union(commands_email).all()
+                .union(commands_email) \
+                .union(commands_company) \
+                .union(commands_host_path) \
+                .union(commands_host_name_path).all()
             for command in session.query(Command).filter(Command.id.in_(command_ids)):
                 if collector_name == command.collector_name.name or not collector_name:
                     command.status = CommandStatus.terminated
@@ -168,12 +191,14 @@ class Engine:
         """This method resets all status that have not successfully completed to status pending"""
         with self.session_scope() as session:
             # todo: update for new collector
+            # delete host commands
             commands_host = session.query(Command.id)\
                 .join((Host, Command.host))\
                 .join((Workspace, Host.workspace))\
                 .filter(Workspace.name == workspace, Command.status.in_([CommandStatus.pending,
                                                                         CommandStatus.collecting])).subquery()
             session.query(Command).filter(Command.id.in_(commands_host)).delete(synchronize_session='fetch')
+            # delete host name commands
             commands_host_name = session.query(Command.id)\
                 .join((HostName, Command.host_name))\
                 .join((DomainName, HostName.domain_name))\
@@ -181,12 +206,14 @@ class Engine:
                 .filter(Workspace.name == workspace, Command.status.in_([CommandStatus.pending,
                                                                         CommandStatus.collecting])).subquery()
             session.query(Command).filter(Command.id.in_(commands_host_name)).delete(synchronize_session='fetch')
+            # delete network commands
             commands_ipv4_network = session.query(Command.id)\
                 .join((Network, Command.ipv4_network))\
                 .join((Workspace, Network.workspace))\
                 .filter(Workspace.name == workspace, Command.status.in_([CommandStatus.pending,
                                                                         CommandStatus.collecting])).subquery()
             session.query(Command).filter(Command.id.in_(commands_ipv4_network)).delete(synchronize_session='fetch')
+            # delete email commands
             commands_email = session.query(Command.id)\
                 .join((Email, Command.email))\
                 .join((HostName, Email.host_name))\
@@ -195,6 +222,33 @@ class Engine:
                 .filter(Workspace.name == workspace, Command.status.in_([CommandStatus.pending,
                                                                         CommandStatus.collecting])).subquery()
             session.query(Command).filter(Command.id.in_(commands_email)).delete(synchronize_session='fetch')
+            # delete company commands
+            commands_company = session.query(Command.id) \
+                .join((Company, Command.company)) \
+                .join((Workspace, Company.workspace)) \
+                .filter(Workspace.name == workspace, Command.status.in_([CommandStatus.pending,
+                                                                        CommandStatus.collecting])).subquery()
+            session.query(Command).filter(Command.id.in_(commands_company)).delete(synchronize_session='fetch')
+            # delete path commands
+            commands_host_path = session.query(Command.id) \
+                .join((CollectorName, Command.collector_name)) \
+                .join((Path, Command.path)) \
+                .join((Service, Path.service)) \
+                .join((Host, Service.host)) \
+                .join((Workspace, Host.workspace)) \
+                .filter(Workspace.name == workspace, Command.status.in_([CommandStatus.pending,
+                                                                        CommandStatus.collecting])).subquery()
+            session.query(Command).filter(Command.id.in_(commands_host_path)).delete(synchronize_session='fetch')
+            commands_host_name_path = session.query(Command.id) \
+                .join((CollectorName, Command.collector_name)) \
+                .join((Path, Command.path)) \
+                .join((Service, Path.service)) \
+                .join((HostName, Service.host_name)) \
+                .join((DomainName, HostName.domain_name)) \
+                .join((Workspace, DomainName.workspace)) \
+                .filter(Workspace.name == workspace, Command.status.in_([CommandStatus.pending,
+                                                                        CommandStatus.collecting])).subquery()
+            session.query(Command).filter(Command.id.in_(commands_host_name_path)).delete(synchronize_session='fetch')
 
     def init(self, load_cipher_suites: bool):
         """This method initializes the database."""

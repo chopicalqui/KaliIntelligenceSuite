@@ -2774,7 +2774,7 @@ class TestAddCommand(BaseKisTestCase):
                                         address=address,
                                         workspace_str=item)
             if network_str:
-                collector_name = self.create_collector_name(session=session, type=CollectorType.ipv4_network)
+                collector_name = self.create_collector_name(session=session, type=CollectorType.network)
                 network = self.create_network(session=session,
                                               network=network_str,
                                               workspace_str=item)

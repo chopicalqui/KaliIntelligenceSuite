@@ -48,6 +48,7 @@ from database.model import Source
 from database.model import CollectorType
 from database.model import Email
 from database.model import Company
+from database.model import Path
 from database.model import CommandStatus
 from database.model import VhostChoice
 from database.utils import Engine
@@ -61,6 +62,7 @@ from collectors.os.modules.core import Ipv4NetworkCollector
 from collectors.os.modules.core import HostNameServiceCollector
 from collectors.os.modules.core import EmailCollector
 from collectors.os.modules.core import CompanyCollector
+from collectors.os.modules.core import PathCollector
 from collectors.os.modules.core import ExecutionFailedException
 from collectors.os.modules.core import Delay
 from collectors.os.modules.core import BaseCollector
@@ -385,7 +387,7 @@ class CollectorProducer(Thread):
                                 collector_name = self._engine.get_or_create(session,
                                                                             CollectorName,
                                                                             name=collector.name,
-                                                                            type=CollectorType.ipv4_network)
+                                                                            type=CollectorType.network)
                                 commands = commands + self._create_ipv4_network_commands(session, collector_name)
                             if isinstance(collector.instance, HostNameServiceCollector):
                                 collector_name = self._engine.get_or_create(session,
@@ -405,6 +407,12 @@ class CollectorProducer(Thread):
                                                                             name=collector.name,
                                                                             type=CollectorType.company)
                                 commands = commands + self._create_company_commands(session, collector_name)
+                            if isinstance(collector.instance, PathCollector):
+                                collector_name = self._engine.get_or_create(session,
+                                                                            CollectorName,
+                                                                            name=collector.name,
+                                                                            type=CollectorType.path)
+                                commands = commands + self._create_path_commands(session, collector_name)
                             self._engine.get_or_create(session, Source, name=collector.name)
                             for item in commands:
                                 if (item.status_value <= CommandStatus.collecting.value or
@@ -529,7 +537,7 @@ class CollectorProducer(Thread):
     def _create_host_name_service_commands(self,
                                            session,
                                            collector_name: CollectorName) -> List[Command]:
-        """This method creates all OS commands that rely on service information (e.g. port number)"""
+        """This method creates all OS commands that rely on service information"""
         commands = []
         q = session.query(Service) \
             .join((HostName, Service.host_name)) \
@@ -551,7 +559,7 @@ class CollectorProducer(Thread):
     def _create_email_commands(self,
                                session,
                                collector_name: CollectorName) -> List[Command]:
-        """This method creates all OS commands that rely on email information (e.g. port number)"""
+        """This method creates all OS commands that rely on email information"""
         commands = []
         q = session.query(Email) \
             .join((HostName, Email.host_name)) \
@@ -571,7 +579,7 @@ class CollectorProducer(Thread):
     def _create_company_commands(self,
                                  session,
                                  collector_name: CollectorName) -> List[Command]:
-        """This method creates all OS commands that rely on email information (e.g. port number)"""
+        """This method creates all OS commands that rely on company information"""
         commands = []
         q = session.query(Company) \
             .join((Workspace, Company.workspace)) \
@@ -583,6 +591,32 @@ class CollectorProducer(Thread):
                 commands = commands + self.current_collector.instance.create_company_commands(session,
                                                                                               company,
                                                                                               collector_name)
+                self._verify_command(commands)
+        return commands
+
+    def _create_path_commands(self,
+                              session,
+                              collector_name: CollectorName) -> List[Command]:
+        """This method creates all OS commands that rely on path information"""
+        commands = []
+        q = session.query(Path) \
+            .join((Service, Path.service)) \
+            .join((Host, Service.host)) \
+            .join((Workspace, Host.workspace)) \
+            .filter(Workspace.name == self._workspace)
+        q_all = q.union_all(session.query(Path) \
+            .join((Service, Path.service)) \
+            .join((HostName, Service.host_name)) \
+            .join((DomainName, HostName.domain_name)) \
+            .join((Workspace, DomainName.workspace)) \
+            .filter(Workspace.name == self._workspace))
+        for path in q_all:
+            if path.is_processable(self._included_items,
+                                   self._excluded_items,
+                                   self.current_collector.instance.active_collector):
+                commands = commands + self.current_collector.instance.create_path_commands(session,
+                                                                                           path,
+                                                                                           collector_name)
                 self._verify_command(commands)
         return commands
 
@@ -687,6 +721,37 @@ class CollectorProducer(Thread):
                          .join((Workspace, Company.workspace)) \
                          .filter(and_(Workspace.name == self._workspace,
                                       CollectorName.name == argument.name)).all():
+                        if command.company.is_processable(self._included_items,
+                                                          self._excluded_items):
+                            try:
+                                source = self._engine.get_or_create(session, Source, name=command.collector_name.name)
+                                report_item = BaseCollector.get_report_item(command)
+                                argument.instance.verify_command_execution(session,
+                                                                           command=command,
+                                                                           source=source,
+                                                                           report_item=report_item)
+                            except Exception as e:
+                                session.rollback()
+                                self.log_exception(e)
+                    # Analyze path collectors
+                    host_paths = session.query(Command) \
+                         .join((CollectorName, Command.collector_name)) \
+                         .join((Path, Command.path)) \
+                         .join((Service, Path.service)) \
+                         .join((Host, Service.host)) \
+                         .join((Workspace, Company.workspace)) \
+                         .filter(and_(Workspace.name == self._workspace,
+                                      CollectorName.name == argument.name)).all()
+                    host_paths.union_all(session.query(Command) \
+                         .join((CollectorName, Command.collector_name)) \
+                         .join((Path, Command.path)) \
+                         .join((Service, Path.service)) \
+                         .join((HostName, Service.host_name)) \
+                         .join((DomainName, HostName.domain_name)) \
+                         .join((Workspace, Company.workspace)) \
+                         .filter(and_(Workspace.name == self._workspace,
+                                      CollectorName.name == argument.name)).all())
+                    for command in host_paths:
                         if command.company.is_processable(self._included_items,
                                                           self._excluded_items):
                             try:
@@ -842,6 +907,10 @@ class CollectorConsumer(Thread):
                                                 CompanyCollector):
                                     self._current_host = command.company.name
                                     self._current_service = "n/a"
+                                elif isinstance(self._producer_thread.current_collector.instance,
+                                                PathCollector):
+                                    self._current_host = command.path.get_path()
+                                    self._current_service = "{}/{}".format(protocol, port)
                                 else:
                                     self._current_host = "undefined"
                                     self._current_service = "n/a"
