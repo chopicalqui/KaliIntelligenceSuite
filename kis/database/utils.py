@@ -2688,7 +2688,7 @@ class Setup:
             self._db_config.write()
         for file in kis_scripts:
             base_name = os.path.splitext(file)[0]
-            real_path = os.path.abspath(os.path.dirname(__file__))
+            real_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
             python_script = os.path.join(real_path, file)
             os_command = ["ln", "-sT", python_script, os.path.join("/usr/bin", base_name)]
             self._setup_commands.append(SetupCommand(description="creating link file for {}".format(python_script),

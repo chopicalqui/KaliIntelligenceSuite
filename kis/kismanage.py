@@ -119,7 +119,7 @@ class ManageDatabase:
     GIT_REPOSITORIES = []
     KALI_PACKAGES = ["eyewitness", "gobuster", "nfs-common", "ftp", "ntpdate", "csvkit", "wapiti",
                      "changeme", "theharvester", "sidguesser", "smtp-user-enum", "sublist3r",
-                     "tcptraceroute", "crackmapexec", "dotdotpwn", "seclists"]
+                     "tcptraceroute", "crackmapexec", "dotdotpwn", "seclists", "smbclient", "enum4linux"]
 
     def __init__(self, engine: Engine, arguments: argparse.Namespace, parser):
         self._parser = parser

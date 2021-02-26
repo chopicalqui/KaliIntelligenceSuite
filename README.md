@@ -359,7 +359,7 @@ Note that KIS is only tested on Kali Linux and it has the following minimum syst
 
 In order to use KIS, the following configuration steps must be successfully accomplished beforehand:
 
- -  [mandatory] Clone the repository to a directory you prefere. Depending on your location preference, you might have 
+ -  [mandatory] Clone the repository to a directory you prefer. Depending on your location preference, you might have
     to execute this clone with root privileges.
 
     ```bash
