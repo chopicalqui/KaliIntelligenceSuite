@@ -227,8 +227,9 @@ The column **User** specifies the user with which the respective operating syste
 
 | Priority | Name                      | Level           | Type     | IP Support | Timeout | User   |
 | --------:| ------------------------- |:---------------:|:--------:| ---------- | ------- | ------ |
-| -        | ftpdotdotpwn              | service         | Active   | IPv4       | -       | nobody |
+| -        | ftpdotdotpwn              | service         | Active   | IPv4, IPv6 | -       | nobody |
 | -        | httpdotdotpwn             | service         | Active   | IPv4, IPv6 | -       | nobody |
+| -        | tftpdotdotpwn             | service         | Active   | IPv4, IPv6 | -       | nobody |
 | -        | httphydra                 | service         | Active   | IPv4, IPv6 | -       | nobody |
 | -        | rdphydra                  | service         | Active   | IPv4, IPv6 | -       | nobody |
 | -        | smbhydra                  | service         | Active   | IPv4, IPv6 | -       | nobody |
@@ -253,7 +254,7 @@ The column **User** specifies the user with which the respective operating syste
 | 170      | dnsgobuster               | domain          | Active   | -          | -       | nobody |
 | 210      | whoisdomain               | domain          | Active   | -          | 10      | nobody |
 | 215      | dnsspf                    | domain          | Active   | -          | -       | nobody |
-| 220      | dnsdmark                  | domain          | Active   | -          | -       | nobody |
+| 220      | dnsdmarc                  | domain          | Active   | -          | -       | nobody |
 | 235      | dnsdkim                   | domain          | Active   | -          | -       | nobody |
 | 240      | dnstakeover               | domain          | Active   | -          | -       | nobody |
 | 310      | dnshost                   | domain          | Active   | -          | -       | nobody |
@@ -277,6 +278,7 @@ The column **User** specifies the user with which the respective operating syste
 | 1250     | udpnmapdomain             | domain          | Active   | IPv4, IPv6 | -       | root   |
 | 1270     | icmpnmapnetwork           | network         | Active   | IPv4, IPv6 | -       | root   |
 | 1300     | tcpmasscannetwork         | network         | Active   | IPv4       | -       | root   |
+| 1320     | vhostgobuster             | service         | Active   | IPv4, IPv6 | -       | nobody |
 | 1350     | anyservicenmap            | service         | Active   | IPv4, IPv6 | -       | root   |
 | 1820     | tcptraceroute             | host            | Active   | IPv4, IPv6 | -       | nobody |
 | 1900     | httpmsfrobotstxt          | service, vhost  | Active   | IPv4, IPv6 | -       | kali   |
@@ -308,7 +310,6 @@ The column **User** specifies the user with which the respective operating syste
 | 11400    | pgsqlhydra                | service         | Active   | IPv4, IPv6 | -       | nobody |
 | 11500    | snmphydra                 | service         | Active   | IPv4, IPv6 | -       | nobody |
 | 11600    | sshchangeme               | service         | Active   | IPv4, IPv6 | -       | kali   |
-| 91100    | enum4linux                | service         | Active   | IPv4       | -       | nobody |
 | 11610    | httpchangeme              | service, vhost  | Active   | IPv4, IPv6 | -       | kali   |
 | 11700    | ipmi                      | service         | Active   | IPv4, IPv6 | -       | kali   |
 | 12100    | ftpfilelist               | service         | Active   | IPv4, IPv6 | -       | nobody |
@@ -338,6 +339,7 @@ The column **User** specifies the user with which the respective operating syste
 | 61500    | rpcinfo                   | service         | Active   | IPv4, IPv6 | -       | nobody |
 | 71100    | ikescan                   | service         | Active   | IPv4       | -       | root   |
 | 91050    | httpwpscan                | service         | Active   | IPv4, IPv6 | -       | kali   |
+| 91100    | enum4linux                | service         | Active   | IPv4       | -       | nobody |
 | 91200    | httpnikto                 | service, vhost  | Active   | IPv4       | -       | nobody |
 | 91225    | httpburpsuitepro          | domain, host    | Active   | IPv4, IPv6 | -       | nobody |
 | 91250    | httpdavtest               | service, vhost  | Active   | IPv4, IPv6 | -       | nobody |

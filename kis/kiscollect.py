@@ -171,17 +171,21 @@ review scan results of all collectors except httpnikto and httpgobuster
 $ kisreport host -w $ws --text -X httpnikto httpgobuster
 
 
-III. active intel gathering during external penetration test
+III. additional active intel gathering during external penetration test
 
 In addition, to the tests in example I and II, the following commands can be executed on in-scope domains:
 
-# Add domains in scope and execute collection
+# Add domains in scope and execute collection. Note that you might want to specify a DNS server to test for DNS
+# zone transfers
+$ dns_server=
 $ kiscollect -w $ws --debug --strict -t5 --dnstakeover --dnsamassactive --dnsdkim --dnsdmarc --vhostgobuster \
---dnsgobuster --dnsenum --dnsrecon --dnszonetransfer --smtpuserenum --httpsqlmap
+--dnsgobuster --dnsenum --dnsrecon --dnszonetransfer --smtpuserenum --httpsqlmap --dns-server $dns_server
 
 # Find additional domains using dnsgen and massdns
 $ kisreport domain -w $ws --csv --scope within | csvcut -c "Host Name" | sort -u | dnsgen - | massdns -r \
 /opt/lazydns/resolvers.txt -c 5 -t A -o S --flush 2> /dev/null
+
+Finally, you might want to re-run the entire process to collect further information.
 '''
         parser = argparse.ArgumentParser(description=__doc__, formatter_class=SortingHelpFormatter, epilog=epilog)
         collector_group = parser.add_argument_group('collectors', 'use the following arguments to collect intelligence')

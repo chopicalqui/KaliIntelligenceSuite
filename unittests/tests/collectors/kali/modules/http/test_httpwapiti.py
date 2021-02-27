@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 """
-this file implements all unittests for collector httparachni
+this file implements all unittests for collector httpwapiti
 """
 
 __author__ = "Lukas Reiter"

@@ -26,11 +26,13 @@ import tempfile
 from typing import List
 from unittests.tests.collectors.kali.modules.http.core import BaseKaliHttpCollectorTestCase
 from unittests.tests.collectors.core import CollectorProducerTestSuite
-from collectors.os.modules.http.httpgobuster import CollectorClass as HttpGobusterCollector
+from collectors.os.modules.http.vhostgobuster import CollectorClass as VhostGobusterCollector
 from database.model import Command
 from database.model import CollectorType
-from database.model import Path
 from database.model import ScopeType
+from database.model import DomainName
+from database.model import HostName
+from database.model import DnsResourceRecordType
 
 
 class BaseHttpGobusterCollectorTestCase(BaseKaliHttpCollectorTestCase):
@@ -39,8 +41,8 @@ class BaseHttpGobusterCollectorTestCase(BaseKaliHttpCollectorTestCase):
     """
     def __init__(self, test_name: str, **kwargs):
         super().__init__(test_name,
-                         collector_name="httpgobuster",
-                         collector_class=HttpGobusterCollector)
+                         collector_name="vhostgobuster",
+                         collector_class=VhostGobusterCollector)
 
     @staticmethod
     def get_command_text_outputs() -> List[str]:
@@ -48,27 +50,23 @@ class BaseHttpGobusterCollectorTestCase(BaseKaliHttpCollectorTestCase):
         This method returns example outputs of the respective collectors
         :return:
         """
-        return ["""
+        return ["""===============================================================
+Gobuster v3.1.0
+by OJ Reeves (@TheColonial) & Christian Mehlmauer (@firefart)
 ===============================================================
-Gobuster v3.0.1
-by OJ Reeves (@TheColonial) & Christian Mehlmauer (@_FireFart_)
+[+] Url:          https://mysite.com
+[+] Threads:      10
+[+] Wordlist:     common-vhosts.txt
+[+] User Agent:   gobuster/3.1.0
+[+] Timeout:      10s
 ===============================================================
-[+] Url:            http://127.0.0.1
-[+] Threads:        10
-[+] Wordlist:       /usr/share/dirb/wordlists/common.txt
-[+] Status codes:   200,204,301,302,307,401,403
-[+] User Agent:     gobuster/3.0.1
-[+] Show length:    true
-[+] Follow Redir:   true
-[+] Timeout:        10s
+2019/06/21 08:36:00 Starting gobuster
 ===============================================================
-2019/01/01 00:00:00 Starting gobuster
+Found: www.mysite.com
+Found: piwik.mysite.com
+Found: mail.mysite.com
 ===============================================================
-/.hta (Status: 403) [Size: 291]
-/.htaccess (Status: 403) [Size: 296]
-/.htpasswd (Status: 403) [Size: 296]
-===============================================================
-2019/07/28 04:39:18 Finished
+2019/06/21 08:36:05 Finished
 ==============================================================="""]
 
     def test_for_invalid_arguments(self):
@@ -93,10 +91,22 @@ by OJ Reeves (@TheColonial) & Christian Mehlmauer (@_FireFart_)
                                                     arguments={"workspace": self._workspaces[0],
                                                                "output_dir": temp_dir})
             with self._engine.session_scope() as session:
+                self.create_hostname(session=session,
+                                     workspace_str=self._workspaces[0],
+                                     host_name="www.mysite.com",
+                                     scope=ScopeType.all)
+                self.create_hostname(session=session,
+                                     workspace_str=self._workspaces[0],
+                                     host_name="piwik.mysite.com",
+                                     scope=ScopeType.all)
+                self.create_hostname(session=session,
+                                     workspace_str=self._workspaces[0],
+                                     host_name="mail.mysite.com",
+                                     scope=ScopeType.all)
                 source = self.create_source(session, source_str=self._collector_name)
                 command = self.create_command(session=session,
                                               workspace_str=self._workspaces[0],
-                                              command=["gobuster", "127.0.0.1"],
+                                              command=["gobuster", "192.168.1.1"],
                                               collector_name_str=self._collector_name,
                                               collector_name_type=CollectorType.service,
                                               service_port=80,
@@ -111,8 +121,16 @@ by OJ Reeves (@TheColonial) & Christian Mehlmauer (@_FireFart_)
         with self._engine.session_scope() as session:
             results = session.query(Command).count()
             self.assertEqual(1, results)
-            results = session.query(Path).count()
-            self.assertEqual(3, results)
-            results = session.query(Path).filter_by(name="/.hta").one()
-            self.assertEqual(403, results.return_code)
-            self.assertEqual(291, results.size_bytes)
+            results = session.query(DomainName).all()
+            self.assertEqual(1, len(results))
+            results = session.query(HostName).all()
+            self.assertEqual(4, len(results))
+            host_names = [item.full_name for item in results]
+            self.assertIn("www.mysite.com", host_names)
+            self.assertIn("piwik.mysite.com", host_names)
+            self.assertIn("mail.mysite.com", host_names)
+            for item in results:
+                if item.name is not None:
+                    self.assertEqual(1, len(item.host_host_name_mappings))
+                    self.assertEqual(DnsResourceRecordType.vhost, item.host_host_name_mappings[0].type)
+                    self.assertEqual("192.168.1.1", item.host_host_name_mappings[0].host.address)
