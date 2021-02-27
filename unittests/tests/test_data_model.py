@@ -148,13 +148,13 @@ class TestServiceMethod(BaseDataModelTestCase):
         self.init_db()
         with self._engine.session_scope() as session:
             service = self.create_service(session)
-            self._test_check_constraint(session, ex_message='null value in column "name" violates not-null constraint')
+            self._test_check_constraint(session, ex_message="""null value in column "name" of relation "service_method" violates not-null constraint""")
             self._test_check_constraint(session,
                                         name="test",
-                                        ex_message='null value in column "service_id" violates not-null constraint')
+                                        ex_message="""null value in column "service_id" of relation "service_method" violates not-null constraint""")
             self._test_check_constraint(session,
                                         service=service,
-                                        ex_message='null value in column "name" violates not-null constraint')
+                                        ex_message='null value in column "name" of relation "service_method" violates not-null constraint')
 
     def test_success(self):
         self.init_db()
