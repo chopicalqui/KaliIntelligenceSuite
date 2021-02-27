@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 """
 this script implements all functionalities to set up and manage the PostgreSql database. it allows performing the

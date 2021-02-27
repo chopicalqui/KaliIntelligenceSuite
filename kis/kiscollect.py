@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 """
 this script implements a commandline interface to collect intelligence. the collection is performed by so called
@@ -300,12 +300,12 @@ $ kisreport domain -w $ws --csv --scope within | csvcut -c "Host Name" | sort -u
         ogroup.add_argument("--continue",
                             action="store_true",
                             help="indefinitely repeat the execution of selected collectors")
+        args = parser.parse_args()
         if os.geteuid() != 0:
             config = Collector()
             print("{} must be executed with root privileges. afterwards, it is possible to execute "
                   "individual commands with lower privileged users like 'nobody'".format(sys.argv[0]), file=sys.stderr)
             sys.exit(1)
-        args = parser.parse_args()
         if args.list:
             engine.print_workspaces()
             sys.exit(1)

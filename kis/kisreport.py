@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 """
 this script implements all functionalities to query the KIS database and analyze\nthe information gathering results

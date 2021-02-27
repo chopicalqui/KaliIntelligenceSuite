@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 """
 this script can be used to implement custom operations like custom imports or custom operations
