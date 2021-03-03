@@ -136,7 +136,7 @@ $ kiscollect -w $ws --debug --strict -t5 --ftphydra --snmphydra --snmpcheck --sn
 --finger --httpnmap --pop3nmap --imapnmap --tftpnmap --nfsnmap --x11nmap --msrpcenum --mysqlnmap --rdpnmap \
 --httpdavtest --httpwhatweb --tlsnmap --smbfilelist --sslyze --sslscan --sshchangeme --httpchangeme \
 --httpmsfrobotstxt --certnmap --ftpnmap --ldapnmap --dnsnmap --ldapnmap --snmpnmap --telnetnmap --vncnmap \
---ftpfilelist --certopenssl --httpntlmnmap --ikescan --anyservicenmap --smbcme --httpburpsuitepro
+--dnsaxfr --ftpfilelist --certopenssl --httpntlmnmap --ikescan --anyservicenmap --smbcme --httpburpsuitepro
 
 review collected domain information and eventually add domains in scope
 $ kisreport domain -w $ws --csv | csvcut -c "Second-Level Domain Scope","Second-Level Domain","Companies" | sort -u | csvlook
@@ -150,7 +150,8 @@ $ kiscollect -w $ws --debug --strict -t5 --ftphydra --snmphydra --snmpcheck --sn
 --finger --httpnmap --pop3nmap --imapnmap --tftpnmap --nfsnmap --x11nmap --msrpcenum --mysqlnmap --rdpnmap \
 --httpdavtest --httpwhatweb --tlsnmap --smbfilelist --sslyze --sslscan --sshchangeme --httpchangeme \
 --httpmsfrobotstxt --certnmap --ftpnmap --ldapnmap --dnsnmap --ldapnmap --snmpnmap --telnetnmap --vncnmap \
---ftpfilelist --certopenssl --httpntlmnmap --ikescan --anyservicenmap --smbcme --httpburpsuitepro --vhost domain
+--dnsaxfr --ftpfilelist --certopenssl --httpntlmnmap --ikescan --anyservicenmap --smbcme --httpburpsuitepro \
+--vhost domain
 
 export collected information into microsoft excel
 $ kisreport excel /tmp/kis-scan-results.xlsx -w $ws
@@ -179,7 +180,7 @@ In addition, to the tests in example I and II, the following commands can be exe
 # zone transfers
 $ dns_server=
 $ kiscollect -w $ws --debug --strict -t5 --dnstakeover --dnsamassactive --dnsdkim --dnsdmarc --vhostgobuster \
---dnsgobuster --dnsenum --dnsrecon --dnszonetransfer --smtpuserenum --httpsqlmap --dns-server $dns_server
+--dnsgobuster --dnsenum --dnsrecon --dnsaxfr --smtpuserenum --httpsqlmap --dns-server $dns_server
 
 # Find additional domains using dnsgen and massdns
 $ kisreport domain -w $ws --csv --scope within | csvcut -c "Host Name" | sort -u | dnsgen - | massdns -r \

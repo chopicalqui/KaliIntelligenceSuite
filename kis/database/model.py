@@ -293,6 +293,8 @@ class DnsResourceRecordType(enum.Flag):
     mx = 32
     alias = 64
     vhost = 128
+    soa = 256
+    txt = 512
 
 
 class CollectorType(enum.Enum):

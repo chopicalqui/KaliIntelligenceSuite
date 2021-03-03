@@ -43,7 +43,7 @@ class CollectorClass(BaseCollector, DomainCollector):
     """This class implements a collector module that is automatically incorporated into the application."""
 
     def __init__(self, **kwargs):
-        super().__init__(priority=114200,
+        super().__init__(priority=180,
                          timeout=0,
                          **kwargs)
         self._re_type_host_ip = re.compile("\[.?\]\s+(?P<type>(A)|(NS)|(SOA)|(MX)) (?P<values>.+)$")

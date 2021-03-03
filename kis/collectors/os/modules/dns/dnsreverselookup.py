@@ -71,7 +71,7 @@ class CollectorClass(BaseDnsCollector, HostCollector):
         """
         collectors = []
         command = self._path_host
-        os_command = [command, host.address]
+        os_command = [command, "-{}".format(host.version), host.address]
         if self._dns_server:
             os_command.append(self._dns_server)
         collector = self._get_or_create_command(session, os_command, collector_name, host=host)

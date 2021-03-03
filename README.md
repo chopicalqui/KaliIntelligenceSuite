@@ -252,6 +252,7 @@ The column **User** specifies the user with which the respective operating syste
 | 155      | awsslurp                  | domain          | Active   |            | -       | nobody |
 | 160      | dnsenum                   | domain          | Active   | -          | -       | nobody |
 | 170      | dnsgobuster               | domain          | Active   | -          | -       | nobody |
+| 180      | dnsrecon                  | domain          | Active   | -          | -       | nobody |
 | 210      | whoisdomain               | domain          | Active   | -          | 10      | nobody |
 | 215      | dnsspf                    | domain          | Active   | -          | -       | nobody |
 | 220      | dnsdmarc                  | domain          | Active   | -          | -       | nobody |
@@ -278,6 +279,7 @@ The column **User** specifies the user with which the respective operating syste
 | 1250     | udpnmapdomain             | domain          | Active   | IPv4, IPv6 | -       | root   |
 | 1270     | icmpnmapnetwork           | network         | Active   | IPv4, IPv6 | -       | root   |
 | 1300     | tcpmasscannetwork         | network         | Active   | IPv4       | -       | root   |
+| 1305     | dnsaxfr                   | domain, service | Active   | IPv4, IPv6 | -       | nobody |
 | 1320     | vhostgobuster             | service         | Active   | IPv4, IPv6 | -       | nobody |
 | 1350     | anyservicenmap            | service         | Active   | IPv4, IPv6 | -       | root   |
 | 1820     | tcptraceroute             | host            | Active   | IPv4, IPv6 | -       | nobody |
@@ -350,7 +352,6 @@ The column **User** specifies the user with which the respective operating syste
 | 92200    | httpwapiti                | service, vhost  | Active   | IPv4, IPv6 | -       | nobody |
 | 100000   | vncviewer                 | service         | Active   | IPv4       | -       | nobody |
 | 100100   | httpeyewitness            | service, vhost  | Active   | IPv4, IPv6 | 3600    | kali   |
-| 114200   | dnsrecon                  | domain          | Active   | -          | -       | nobody |
 
 
 ## Installing KIS
