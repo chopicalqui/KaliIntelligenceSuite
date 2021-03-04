@@ -945,7 +945,7 @@ class _PathReportGenerator(_BaseReportGenerator):
                  "Size Bytes",
                  "Full Path",
                  "Query",
-                 "Source"]]
+                 "Sources"]]
         for workspace in self._workspaces:
             for domain in workspace.domain_names:
                 for host_name in domain.host_names:
@@ -1287,14 +1287,8 @@ class _CertInfoReportGenerator(_BaseReportGenerator):
                     for cert_info in service.cert_info:
 
                         if self._filter(cert_info):
-                            matching_host = None
-                            if cert_info.cert_type == CertType.identity:
-                                matching_host = host.ipv4_address in cert_info.all_names
-                                if not matching_host:
-                                    for item in host_names:
-                                        matching_host = item.host_name.full_name in cert_info.all_names
-                                        if matching_host:
-                                            break
+                            matching_host = matching_host = cert_info.matches_host_names(host_names) \
+                                if cert_info.cert_type == CertType.identity else None
                             rvalue.append([cert_info.id,
                                            workspace.name,
                                            "host",
@@ -2421,7 +2415,8 @@ class _VulnerabilityReportGenerator(_BaseReportGenerator):
                  "CVSSv3",
                  "CVSSv2",
                  "Plugin ID",
-                 "Description"]]
+                 "Description",
+                 "Sources"]]
         additional_info = self._session.query(AdditionalInfo)\
             .join(Service)\
             .join(Host)\
@@ -2444,7 +2439,8 @@ class _VulnerabilityReportGenerator(_BaseReportGenerator):
                            item.service.port,
                            item.service.protocol_port_str,
                            item.service.nmap_service_name,
-                           item.service.nessus_service_name]
+                           item.service.nessus_service_name,
+                           item.sources_str]
                     tmp.extend(entry)
                     rows.append(tmp)
         return rows

@@ -27,7 +27,7 @@ import urllib
 import logging
 import subprocess
 import ipaddress
-import stat
+import re
 import pwd
 import sqlalchemy as sa
 from sqlalchemy import Column
@@ -3541,6 +3541,14 @@ class CertInfo(DeclarativeBase):
         return result
 
     @property
+    def all_names_re(self) -> List[re.Pattern]:
+        result = []
+        for item in self.all_names:
+            item = item.strip().replace(".", "\.").replace("*", ".*")
+            result.append(re.compile("^{}$".format(item), re.IGNORECASE))
+        return result
+
+    @property
     def key_usage(self) -> List[str]:
         result = []
         if "extended_key_usage1" in self.extension_info and "values" in self.extension_info["extended_key_usage"]:
@@ -3607,6 +3615,28 @@ class CertInfo(DeclarativeBase):
                      (self.cert_type == CertType.intermediate and years <= 5) or \
                      (self.cert_type == CertType.root and years <= 10)
         return result
+
+    def matches_host_name(self, host_name: str) -> bool:
+        """
+        Checks whether the given host name is covered by this certificate info object.
+        :param host_name: The host name that shall be covered.
+        :return: True if the host_name is covered by this certificate.
+        """
+        result = False
+        for item in self.all_names_re:
+            match = item.match(host_name)
+            if match:
+                result = True
+                break
+        return result
+
+    def matches_host_names(self, host_names: List[str]) -> bool:
+        """
+        Checks whether the given host names are covered by this certificate info object.
+        :param host_names: The host names that shall be covered.
+        :return: True if all host_names are covered by this certificate.
+        """
+        return all([self.matches_host_name(item) for item in host_names])
 
     def is_processable(self,
                        included_items: List[str],

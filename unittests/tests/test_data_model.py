@@ -1372,6 +1372,48 @@ class TestCertInfo(BaseDataModelTestCase):
                                valid_until=datetime.now(),
                                extension_info={})
 
+    def test_method_matches_host_name(self):
+        cert = CertInfo()
+        cert.common_name = "www.test.com"
+        self.assertTrue(cert.matches_host_name("www.test.com"))
+        self.assertFalse(cert.matches_host_name("test.com"))
+        cert = CertInfo()
+        cert.common_name = "*.test.com"
+        self.assertTrue(cert.matches_host_name("www.test.com"))
+        self.assertFalse(cert.matches_host_name("test.com"))
+        cert = CertInfo()
+        cert.subject_alt_names = ["www.test.com"]
+        self.assertTrue(cert.matches_host_name("www.test.com"))
+        self.assertFalse(cert.matches_host_name("test.com"))
+        cert = CertInfo()
+        cert.subject_alt_names = ["*.test.com"]
+        self.assertTrue(cert.matches_host_name("www.test.com"))
+        self.assertFalse(cert.matches_host_name("test.com"))
+
+    def test_method_matches_host_names(self):
+        cert = CertInfo()
+        cert.common_name = "*.test.com"
+        self.assertTrue(cert.matches_host_names(["www.test.com", "ftp.test.com", "ssh.test.com"]))
+        self.assertFalse(cert.matches_host_names(["test.com", "www.test.com", "ftp.test.com", "ssh.test.com"]))
+        cert = CertInfo()
+        cert.subject_alt_names = ["*.test.com"]
+        self.assertTrue(cert.matches_host_names(["www.test.com", "ftp.test.com", "ssh.test.com"]))
+        self.assertFalse(cert.matches_host_names(["test.com", "www.test.com", "ftp.test.com", "ssh.test.com"]))
+        cert = CertInfo()
+        cert.common_name = "www.test.com"
+        cert.subject_alt_names = ["ftp.test.com", "ssh.test.com", "test.com"]
+        self.assertTrue(cert.matches_host_names(["www.test.com", "ftp.test.com", "ssh.test.com", "test.com"]))
+        cert = CertInfo()
+        cert.common_name = "test.com"
+        cert.subject_alt_names = ["*.test.com"]
+        self.assertTrue(cert.matches_host_names(["test.com", "www.test.com", "ftp.test.com", "ssh.test.com"]))
+        self.assertFalse(cert.matches_host_names(["test.com", "www.test.com", "ftp.test.com", "ssh.test1.com"]))
+        cert = CertInfo()
+        cert.common_name = "*.test.com"
+        cert.subject_alt_names = ["test.com"]
+        self.assertTrue(cert.matches_host_names(["test.com", "www.test.com", "ftp.test.com", "ssh.test.com"]))
+        self.assertFalse(cert.matches_host_names(["test.com", "www.test.com", "ftp.test.com", "ssh.test1.com"]))
+
 
 class TestTlsInfoCipherSuiteMapping(BaseDataModelTestCase):
     """
