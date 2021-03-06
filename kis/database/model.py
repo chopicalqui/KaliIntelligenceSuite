@@ -3636,6 +3636,8 @@ class CertInfo(DeclarativeBase):
         :param host_names: The host names that shall be covered.
         :return: True if all host_names are covered by this certificate.
         """
+        if not host_names:
+            return False
         return all([self.matches_host_name(item) for item in host_names])
 
     def is_processable(self,

@@ -25,6 +25,7 @@ import csv
 import sys
 import json
 import re
+import enum
 from database.model import FileType
 from database.model import CommandFileMapping
 from openpyxl import Workbook
@@ -56,16 +57,36 @@ from database.model import CertType
 from database.model import FontColor
 from database.model import PathType
 from database.model import ServiceState
+from database.model import CipherSuiteSecurity
 from collectors.core import BaseUtils
 from collectors.apis.haveibeenpwned import HaveIBeenPwnedPasteAcccount
 from collectors.apis.haveibeenpwned import HaveIBeenPwnedBreachedAcccount
 from sqlalchemy.orm.session import Session
 
 
+class ReportLanguage(enum.Enum):
+    en = enum.auto()
+    de = enum.auto()
+
+    def __str__(self):
+        return self.name.lower()
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        try:
+            return ReportLanguage[s]
+        except KeyError:
+            return s
+
 class _BaseReportGenerator:
     """
     This class implements all base functionality for generating reports
     """
+
+    TRUE = "•"
 
     def __init__(self,
                  args,
@@ -140,19 +161,29 @@ class _BaseReportGenerator:
                     result.append(line)
         return result
 
-    def fill_excel_sheet(self, worksheet: Worksheet, csv_list: list) -> None:
+    def fill_excel_sheet(self,
+                         worksheet: Worksheet,
+                         csv_list: list,
+                         name: str=None,
+                         title: str = None,
+                         description: str = None) -> None:
         """
         This method adds an additional sheet to the given workbook
         :return:
         """
-        start_row = 3
-        worksheet.title = self._name
-        if self.description:
+        start_row = 1
+        name = name if name is not None else self._name
+        title = title if title is not None else self.title
+        description = description if description is not None else self.description
+        worksheet.title = name
+        if description:
             csv_list.insert(0, [])
-            csv_list.insert(0, [self.description])
+            csv_list.insert(0, [description])
             start_row += 2
-        csv_list.insert(0, [])
-        csv_list.insert(0, [self.title])
+        if title:
+            csv_list.insert(0, [])
+            csv_list.insert(0, [title])
+            start_row += 2
         for row in csv_list:
             try:
                 worksheet.append(row)
@@ -230,6 +261,12 @@ class _BaseReportGenerator:
         :return:
         """
         raise NotImplementedError("not implemented")
+
+    def final_report(self, workbook: Workbook):
+        """
+        This method creates all tables that are relevant to the final report.
+        """
+        pass
 
 
 class _HostReportGenerator(_BaseReportGenerator):
@@ -444,6 +481,41 @@ class _HostReportGenerator(_BaseReportGenerator):
                                        None,
                                        None])
         return rvalue
+
+    def final_report(self, workbook: Workbook):
+        """
+        This method creates all tables that are relevant to the final report.
+        """
+        result = [["IP Address",
+                   "Service",
+                   "Service\nName",
+                   "State",
+                   "TLS",
+                   "Banner Information"]]
+        if self._args.language == ReportLanguage.de:
+            result = [["IP-Adresse",
+                       "Dienst",
+                       "Dienst-\nname",
+                       "Status",
+                       "TLS",
+                       "Bannerinformation"]]
+        for workspace in self._workspaces:
+            for host in workspace.hosts:
+                if host.in_scope:
+                    for service in host.services:
+                        if service.state in [ServiceState.Open, ServiceState.Closed]:
+                            result.append([host.summary,
+                                           service.protocol_port_str,
+                                           service.service_name_with_confidence,
+                                           service.state_str,
+                                           self.TRUE if service.nmap_tunnel == "ssl" else None,
+                                           service.nmap_product_version])
+        if result:
+            self.fill_excel_sheet(worksheet=workbook.create_sheet(),
+                                  csv_list=result,
+                                  name="Service Results",
+                                  title="",
+                                  description="")
 
 
 class _HostNameReportGenerator(_BaseReportGenerator):
@@ -740,7 +812,7 @@ class _DomainNameReportGenerator(_BaseReportGenerator):
                  "Vhost In-Scope",
                  "Companies",
                  "Host Name Sources",
-                 "Non-Production",
+                 "Prod. Env.",
                  "Record Type",
                  "Resolves To",
                  "Resolves To In Scope",
@@ -826,6 +898,54 @@ class _DomainNameReportGenerator(_BaseReportGenerator):
                                          None,
                                          None])
         return rows
+
+    def final_report(self, workbook: Workbook):
+        """
+        This method creates all tables that are relevant to the final report.
+        """
+        result = [["Second-Level Domain",
+                   "Host Name",
+                   "Record\nType",
+                   "Resolves To",
+                   "Source\nHost Name"]]
+        if self._args.language == ReportLanguage.de:
+            result = [["Second-Level Domain",
+                       "Hostname",
+                       "DNS-\nTyp",
+                       "Löst auf zu",
+                       "Quelle\nHostname"]]
+        for workspace in self._workspaces:
+            for domain in workspace.domain_names:
+                for host_name in domain.host_names:
+                    if host_name._in_scope:
+                        full_name = host_name.full_name
+                        printed = False
+                        for mapping in host_name.resolved_host_name_mappings:
+                            printed = True
+                            result.append([domain.name,
+                                           full_name,
+                                           mapping.type_str,
+                                           mapping.resolved_host_name.full_name,
+                                           host_name.sources_str])
+                        for mapping in host_name.host_host_name_mappings:
+                            printed = True
+                            result.append([domain.name,
+                                           full_name,
+                                           mapping.type_str,
+                                           mapping.host.address,
+                                           host_name.sources_str])
+                        if not printed:
+                            result.append([domain.name,
+                                           full_name,
+                                           None,
+                                           None,
+                                           host_name.sources_str])
+        if result:
+            self.fill_excel_sheet(worksheet=workbook.create_sheet(),
+                                  csv_list=result,
+                                  name="Domain Results",
+                                  title="",
+                                  description="")
 
 
 class _CanonicalNameReportGenerator(_BaseReportGenerator):
@@ -1209,6 +1329,78 @@ class _TlsInfoReportGenerator(_BaseReportGenerator):
                                                    cipher_suite.security_str])
         return rvalue
 
+    def _final_report_tls_versions(self, workbook: Workbook):
+        # Obtain results
+        tls_results = {}
+        versions = {}
+        for workspace in self._workspaces:
+            for host in workspace.hosts:
+                if host.in_scope:
+                    for service in host.services:
+                        if service.tls_info:
+                            summary = "{} {}".format(service.address, service.protocol_port_str)
+                            if summary not in tls_results:
+                                tls_results[summary] = {"service": service, "tls_versions": {}}
+                            tls_entry = tls_results[summary]["tls_versions"]
+                            for tls_info in service.tls_info:
+                                tls_entry[tls_info.version_str] = True
+                                versions[tls_info.version_str] = None
+        if versions:
+            # Convert results into two-dimensional array
+            result = [["IP Address", "Service"]]
+            if self._args.language == ReportLanguage.de:
+                result = [["IP-Adresse", "Dienst"]]
+            unique_tls_versions = list(versions.keys())
+            unique_tls_versions.sort()
+            result[0].extend(unique_tls_versions)
+            for key, value in tls_results.items():
+                service = value["service"]
+                version = value["tls_versions"]
+                row = [service.address, service.protocol_port_str]
+                for item in unique_tls_versions:
+                    if item in version:
+                        row.append(self.TRUE)
+                    else:
+                        row.append(None)
+                result.append(row)
+            if result:
+                self.fill_excel_sheet(worksheet=workbook.create_sheet(),
+                                      csv_list=result,
+                                      name="TLS - Versions",
+                                      title="",
+                                      description="")
+
+    def _final_report_tls_ciphers(self, workbook: Workbook):
+        result = [["IP Address", "Service", "Cipher Suite", "Security"]]
+        if self._args.language == ReportLanguage.de:
+            result = [["IP-Adresse", "Dienst", "Cipher Suite", "Sicherheit"]]
+        for workspace in self._workspaces:
+            for host in workspace.hosts:
+                if host.in_scope:
+                    for service in host.services:
+                        for tls_info in service.tls_info:
+                            for mapping in tls_info.cipher_suite_mappings:
+                                if mapping.cipher_suite.security in [CipherSuiteSecurity.insecure,
+                                                                     CipherSuiteSecurity.weak]:
+                                    result.append([host.address,
+                                                   service.protocol_port_str,
+                                                   mapping.cipher_suite.iana_name,
+                                                   mapping.cipher_suite.security_str])
+        if result:
+            self.fill_excel_sheet(worksheet=workbook.create_sheet(),
+                                  csv_list=result,
+                                  name="TLS - Weak Ciphers",
+                                  title="",
+                                  description="Classification of cipher suite security is coming from: "
+                                              "https://ciphersuite.info")
+
+    def final_report(self, workbook: Workbook):
+        """
+        This method creates all tables that are relevant to the final report.
+        """
+        self._final_report_tls_versions(workbook)
+        self._final_report_tls_ciphers(workbook)
+
 
 class _CertInfoReportGenerator(_BaseReportGenerator):
     """
@@ -1274,11 +1466,10 @@ class _CertInfoReportGenerator(_BaseReportGenerator):
         for workspace in self._workspaces:
             for host in workspace.hosts:
                 host_names_str = host.get_host_host_name_mappings_str([DnsResourceRecordType.a,
-                                                                       DnsResourceRecordType.aaaa,
-                                                                       DnsResourceRecordType.ptr])
-                host_names = host.get_host_host_name_mappings([DnsResourceRecordType.a,
-                                                               DnsResourceRecordType.aaaa,
-                                                               DnsResourceRecordType.ptr])
+                                                                       DnsResourceRecordType.aaaa])
+                host_names = [item.host_name.full_name
+                              for item in host.get_host_host_name_mappings([DnsResourceRecordType.a,
+                                                                            DnsResourceRecordType.aaaa])]
                 if host.ipv4_network:
                     ipv4_network = host.ipv4_network.network
                 else:
@@ -1287,7 +1478,7 @@ class _CertInfoReportGenerator(_BaseReportGenerator):
                     for cert_info in service.cert_info:
 
                         if self._filter(cert_info):
-                            matching_host = matching_host = cert_info.matches_host_names(host_names) \
+                            matching_host = cert_info.matches_host_names(host_names) \
                                 if cert_info.cert_type == CertType.identity else None
                             rvalue.append([cert_info.id,
                                            workspace.name,
@@ -1433,7 +1624,7 @@ class _CertInfoReportGenerator(_BaseReportGenerator):
                                        cert_info.cert_type_str,
                                        cert_info.valid_from_str,
                                        cert_info.valid_until_str,
-                                       cert_info.validity_period_days / 365,
+                                       "{:.2f}".format(cert_info.validity_period_days / 365),
                                        cert_info.is_valid(),
                                        cert_info.has_recommended_duration(),
                                        None,
@@ -1443,6 +1634,150 @@ class _CertInfoReportGenerator(_BaseReportGenerator):
                                        cert_info.serial_number,
                                        cert_info.sources_str])
         return rvalue
+
+    def _final_report_host_name_coverage(self, workbook: Workbook):
+        result = [["IP Address", "Service", "Host Names", "Common Name", "Subject Alternative\nNames", "Full\nCoverage"]]
+        if self._args.language == ReportLanguage.de:
+            result = [["IP-Adresse", "Dienst", "Hostnamen", "Common Name", "Subject Alternative\nNames", "Volle\nAbdeckung"]]
+        for workspace in self._workspaces:
+            for host in workspace.hosts:
+                host_names = [item.host_name.full_name
+                              for item in host.get_host_host_name_mappings([DnsResourceRecordType.a,
+                                                                            DnsResourceRecordType.aaaa])]
+                for service in host.services:
+                    for cert_info in service.cert_info:
+                        if cert_info.cert_type == CertType.identity:
+                            matching_host = cert_info.matches_host_names(host_names)
+                            result.append([host.address,
+                                           service.protocol_port_str,
+                                           ", ".join(host_names),
+                                           cert_info.common_name,
+                                           cert_info.subject_alt_names_str,
+                                           self.TRUE if matching_host else None])
+        if result:
+            self.fill_excel_sheet(worksheet=workbook.create_sheet(),
+                                  csv_list=result,
+                                  name="Cert - Name Coverage",
+                                  title="",
+                                  description="")
+
+    def _final_report_valid_ca(self, workbook: Workbook):
+        result = [["IP Address", "Service", "Name", "Common Name", "Issuer", "Self-\nSigned"]]
+        if self._args.language == ReportLanguage.de:
+            result = [["IP-Adresse", "Dienst", "Name", "Common Name", "Issuer", "Selbst\nSigniert"]]
+        for workspace in self._workspaces:
+            for host in workspace.hosts:
+                for service in host.services:
+                    for cert_info in service.cert_info:
+                        if cert_info.cert_type == CertType.identity:
+                            result.append([host.address,
+                                           service.protocol_port_str,
+                                           service.service_name_with_confidence,
+                                           cert_info.common_name,
+                                           cert_info.issuer_name,
+                                           self.TRUE if cert_info.is_self_signed() else None])
+        if result:
+            self.fill_excel_sheet(worksheet=workbook.create_sheet(),
+                                  csv_list=result,
+                                  name="Cert - Valid CAs",
+                                  title="",
+                                  description="")
+
+    def _final_report_signature_algorithm(self, workbook: Workbook):
+        result = [["IP Address", "Service", "Name", "Public Key\nAlgorithm", "Hash Algorithm"]]
+        if self._args.language == ReportLanguage.de:
+            result = [["IP-Adresse", "Dienst", "Name", "Public-Key-\nAlgorithmus", "Hashalgorithmus"]]
+        for workspace in self._workspaces:
+            for host in workspace.hosts:
+                for service in host.services:
+                    for cert_info in service.cert_info:
+                        if cert_info.cert_type == CertType.identity:
+                            result.append([host.address,
+                                           service.protocol_port_str,
+                                           service.service_name_with_confidence,
+                                           cert_info.signature_asym_algorithm_summary,
+                                           cert_info.hash_algorithm_str])
+        if result:
+            self.fill_excel_sheet(worksheet=workbook.create_sheet(),
+                                  csv_list=result,
+                                  name="Cert - Signing Algorithms",
+                                  title="",
+                                  description="")
+
+    def _final_report_durations(self, workbook: Workbook):
+        result = [["IP Address", "Service", "Name", "Valid\nFrom", "Valid\nUntil", "Valid", "Years", "Valid\nDuration"]]
+        if self._args.language == ReportLanguage.de:
+            result = [["IP-Adresse", "Dienst", "Name", "Gültig\nvon", "Gültig\nbis", "Gültig", "Jahre", "Gültige\nDauer"]]
+        for workspace in self._workspaces:
+            for host in workspace.hosts:
+                for service in host.services:
+                    for cert_info in service.cert_info:
+                        if cert_info.cert_type == CertType.identity:
+                            result.append([host.address,
+                                           service.protocol_port_str,
+                                           service.service_name,
+                                           cert_info.valid_from_str,
+                                           cert_info.valid_until_str,
+                                           self.TRUE if cert_info.is_valid() else None,
+                                           "{:.2f}".format(cert_info.validity_period_days / 365),
+                                           self.TRUE if cert_info.has_recommended_duration() else None])
+        if result:
+            self.fill_excel_sheet(worksheet=workbook.create_sheet(),
+                                  csv_list=result,
+                                  name="Cert - Durations",
+                                  title="",
+                                  description="")
+
+    def _final_report_key_usages(self, workbook: Workbook):
+        result = [["IP Address", "Service", "Name", "Key Usage"]]
+        if self._args.language == ReportLanguage.de:
+            result = [["IP-Adresse", "Dienst", "Name", "Verwendungszweck"]]
+        for workspace in self._workspaces:
+            for host in workspace.hosts:
+                for service in host.services:
+                    for cert_info in service.cert_info:
+                        if cert_info.cert_type == CertType.identity:
+                            result.append([host.address,
+                                           service.protocol_port_str,
+                                           service.service_name_with_confidence,
+                                           cert_info.key_usage_str])
+        if result:
+            self.fill_excel_sheet(worksheet=workbook.create_sheet(),
+                                  csv_list=result,
+                                  name="Cert - Key Usage",
+                                  title="",
+                                  description="")
+
+    def _final_report_critical_extensions(self, workbook: Workbook):
+        result = [["IP Address", "Service", "Name", "Critical Extensions"]]
+        if self._args.language == ReportLanguage.de:
+            result = [["IP-Adresse", "Dienst", "Name", "Kritische Erweiterungen"]]
+        for workspace in self._workspaces:
+            for host in workspace.hosts:
+                for service in host.services:
+                    for cert_info in service.cert_info:
+                        if cert_info.cert_type == CertType.identity:
+                            result.append([host.address,
+                                           service.protocol_port_str,
+                                           service.service_name_with_confidence,
+                                           ", ".join(cert_info.critical_extension_names)])
+        if result:
+            self.fill_excel_sheet(worksheet=workbook.create_sheet(),
+                                  csv_list=result,
+                                  name="Cert - Crit. Extensions",
+                                  title="",
+                                  description="")
+
+    def final_report(self, workbook: Workbook):
+        """
+        This method creates all tables that are relevant to the final report.
+        """
+        self._final_report_host_name_coverage(workbook)
+        self._final_report_valid_ca(workbook)
+        self._final_report_signature_algorithm(workbook)
+        self._final_report_durations(workbook)
+        self._final_report_key_usages(workbook)
+        self._final_report_critical_extensions(workbook)
 
 
 class _CredentialReportGenerator(_BaseReportGenerator):
@@ -2494,4 +2829,13 @@ class ReportGenerator:
                         first = False
                     else:
                         instance.fill_excel_sheet(workbook.create_sheet(), csv_list=csv_list)
+            workbook.save(self._args.FILE)
+        elif self._args.module == "final":
+            if os.path.exists(self._args.FILE):
+                os.unlink(self._args.FILE)
+            workbook = Workbook()
+            workbook.remove(workbook.active)
+            for generator in self._generators.values():
+                instance = generator(self._args, self._session, self._workspaces)
+                instance.final_report(workbook=workbook)
             workbook.save(self._args.FILE)

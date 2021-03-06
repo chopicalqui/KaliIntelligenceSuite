@@ -36,6 +36,7 @@ from database.model import ScopeType
 from configs.config import SortingHelpFormatter
 from database.utils import Engine
 from database.report import ReportGenerator
+from database.report import ReportLanguage
 from database.utils import DeclarativeBase
 
 
@@ -149,6 +150,7 @@ $ kisreport file -w $ws --type xml -I tcpnmap -o $outdir
     parser_company = sub_parser.add_parser('company', help='allows querying information about companies')
     parser_excel = sub_parser.add_parser('excel', help='allows writing all identified information into a '
                                                        'microsoft excel file')
+    parser_final = sub_parser.add_parser('final', help='allows writing final report tables into microsoft excel file')
     parser_file = sub_parser.add_parser('file', help='allows querying information about collected files (e.g., raw '
                                                      'scan results, certificates, etc.)')
     parser_host = sub_parser.add_parser('host', help='allows querying information about hosts')
@@ -590,6 +592,20 @@ $ kisreport file -w $ws --type xml -I tcpnmap -o $outdir
     parser_excel.add_argument('--scope', choices=[item.name for item in ReportScopeType],
                               help='return only in scope (within) or out of scope (outside) items. per default, '
                                    'all information is returned')
+    # setup final parser
+    parser_final.add_argument('FILE', type=str,
+                              help="the path to the microsoft excel file")
+    parser_final.add_argument("-w", "--workspaces",
+                              metavar="WORKSPACE",
+                              help="query the given workspaces",
+                              nargs="+",
+                              required=True,
+                              type=str)
+    parser_final.add_argument('-l', '--language',
+                              type=ReportLanguage.argparse,
+                              choices=list(ReportLanguage),
+                              default=ReportLanguage.en,
+                              help="the final report's language")
     # setup tls parser
     parser_tls.add_argument("-w", "--workspaces",
                             metavar="WORKSPACE",

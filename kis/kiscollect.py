@@ -180,11 +180,15 @@ In addition, to the tests in example I and II, the following commands can be exe
 # zone transfers
 $ dns_server=
 $ kiscollect -w $ws --debug --strict -t5 --dnstakeover --dnsamassactive --dnsdkim --dnsdmarc --vhostgobuster \
---dnsgobuster --dnsenum --dnsrecon --dnsaxfr --smtpuserenum --httpsqlmap --dns-server $dns_server
+--dnsgobuster --dnsenum --dnsrecon --dnsaxfr --smtpuserenum --httpsqlmap --dnshostpublic --dns-server $dns_server
 
 # Find additional domains using dnsgen and massdns
 $ kisreport domain -w $ws --csv --scope within | csvcut -c "Host Name" | sort -u | dnsgen - | massdns -r \
 /opt/lazydns/resolvers.txt -c 5 -t A -o S --flush 2> /dev/null
+
+# At the end, do final DNS lookup to ensure that all collected host names are resolved. This ensures that the data is 
+# complete for the final report
+$ kiscollect -w $ws --debug --strict -t5 --dnshostpublic
 
 Finally, you might want to re-run the entire process to collect further information.
 '''
