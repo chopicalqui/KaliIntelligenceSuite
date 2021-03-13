@@ -26,7 +26,91 @@ from unittests.tests.core import BaseKisTestCase
 from database.model import Workspace
 from database.model import HostName
 from database.model import DomainName
+from database.model import Network
 from database.model import ScopeType
+from collectors.core import IpUtils
+
+
+class TestNetworkExcludedHosts(BaseKisTestCase):
+    """
+    This test case tests Ipv4Utils.get_excluded_hosts
+    """
+
+    def __init__(self, test_name: str):
+        super().__init__(test_name)
+
+    def test_scopetype_all(self):
+        self.init_db()
+        network = "192.168.1.0/29"
+        workspace = self._workspaces[0]
+        # setup database
+        with self._engine.session_scope() as session:
+            self.create_network(session=session,
+                                workspace_str=workspace,
+                                network=network,
+                                scope=ScopeType.all)
+            self.create_host(session=session,
+                             workspace_str=workspace,
+                             address="192.168.1.1",
+                             in_scope=False)
+        # verify results
+        with self._engine.session_scope() as session:
+            result = session.query(Network).all()
+            self.assertEqual(1, len(result))
+            results = IpUtils.get_excluded_hosts(session=session, network=result[0])
+            self.assertListEqual([], results)
+
+    def test_scopetype_exclude(self):
+        self.init_db()
+        ipv4_network = "192.168.1.0/29"
+        workspace = self._workspaces[0]
+        # setup database
+        with self._engine.session_scope() as session:
+            self.create_network(session=session,
+                                workspace_str=workspace,
+                                network=ipv4_network,
+                                scope=ScopeType.exclude)
+            self.create_host(session=session,
+                             workspace_str=workspace,
+                             address="192.168.1.1",
+                             in_scope=False)
+        # verify results
+        with self._engine.session_scope() as session:
+            expected_results = ["192.168.1.{}".format(i) for i in range(0, 8)]
+            result = session.query(Network).all()
+            self.assertEqual(1, len(result))
+            results = IpUtils.get_excluded_hosts(session=session, network=result[0])
+            self.assertListEqual(expected_results, results)
+
+    def test_scopetype_strict(self):
+        self.init_db()
+        ipv4_network = "192.168.1.0/29"
+        workspace = self._workspaces[0]
+        # setup database
+        with self._engine.session_scope() as session:
+            self.create_network(session=session,
+                                workspace_str=workspace,
+                                network=ipv4_network,
+                                scope=ScopeType.strict)
+            self.create_host(session=session,
+                             workspace_str=workspace,
+                             address="192.168.1.0",
+                             in_scope=False)
+            self.create_host(session=session,
+                             workspace_str=workspace,
+                             address="192.168.1.1",
+                             in_scope=True)
+            self.create_host(session=session,
+                             workspace_str=workspace,
+                             address="192.168.1.2",
+                             in_scope=True)
+        # verify results
+        with self._engine.session_scope() as session:
+            expected_results = ["192.168.1.{}".format(i) for i in range(0, 8) if i not in [1, 2]]
+            result = session.query(Network).all()
+            self.assertEqual(1, len(result))
+            results = IpUtils.get_excluded_hosts(session=session, network=result[0])
+            self.assertListEqual(expected_results, results)
 
 
 class HostNameScopingTestCases(BaseKisTestCase):

@@ -48,6 +48,7 @@ class CollectorClass(BaseKisImportHost, HostCollector):
         super().__init__(priority=530,
                          timeout=0,
                          argument_name="--censys-host",
+                         exec_user="kali",
                          ip_support=IpSupport.ipv4,
                          source=CensysIpv4.SOURCE,
                          delay_min=1,
