@@ -30,7 +30,6 @@ import argparse
 import traceback
 import ipaddress
 import sys
-import passgen
 import os
 import json
 import logging
@@ -330,12 +329,9 @@ class ManageDatabase:
                     email_object = self._domain_utils.add_email(session=session,
                                                                 workspace=workspace,
                                                                 text=email,
-                                                                source=source,
-                                                                scope=ScopeType.strict)
+                                                                source=source)
                     if not email_object:
                         raise ValueError("adding email '{}' failed".format(email))
-                    else:
-                        email_object.host_name._scope = True
                 elif self._arguments.delete or self._arguments.Delete:
                     self._domain_utils.delete_email(session=session, workspace=workspace, email=email)
 
@@ -556,14 +552,12 @@ $ kismanage workspace --add $workspace
     options.append("vhost")
     parser_network.add_argument('-s', '--scope', choices=options,
                                 type=str,
-                                help="option 'all' sets the given networks NETWORK including all IP addresses in scope."
-                                     "option 'exclude' sets the given networks NETWORK including all IP addresses "
-                                     "within this network range out of scope."
-                                     "option 'strict' set the given networks NETWORK in scope. per default all IP "
-                                     "addresses within this network range are out of scope but can be manually added."
-                                     "option 'vhost' is the same as option 'strict' but sets all IP addresses, "
-                                     "in-scope which resolve from an in-scope host name. note that KIS only actively "
-                                     "collects information from in-scope hosts and networks",
+                                help="set only the given networks in scope and exclude all IP addresses (option "
+                                     "explicit). set the given networks including all IP addresses in scope (option "
+                                     "all). exclude the given networks including all IP addresses from scope. set "
+                                     "only those IP addresses (option vhost) in scope to which an in-scope host "
+                                     "name resolves to. note that KIS only actively collects information from "
+                                     "in-scope hosts and networks",
                                 default=ScopeType.all.name)
     parser_network.add_argument('-c', '--create-hosts',
                                 action="store_true",
@@ -631,11 +625,12 @@ $ kismanage workspace --add $workspace
                                           "computer names into KIS for further intel collection")
     parser_domain.add_argument('-s', '--scope', choices=[item.name for item in ScopeType],
                                type=str,
-                               help="set only the given domains DOMAIN in scope and exclude all other sub-domains "
-                                    "(option explicit). set the given domains DOMAIN including all other sub-domains "
-                                    "in scope (option all). exclude the given domains DOMAIN including all other sub-"
-                                    "domains from scope. note that KIS only actively collects information from in-"
-                                    "scope second-level-domain/host name",
+                               help="set only the given domains in scope and exclude all other sub-domains (option "
+                                    "explicit). set the given domains including all other sub-domains in scope "
+                                    "(option all). set only those sub-domains (option vhost) in scope that resolve "
+                                    "to an in-scope IP address. exclude the given domains (option exclude) "
+                                    "including all other sub-domains from scope. note that KIS only actively "
+                                    "collects information from in-scope second-level-domain/host name",
                                default=ScopeType.all.name)
     parser_domain.add_argument("--source", metavar="SOURCE", type=str,
                                help="specify the source of the second-level-domains/host names to be added")

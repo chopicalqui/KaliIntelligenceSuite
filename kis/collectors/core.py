@@ -1460,9 +1460,7 @@ class BaseUtils:
             session.flush()
             host_name = session.query(HostName).filter_by(name=None, domain_name_id=domain_name.id).one_or_none()
             if not host_name:
-                host_name = HostName(name=None,
-                                     domain_name=domain_name,
-                                     _in_scope=(scope == ScopeType.all or scope == ScopeType.strict))
+                host_name = HostName(name=None, domain_name=domain_name)
                 session.add(host_name)
                 session.flush()
         else:
@@ -1475,16 +1473,16 @@ class BaseUtils:
                      item: str,
                      host: Host = None,
                      source: Source = None,
-                     scope: ScopeType = ScopeType.all,
+                     scope: ScopeType = None,
                      mapping_type: DnsResourceRecordType = None) -> HostName:
         """
         This method inserts the given DNS name (e.g., www.mozilla.com) into the database.
         """
-        rvalue = None
+        result = None
         item = item.lower()
         host_name_items = self.split_host_name(item)
         if host_name_items is None:
-            return rvalue
+            return result
         levels = len(host_name_items)
         # we only have a domain name (e.g, google.com)
         if levels == 1 or levels == 2:
@@ -1501,7 +1499,7 @@ class BaseUtils:
                                                      source=source,
                                                      mapping_type=mapping_type)
             session.flush()
-            rvalue = host_name
+            result = host_name
         # we have a host and domain name
         elif levels > 2:
             domain_name = ".".join(host_name_items[-2:])
@@ -1510,7 +1508,7 @@ class BaseUtils:
                                                        workspace=workspace,
                                                        domain_name=domain_name,
                                                        scope=scope)
-            rvalue = domain_object
+            result = domain_object
             if source:
                 domain_object.sources.append(source)
             domain_object = domain_object.domain_name
@@ -1527,8 +1525,9 @@ class BaseUtils:
                                    domain_name_id=domain_object.id).one_or_none()
                     if not host_name_object:
                         host_name_object = HostName(name=host_name,
-                                                    domain_name=domain_object,
-                                                    _in_scope=(scope == ScopeType.all))
+                                                    domain_name=domain_object)
+                        if scope == ScopeType.strict:
+                            host_name_object._in_scope = True
                         session.add(host_name_object)
                         session.flush()
                     if source:
@@ -1539,8 +1538,8 @@ class BaseUtils:
                                                              host_name=host_name_object,
                                                              source=source,
                                                              mapping_type=mapping_type)
-                    rvalue = host_name_object
-        return rvalue
+                    result = host_name_object
+        return result
 
     def get_host_name(self,
                       session: Session,
@@ -1693,7 +1692,7 @@ class BaseUtils:
                         item: str,
                         host: Host = None,
                         source: Source = None,
-                        scope: ScopeType = ScopeType.exclude,
+                        scope: ScopeType = None,
                         verify: bool = False,
                         report_item: ReportItem = None,
                         mapping_type: DnsResourceRecordType = None) -> HostName:
@@ -1709,24 +1708,24 @@ class BaseUtils:
         :param report_item: Item that can be used for pushing information into the view
         :return:
         """
-        rvalue = None
+        result = None
         if not item:
-            return rvalue
+            return result
         item = item.lstrip("*.")
         item = item.lower()
         if item and (not verify or (verify and self.is_valid_domain(item))):
-            rvalue = self.add_dns_name(session=session,
+            result = self.add_dns_name(session=session,
                                        workspace=workspace,
                                        item=item,
                                        host=host,
                                        source=source,
                                        scope=scope,
                                        mapping_type=mapping_type)
-            if rvalue and report_item:
-                report_item.details = "potentially new host name {}".format(rvalue.full_name)
+            if result and report_item:
+                report_item.details = "potentially new host name {}".format(result.full_name)
                 report_item.report_type = "DOMAIN"
                 report_item.notify()
-        return rvalue
+        return result
 
     def is_valid_email(self, email: str) -> bool:
         """
@@ -1765,7 +1764,7 @@ class BaseUtils:
                   source: Source = None,
                   verify: bool = True,
                   report_item: ReportItem = None,
-                  scope: ScopeType = ScopeType.exclude) -> Email:
+                  scope: ScopeType = None) -> Email:
         """
         This method adds the given email address to the workspace
         :param session: Database session used to add the email address
@@ -2278,7 +2277,7 @@ class IpUtils(BaseUtils):
         collectors like Nmap to exclude out-of-scope IP addresses from the network scan
         """
         result = []
-        if network.scope == ScopeType.exclude:
+        if network.scope is None or network.scope == ScopeType.exclude:
             result = [str(item) for item in ipaddress.ip_network(network.network)]
         elif network.scope == ScopeType.strict:
             for address in ipaddress.ip_network(network.network):

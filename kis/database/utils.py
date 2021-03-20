@@ -261,210 +261,387 @@ class Engine:
     def _create_functions(self) -> None:
         """This method creates all functions"""
         # Triggers for setting host_names in or out of scope
-        # update_host_names_after_domain_name_changes
-        self._engine.execute("""CREATE OR REPLACE FUNCTION update_host_names_after_domain_name_changes() 
+        # update_host_names_after_domain_name_scope_changes
+        self._engine.execute("""CREATE OR REPLACE FUNCTION update_host_names_after_domain_name_scope_changes()
         RETURNS TRIGGER AS $$
         BEGIN
-            IF (TG_OP = 'INSERT') THEN
-                -- Set the scope of the host name that represents the second-level domain
-                UPDATE host_name
-                SET in_scope = (NEW.scope = 'strict' OR NEW.scope = 'all')
-                WHERE domain_name_id = NEW.id AND name IS NULL;
-            ELSIF (TG_OP = 'UPDATE' AND OLD.scope <> NEW.scope) THEN
+            IF (TG_OP = 'UPDATE' AND OLD.scope <> NEW.scope) THEN
                 -- Update scope of all sub-domains if the scope of the second-level domain is updated
-                UPDATE host_name
-                SET in_scope = (NEW.scope = 'all')
-                WHERE domain_name_id = NEW.id AND name IS NOT NULL;
-                
-                UPDATE host_name
-                SET in_scope = (NEW.scope = 'strict' OR NEW.scope = 'all')
-                WHERE domain_name_id = NEW.id AND name IS NULL;
+                IF (NEW.scope = 'all') THEN
+                    UPDATE host_name
+                    SET in_scope = True
+                    WHERE domain_name_id = NEW.id;
+                ELSIF (NEW.scope IS NULL OR NEW.scope = 'exclude') THEN
+                    UPDATE host_name
+                    SET in_scope = False
+                    WHERE domain_name_id = NEW.id;
+                ELSIF (NEW.scope = 'vhost') THEN
+                    UPDATE host_name
+                    SET in_scope = False
+                    WHERE domain_name_id = NEW.id AND name IS NULL;
+                    
+                    UPDATE host_name
+                    SET in_scope = True
+                    WHERE domain_name_id = NEW.id AND name IS NULL AND
+                            id IN (SELECT hn.id FROM host_name hn
+                                   INNER JOIN host_host_name_mapping m ON hn.domain_name_id = NEW.id AND
+                                                                          hn.id = m.host_name_id AND
+                                                                          ((m.type | 1) = 1 or (m.type | 2) = 2)
+                                   INNER JOIN host h ON h.id = m.host_id AND h.in_scope);
+                END IF;
             END IF;
             RETURN NULL;
         END;
         $$ LANGUAGE PLPGSQL;""")
-        # update_host_names_after_host_names_changes
-        self._engine.execute("""CREATE OR REPLACE FUNCTION update_host_names_after_host_names_changes() 
+        # update_host_name_scope
+        self._engine.execute("""CREATE OR REPLACE FUNCTION update_host_name_scope()
         RETURNS TRIGGER AS $$
+        DECLARE
+            domain_scope scopetype;
         BEGIN
             -- automatically set host_name's in_scope attribute to true, if domain_name scope is all
-            IF (EXISTS(SELECT * FROM domain_name n 
-                       WHERE n.id = NEW.domain_name_id AND n.scope = 'all') AND NOT NEW.in_scope) THEN
-                UPDATE host_name
-                SET in_scope = True
-                WHERE id = NEW.id;
-            ELSIF (EXISTS(SELECT * FROM domain_name n 
-                          WHERE n.id = NEW.domain_name_id AND n.scope = 'exclude') AND NEW.in_scope) THEN
-                UPDATE host_name
-                SET in_scope = False
-                WHERE id = NEW.id;
+            domain_scope := (SELECT scope FROM domain_name WHERE id = NEW.domain_name_id);
+            IF (domain_scope = 'all' OR
+                (domain_scope = 'vhost' AND
+                 EXISTS(SELECT hn.id FROM host_name hn
+                                          INNER JOIN host_host_name_mapping m ON hn.domain_name_id = NEW.domain_name_id AND
+                                                                                 hn.id = m.host_name_id AND
+                                                                                 ((m.type | 1) = 1 or (m.type | 2) = 2)
+                                          INNER JOIN host h ON h.id = m.host_id AND h.in_scope))) THEN
+                 NEW.in_scope := True;
+            ELSIF (TG_OP = 'INSERT' AND domain_scope = 'strict' AND NEW.name IS NULL) THEN
+                NEW.in_scope := True;
+            ELSIF (domain_scope = 'exclude') THEN
+                NEW.in_scope := False;
+            END IF;
+            RETURN NEW;
+        END;
+        $$ LANGUAGE PLPGSQL;""")
+        # update_scopes_after_host_host_name_mapping_update
+        self._engine.execute("""CREATE OR REPLACE FUNCTION update_scopes_after_host_host_name_mapping_update()
+        RETURNS TRIGGER AS $$
+        DECLARE
+            domain_scope scopetype;
+            network_scope scopetype;
+            host_name_record_count INTEGER;
+            host_record_count INTEGER;
+        BEGIN
+            IF ((TG_OP = 'INSERT' OR TG_OP = 'UPDATE') AND ((NEW.type & 1) = 1 OR (NEW.type & 2) = 2)) THEN
+                -- Determine the domain scope settings
+                SELECT d.scope INTO domain_scope FROM domain_name d
+                    INNER JOIN host_name h ON d.id = h.domain_name_id AND h.id = NEW.host_name_id;
+                -- Determine the host scope settings
+                SELECT n.scope INTO network_scope FROM host h
+                    LEFT JOIN network n ON h.id = NEW.host_id AND n.id = h.network_id;
+                   
+                -- Determine if the current host name still has an A or AAAA relationship to a in scope host.
+                host_name_record_count := (SELECT COUNT(*) FROM host_name hn
+                    INNER JOIN host_host_name_mapping m ON hn.id = m.host_name_id AND hn.id = NEW.host_name_id AND
+                                                           ((m.type | 1) = 1 or (m.type | 2) = 2)
+                    INNER JOIN domain_name dn ON dn.scope = 'vhost' AND dn.id = hn.domain_name_id
+                    INNER JOIN host h ON h.id = m.host_id AND h.in_scope);
+                -- Determine if the current host still has an A or AAAA relationship to a in scope host.
+                host_record_count := (SELECT COUNT(*) FROM host h
+                    INNER JOIN host_host_name_mapping m ON h.id = m.host_id AND h.id = NEW.host_id AND
+                                                           ((m.type | 1) = 1 or (m.type | 2) = 2)
+                    INNER JOIN network n ON n.scope = 'vhost' AND n.id = h.network_id
+                    INNER JOIN host_name hn ON hn.id = m.host_name_id AND hn.in_scope);
+
+                -- If we have a domain scope of type vhost and an in scope host, then we have to put the host_name in scope
+                IF domain_scope IS NOT NULL AND domain_scope = 'vhost' THEN
+                    UPDATE host_name SET in_scope = (host_name_record_count > 0) WHERE id = NEW.host_name_id;
+                END IF;
+                IF network_scope IS NOT NULL AND network_scope = 'vhost' THEN
+                    UPDATE host SET in_scope = (host_record_count > 0) WHERE id = NEW.host_id;
+                END IF;
             END IF;
             RETURN NULL;
         END;
         $$ LANGUAGE PLPGSQL;""")
         # Triggers for setting hosts in or out of scope
-        # update_hosts_after_ipv4network_changes
-        self._engine.execute("""CREATE OR REPLACE FUNCTION update_hosts_after_ipv4network_changes() 
-RETURNS TRIGGER AS $$
-BEGIN
-    IF (TG_OP = 'INSERT') THEN
-        -- update the scope of the current network
-        IF (EXISTS(SELECT * FROM network 
-                   WHERE address >> NEW.address and workspace_id = NEW.workspace_id AND scope = 'all')) THEN
-            UPDATE network
-            SET scope = 'all'
-            WHERE id = NEW.id;
-        END IF;
-        
-        -- update the scope of all networks within the newly added network
-        -- we only update the scope if the new network has scope all. in this case we know that the scope was set by
-        -- a user and not a collector
-        IF (NEW.scope = 'all') THEN
-            UPDATE network n
-            SET scope = NEW.scope
-            WHERE n.address << NEW.address AND n.workspace_id = NEW.workspace_id;
-        END IF;
-        
-        -- update the scope of all hosts
-        UPDATE host h
-        SET in_scope = (NEW.scope = 'all')
-        WHERE h.address <<= NEW.address AND h.workspace_id = NEW.workspace_id;
-        
-        -- the new network is the smallest network in the network table. in this case, we assign hosts to this
-        -- network
-        IF (NOT EXISTS(SELECT * FROM network WHERE address << NEW.address AND workspace_id = NEW.workspace_id)) THEN
-            UPDATE host h
-            SET network_id = NEW.id
-            WHERE h.address <<= NEW.address and h.workspace_id = NEW.workspace_id;
-        END IF;
-    ELSIF (TG_OP = 'UPDATE' AND NEW.scope <> OLD.scope) THEN
-        -- update the scope
-        UPDATE host h
-        SET in_scope = (NEW.scope = 'all')
-        WHERE h.address <<= NEW.address AND h.workspace_id = NEW.workspace_id;
-    ELSIF (TG_OP = 'DELETE') THEN
-        -- re-assign network
-        UPDATE host h
-        SET network_id = n.id
-        FROM network n
-        WHERE h.address <<= n.address AND h.workspace_id = n.workspace_id;
-    END IF;
-    RETURN NULL;
-END;
-$$ LANGUAGE PLPGSQL;""")
-        # update_hosts_after_host_changes
-        self._engine.execute("""CREATE OR REPLACE FUNCTION update_hosts_after_host_changes() 
-RETURNS TRIGGER AS $$
-BEGIN
-    IF (TG_OP = 'INSERT') THEN
-        -- assign hosts to network
-        UPDATE host h
-        SET network_id = n.id
-        FROM network n
-        WHERE h.address <<= n.address and h.workspace_id = n.workspace_id;
-    ELSIF (TG_OP = 'UPDATE' AND abbrev(OLD.address) <> abbrev(NEW.address)) THEN
-        -- remove all previous assignments
-        UPDATE host h
-        SET network_id = NULL
-        FROM network n
-        WHERE h.id = NEW.id;
-        -- re-assign hosts to network
-        UPDATE host h
-        SET network_id = n.id
-        FROM network n
-        WHERE h.address <<= n.address and h.id = NEW.id;
-    END IF;
-    -- automatically set host's in_scope attribute to true, if network scope is all
-    IF (EXISTS(SELECT * FROM network n 
-               WHERE n.id = NEW.network_id AND n.scope = 'all') AND NOT NEW.in_scope) THEN
-        UPDATE host
-        SET in_scope = True
-        WHERE id = NEW.id;
-    ELSIF (EXISTS(SELECT * FROM network n 
-                  WHERE n.id = NEW.network_id AND n.scope = 'exclude') AND NEW.in_scope) THEN
-        UPDATE host
-        SET in_scope = False
-        WHERE id = NEW.id;
-    END IF;
-    RETURN NULL;
-END;
-$$ LANGUAGE PLPGSQL;""")
-        # assign_services_to_host_name
-        self._engine.execute("""CREATE OR REPLACE FUNCTION assign_services_to_host_name() 
-RETURNS TRIGGER AS $$
-DECLARE
-service_cursor CURSOR(id_host integer) FOR SELECT * FROM service WHERE service.host_id = id_host;
-current_row service%%ROWTYPE;
-BEGIN
-    IF (new.type & 1) < 3  THEN
-        OPEN service_cursor(NEW.host_id);
-        LOOP
-            FETCH service_cursor INTO current_row;
-            EXIT WHEN NOT FOUND;
-            IF (NOT EXISTS(SELECT * FROM service WHERE protocol = current_row.protocol AND port = current_row.port AND host_name_id = NEW.host_name_id)) THEN
-                INSERT INTO service (host_name_id,
-                                     protocol, 
-                                     port, 
-                                     nmap_service_name, 
-                                     nessus_service_name, 
-                                     nmap_service_confidence, 
-                                     nessus_service_confidence, 
-                                     nmap_service_name_original,
-                                     state,
-                                     nmap_service_state_reason, 
-                                     nmap_product,
-                                     nmap_version,
-                                     nmap_tunnel, 
-                                     nmap_os_type, 
-                                     creation_date) VALUES (NEW.host_name_id,
-                                                            current_row.protocol,
-                                                            current_row.port,
-                                                            current_row.nmap_service_name,
-                                                            current_row.nessus_service_name,
-                                                            current_row.nmap_service_confidence,
-                                                            current_row.nessus_service_confidence,
-                                                            current_row.nmap_service_name_original,
-                                                            current_row.state,
-                                                            current_row.nmap_service_state_reason,
-                                                            current_row.nmap_product,
-                                                            current_row.nmap_version,
-                                                            current_row.nmap_tunnel,
-                                                            current_row.nmap_os_type,
-                                                            NOW());
+        # pre_update_network_scopes_after_network_changes
+        self._engine.execute("""CREATE OR REPLACE FUNCTION pre_update_network_scopes_after_network_changes()
+        RETURNS TRIGGER AS $$
+        DECLARE
+            network inet;
+            scope scopetype;
+            net_id integer;
+        BEGIN
+            -- This trigger performs consistency checks as well as updates the scope of the current network
+            -- accordingly.
+            IF (TG_OP = 'INSERT' OR TG_OP = 'UPDATE') THEN
+                IF (TG_OP = 'UPDATE' AND OLD.address <> NEW.address) THEN
+                    RAISE EXCEPTION 'changing the networks address (%%) is not allowed as it might make scoping
+                                     inconsistent.', OLD.address;
+                ELSIF (NEW.scope IS NOT NULL) THEN
+                    -- If the current networks scope is explicitly set (NEW.scope IS NOT NULL), then check whether
+                    -- there is a scope contradiction with a parent network.
+                    SELECT n.address, n.scope INTO network, scope FROM network n
+                        WHERE n.workspace_id = NEW.workspace_id AND
+                              n.address >> NEW.address AND
+                              n.scope IS NOT NULL AND
+                              n.scope <> 'exclude' AND
+                              n.scope <> NEW.scope
+                        LIMIT 1;
+                    IF network IS NOT NULL THEN
+                        -- If a scope contradiction exists, then raise an exception
+                        RAISE EXCEPTION 'insert failed because there is the following scope contradiction: Current
+                                         network (%%) with scope %% cannot be inserted as it has a different
+                                         scope than the parent network %% with scope %%. update the scope of the
+                                         parent network first or use the same scope as the
+                                         parent network.', NEW.address, NEW.scope, network, scope;
+                    END IF;
+                ELSE
+                    -- If NEW.scope is NULL, then the network was automatically added. In this case, we have to
+                    -- determine whether there is already a parent network with a predefined scope. If there is such a
+                    -- network, then we update NEW.scope.
+                    SELECT n.scope INTO scope FROM network n
+                        WHERE n.workspace_id = NEW.workspace_id AND
+                              n.address >> NEW.address AND
+                              n.scope IS NOT NULL
+                        LIMIT 1;
+                    IF (scope IS NOT NULL) THEN
+                        NEW.scope = scope;
+                    END IF;
+                END IF;
+                RETURN NEW;
+            ELSIF (TG_OP = 'DELETE') THEN
+                RETURN OLD;
             END IF;
-        END LOOP;
-        CLOSE service_cursor;
-    END IF;
-    RETURN NULL;
-END;
-$$ LANGUAGE PLPGSQL;""")
+            RETURN NULL;
+        END;
+        $$ LANGUAGE PLPGSQL;""")
+        # post_update_network_scopes_after_network_changes
+        self._engine.execute("""CREATE OR REPLACE FUNCTION post_update_network_scopes_after_network_changes()
+        RETURNS TRIGGER AS $$
+        DECLARE
+            sub_net inet;
+        BEGIN
+            -- This trigger updates all networks and hosts based on the current network's scope
+            IF (NEW.scope IS NOT NULL) THEN
+                -- Check whether all child networks have already the same scope. If they don't, then we update their
+                -- scope as well.
+                IF (NOT EXISTS(SELECT n.id FROM network n
+                                WHERE n.workspace_id = NEW.workspace_id AND
+                                      n.address >> NEW.address AND
+                                      n.scope IS NOT NULL AND NEW.scope IS NOT NULL
+                                      AND n.scope = NEW.scope)) THEN
+                    UPDATE network n
+                        SET scope = NEW.scope
+                        WHERE n.workspace_id = NEW.workspace_id AND n.address << NEW.address;
+                END IF;
+            END IF;
+        
+            IF (TG_OP = 'INSERT' OR TG_OP = 'UPDATE') THEN
+                -- Check whether the network is the smallest network in the network table.
+                SELECT address INTO sub_net FROM network
+                    WHERE address << NEW.address AND
+                          workspace_id = NEW.id
+                    ORDER BY masklen(address) ASC LIMIT 1;
+                IF (sub_net IS NULL) THEN
+                    -- If this is the case, then we assign all hosts within this network to this network.
+                    UPDATE host
+                        SET network_id = NEW.id
+                        WHERE workspace_id = NEW.workspace_id AND address <<= NEW.address;
+                ELSE
+                    -- If not, then we have to assign all hosts that are within the current network and the next
+                    -- closest subnetwork, to the current network.
+                    UPDATE host
+                        SET network_id = NEW.id
+                    WHERE workspace_id = NEW.workspace_id AND
+                        NOT address << sub_net AND
+                        address <<= NEW.address;
+                END IF;
+            END IF;
+        
+            -- IF (TG_OP = 'INSERT') THEN
+                -- If there is no contradiction, then we check whether all child networks have already the same
+                -- scope. If they don't, then we update their scope as well.
+            --    IF NOT EXISTS(SELECT n.id FROM network n
+            --                    WHERE n.workspace_id = NEW.workspace_id AND
+            --                          n.address >> NEW.address AND
+            --                          n.scope IS NOT NULL AND n.scope = NEW.scope) THEN
+            --        UPDATE network n
+            --            SET scope = NEW.scope
+            --            WHERE n.address << NEW.address AND n.workspace_id = NEW.workspace_id;
+            --    END IF;
+            
+                -- If the new network does not have a parent network, then we have to update the scope of all hosts
+                -- within this network
+            --    IF (NOT EXISTS(SELECT * FROM network WHERE address << NEW.address AND workspace_id = NEW.workspace_id)) THEN
+            --        UPDATE host h
+            --        SET network_id = NEW.id
+            --        WHERE h.address <<= NEW.address and h.workspace_id = NEW.workspace_id;
+            --    END IF;
+            --ELSIF (TG_OP = 'UPDATE' AND NEW.scope <> OLD.scope) THEN
+            --    -- update the scope
+            --    UPDATE host h
+            --   SET in_scope = (NEW.scope = 'all')
+            --    WHERE h.address <<= NEW.address AND h.workspace_id = NEW.workspace_id;
+            --ELSIF (TG_OP = 'DELETE') THEN
+            --    -- re-assign network
+            --    UPDATE host h
+            --    SET network_id = n.id
+            --    FROM network n
+            --    WHERE h.address <<= n.address AND h.workspace_id = n.workspace_id;
+            --END IF;
+            RETURN NULL;
+        END;
+        $$ LANGUAGE PLPGSQL;""")
+        # pre_update_hosts_after_host_changes
+        self._engine.execute("""CREATE OR REPLACE FUNCTION pre_update_hosts_after_host_changes()
+        RETURNS TRIGGER AS $$
+        DECLARE
+            network_scope scopetype;
+        BEGIN
+            IF (TG_OP = 'INSERT' OR TG_OP = 'UPDATE') THEN
+                -- Usually network assignments are performed when a new network is inserted or updated. If all
+                -- networks, however, are already inserted, then this case ensures that it is inserted to the smallest
+                -- network.
+                SELECT id INTO NEW.network_id FROM network
+                    WHERE address >>= NEW.address AND
+                          workspace_id = NEW.workspace_id
+                    ORDER BY masklen(address) DESC
+                    LIMIT 1;
+
+                -- Obtain the host's network scope
+                SELECT scope INTO network_scope FROM network
+                    WHERE id = NEW.network_id;
+
+                IF network_scope IS NOT NULL THEN
+                    IF network_scope = 'all' THEN
+                        NEW.in_scope = True;
+                    ELSIF network_scope = 'exclude' THEN
+                        NEW.in_scope = False;
+                    END IF;
+                ELSE
+                    NEW.in_scope = False;
+                END IF;
+            END IF;
+            RETURN NEW;
+        END;
+        $$ LANGUAGE PLPGSQL;""")
+        # assign_services_to_host_name
+        self._engine.execute("""CREATE OR REPLACE FUNCTION assign_services_to_host_name()
+        RETURNS TRIGGER AS $$
+        DECLARE
+        service_cursor CURSOR(id_host integer) FOR SELECT * FROM service WHERE service.host_id = id_host;
+        current_row service%%ROWTYPE;
+        BEGIN
+            IF (new.type & 1) < 3  THEN
+                OPEN service_cursor(NEW.host_id);
+                LOOP
+                    FETCH service_cursor INTO current_row;
+                    EXIT WHEN NOT FOUND;
+                    IF (NOT EXISTS(SELECT * FROM service WHERE protocol = current_row.protocol AND port = current_row.port AND host_name_id = NEW.host_name_id)) THEN
+                        INSERT INTO service (host_name_id,
+                                             protocol,
+                                             port,
+                                             nmap_service_name, 
+                                             nessus_service_name, 
+                                             nmap_service_confidence, 
+                                             nessus_service_confidence, 
+                                             nmap_service_name_original,
+                                             state,
+                                             nmap_service_state_reason, 
+                                             nmap_product,
+                                             nmap_version,
+                                             nmap_tunnel, 
+                                             nmap_os_type, 
+                                             creation_date) VALUES (NEW.host_name_id,
+                                                                    current_row.protocol,
+                                                                    current_row.port,
+                                                                    current_row.nmap_service_name,
+                                                                    current_row.nessus_service_name,
+                                                                    current_row.nmap_service_confidence,
+                                                                    current_row.nessus_service_confidence,
+                                                                    current_row.nmap_service_name_original,
+                                                                    current_row.state,
+                                                                    current_row.nmap_service_state_reason,
+                                                                    current_row.nmap_product,
+                                                                    current_row.nmap_version,
+                                                                    current_row.nmap_tunnel,
+                                                                    current_row.nmap_os_type,
+                                                                    NOW());
+                    END IF;
+                END LOOP;
+                CLOSE service_cursor;
+            END IF;
+            RETURN NULL;
+        END;
+        $$ LANGUAGE PLPGSQL;""")
         # add_services_to_host_name
         self._engine.execute("""CREATE OR REPLACE FUNCTION add_services_to_host_name() 
-RETURNS TRIGGER AS $$
-DECLARE
-mapping_host_name_cursor CURSOR(id_service integer) FOR SELECT host_host_name_mapping.host_name_id FROM 
-    host_host_name_mapping 
-    INNER JOIN host ON host.id = host_host_name_mapping.host_id
-    INNER JOIN service ON service.host_id = host.id
-    INNER JOIN host_name ON host_name.id = host_host_name_mapping.host_name_id
-    WHERE host_host_name_mapping.type < 3 AND service.id = id_service;
-id_host_name integer;
-mapping_host_cursor CURSOR(id_service integer) FOR SELECT host_host_name_mapping.host_id FROM 
-    host_host_name_mapping 
-    INNER JOIN host_name ON host_name.id = host_host_name_mapping.host_name_id
-    INNER JOIN service ON service.host_name_id = host_name.id
-    INNER JOIN host ON host.id = host_host_name_mapping.host_id
-    WHERE host_host_name_mapping.type < 3 AND service.id = id_service;
-id_host integer;
-BEGIN
-    IF (pg_trigger_depth() = 1) THEN
-        IF (NEW.host_id IS NOT NULL) THEN
-            OPEN mapping_host_name_cursor(NEW.id);
-            LOOP
-                FETCH mapping_host_name_cursor INTO id_host_name;
-                EXIT WHEN NOT FOUND;
-                IF (NOT EXISTS(SELECT * FROM service WHERE protocol = NEW.protocol AND port = NEW.port AND host_name_id = id_host_name)) THEN
-                    INSERT INTO service (host_name_id,
+        RETURNS TRIGGER AS $$
+        DECLARE
+        mapping_host_name_cursor CURSOR(id_service integer) FOR SELECT host_host_name_mapping.host_name_id FROM 
+            host_host_name_mapping 
+            INNER JOIN host ON host.id = host_host_name_mapping.host_id
+            INNER JOIN service ON service.host_id = host.id
+            INNER JOIN host_name ON host_name.id = host_host_name_mapping.host_name_id
+            WHERE host_host_name_mapping.type < 3 AND service.id = id_service;
+        id_host_name integer;
+        mapping_host_cursor CURSOR(id_service integer) FOR SELECT host_host_name_mapping.host_id FROM 
+            host_host_name_mapping 
+            INNER JOIN host_name ON host_name.id = host_host_name_mapping.host_name_id
+            INNER JOIN service ON service.host_name_id = host_name.id
+            INNER JOIN host ON host.id = host_host_name_mapping.host_id
+            WHERE host_host_name_mapping.type < 3 AND service.id = id_service;
+        id_host integer;
+        BEGIN
+            IF (pg_trigger_depth() = 1) THEN
+                IF (NEW.host_id IS NOT NULL) THEN
+                    OPEN mapping_host_name_cursor(NEW.id);
+                    LOOP
+                        FETCH mapping_host_name_cursor INTO id_host_name;
+                        EXIT WHEN NOT FOUND;
+                        IF (NOT EXISTS(SELECT * FROM service WHERE protocol = NEW.protocol AND port = NEW.port AND host_name_id = id_host_name)) THEN
+                            INSERT INTO service (host_name_id,
+                                                 protocol,
+                                                 port,
+                                                 nmap_service_name,
+                                                 nessus_service_name,
+                                                 nmap_service_confidence,
+                                                 nessus_service_confidence,
+                                                 nmap_service_name_original,
+                                                 state,
+                                                 nmap_service_state_reason,
+                                                 nmap_product,
+                                                 nmap_version,
+                                                 nmap_tunnel,
+                                                 nmap_os_type,
+                                                 creation_date) SELECT id_host_name,
+                                                                       protocol,
+                                                                       port,
+                                                                       nmap_service_name,
+                                                                       nessus_service_name,
+                                                                       nmap_service_confidence,
+                                                                       nessus_service_confidence,
+                                                                       nmap_service_name_original,
+                                                                       state,
+                                                                       nmap_service_state_reason,
+                                                                       nmap_product,
+                                                                       nmap_version,
+                                                                       nmap_tunnel,
+                                                                       nmap_os_type,
+                                                                       NOW() FROM service WHERE id = NEW.id;
+                        ELSIF (NEW.host_id = OLD.host_id AND NEW.protocol = OLD.protocol AND NEW.port = OLD.port) THEN
+                            UPDATE service
+                            SET protocol = t.protocol,
+                                port = t.port,
+                                nmap_service_name = t.nmap_service_name,
+                                nessus_service_name = t.nessus_service_name,
+                                nmap_service_confidence = t.nmap_service_confidence,
+                                nessus_service_confidence = t.nessus_service_confidence,
+                                nmap_service_name_original = t.nmap_service_name_original,
+                                state = t.state,
+                                nmap_service_state_reason = t.nmap_service_state_reason,
+                                nmap_product = t.nmap_product,
+                                nmap_version = t.nmap_version,
+                                nmap_tunnel = t.nmap_tunnel,
+                                nmap_os_type = t.nmap_os_type
+                            FROM service AS s
+                            JOIN (SELECT id_host_name AS host_name_id,
                                          protocol,
                                          port,
                                          nmap_service_name,
@@ -477,65 +654,65 @@ BEGIN
                                          nmap_product,
                                          nmap_version,
                                          nmap_tunnel,
-                                         nmap_os_type,
-                                         creation_date) SELECT id_host_name,
-                                                               protocol,
-                                                               port,
-                                                               nmap_service_name,
-                                                               nessus_service_name,
-                                                               nmap_service_confidence,
-                                                               nessus_service_confidence,
-                                                               nmap_service_name_original,
-                                                               state,
-                                                               nmap_service_state_reason,
-                                                               nmap_product,
-                                                               nmap_version,
-                                                               nmap_tunnel,
-                                                               nmap_os_type,
-                                                               NOW() FROM service WHERE id = NEW.id;
-                ELSIF (NEW.host_id = OLD.host_id AND NEW.protocol = OLD.protocol AND NEW.port = OLD.port) THEN
-                    UPDATE service
-                    SET protocol = t.protocol,
-                        port = t.port,
-                        nmap_service_name = t.nmap_service_name,
-                        nessus_service_name = t.nessus_service_name,
-                        nmap_service_confidence = t.nmap_service_confidence,
-                        nessus_service_confidence = t.nessus_service_confidence,
-                        nmap_service_name_original = t.nmap_service_name_original,
-                        state = t.state,
-                        nmap_service_state_reason = t.nmap_service_state_reason,
-                        nmap_product = t.nmap_product,
-                        nmap_version = t.nmap_version,
-                        nmap_tunnel = t.nmap_tunnel,
-                        nmap_os_type = t.nmap_os_type
-                    FROM service AS s
-                    JOIN (SELECT id_host_name AS host_name_id,
-                                 protocol,
-                                 port,
-                                 nmap_service_name,
-                                 nessus_service_name,
-                                 nmap_service_confidence,
-                                 nessus_service_confidence,
-                                 nmap_service_name_original,
-                                 state,
-                                 nmap_service_state_reason,
-                                 nmap_product,
-                                 nmap_version,
-                                 nmap_tunnel,
-                                 nmap_os_type FROM service WHERE id = NEW.id) AS t ON t.host_name_id = s.host_name_id AND
-                                                                                      t.port = s.port AND
-                                                                                      t.protocol = s.protocol
-                    WHERE service.id = s.id;
-                END IF;
-            END LOOP;
-            CLOSE mapping_host_name_cursor;
-        ELSIF (NEW.host_name_id IS NOT NULL) THEN
-            OPEN mapping_host_cursor(NEW.id);
-            LOOP
-                FETCH mapping_host_cursor INTO id_host;
-                EXIT WHEN NOT FOUND;
-                IF (NOT EXISTS(SELECT * FROM service WHERE protocol = NEW.protocol AND port = NEW.port AND host_id = id_host)) THEN 
-                    INSERT INTO service (host_id,
+                                         nmap_os_type FROM service WHERE id = NEW.id) AS t ON t.host_name_id = s.host_name_id AND
+                                                                                              t.port = s.port AND
+                                                                                              t.protocol = s.protocol
+                            WHERE service.id = s.id;
+                        END IF;
+                    END LOOP;
+                    CLOSE mapping_host_name_cursor;
+                ELSIF (NEW.host_name_id IS NOT NULL) THEN
+                    OPEN mapping_host_cursor(NEW.id);
+                    LOOP
+                        FETCH mapping_host_cursor INTO id_host;
+                        EXIT WHEN NOT FOUND;
+                        IF (NOT EXISTS(SELECT * FROM service WHERE protocol = NEW.protocol AND port = NEW.port AND host_id = id_host)) THEN 
+                            INSERT INTO service (host_id,
+                                                 protocol,
+                                                 port,
+                                                 nmap_service_name,
+                                                 nessus_service_name,
+                                                 nmap_service_confidence,
+                                                 nessus_service_confidence,
+                                                 nmap_service_name_original,
+                                                 state,
+                                                 nmap_service_state_reason,
+                                                 nmap_product,
+                                                 nmap_version,
+                                                 nmap_tunnel,
+                                                 nmap_os_type,
+                                                 creation_date) SELECT id_host,
+                                                                       protocol,
+                                                                       port,
+                                                                       nmap_service_name,
+                                                                       nessus_service_name,
+                                                                       nmap_service_confidence,
+                                                                       nessus_service_confidence,
+                                                                       nmap_service_name_original,
+                                                                       state,
+                                                                       nmap_service_state_reason,
+                                                                       nmap_product,
+                                                                       nmap_version,
+                                                                       nmap_tunnel,
+                                                                       nmap_os_type,
+                                                                       NOW() FROM service WHERE id = NEW.id;
+                        ELSIF (NEW.host_name_id = OLD.host_name_id AND NEW.protocol = OLD.protocol AND NEW.port = OLD.port) THEN
+                            UPDATE service
+                            SET protocol = t.protocol,
+                                port = t.port,
+                                nmap_service_name = t.nmap_service_name,
+                                nessus_service_name = t.nessus_service_name,
+                                nmap_service_confidence = t.nmap_service_confidence,
+                                nessus_service_confidence = t.nessus_service_confidence,
+                                nmap_service_name_original = t.nmap_service_name_original,
+                                state = t.state,
+                                nmap_service_state_reason = t.nmap_service_state_reason,
+                                nmap_product = t.nmap_product,
+                                nmap_version = t.nmap_version,
+                                nmap_tunnel = t.nmap_tunnel,
+                                nmap_os_type = t.nmap_os_type
+                            FROM service AS s
+                            JOIN (SELECT id_host AS host_id,
                                          protocol,
                                          port,
                                          nmap_service_name,
@@ -548,92 +725,48 @@ BEGIN
                                          nmap_product,
                                          nmap_version,
                                          nmap_tunnel,
-                                         nmap_os_type,
-                                         creation_date) SELECT id_host,
-                                                               protocol,
-                                                               port,
-                                                               nmap_service_name,
-                                                               nessus_service_name,
-                                                               nmap_service_confidence,
-                                                               nessus_service_confidence,
-                                                               nmap_service_name_original,
-                                                               state,
-                                                               nmap_service_state_reason,
-                                                               nmap_product,
-                                                               nmap_version,
-                                                               nmap_tunnel,
-                                                               nmap_os_type,
-                                                               NOW() FROM service WHERE id = NEW.id;
-                ELSIF (NEW.host_name_id = OLD.host_name_id AND NEW.protocol = OLD.protocol AND NEW.port = OLD.port) THEN
-                    UPDATE service
-                    SET protocol = t.protocol,
-                        port = t.port,
-                        nmap_service_name = t.nmap_service_name,
-                        nessus_service_name = t.nessus_service_name,
-                        nmap_service_confidence = t.nmap_service_confidence,
-                        nessus_service_confidence = t.nessus_service_confidence,
-                        nmap_service_name_original = t.nmap_service_name_original,
-                        state = t.state,
-                        nmap_service_state_reason = t.nmap_service_state_reason,
-                        nmap_product = t.nmap_product,
-                        nmap_version = t.nmap_version,
-                        nmap_tunnel = t.nmap_tunnel,
-                        nmap_os_type = t.nmap_os_type
-                    FROM service AS s
-                    JOIN (SELECT id_host AS host_id,
-                                 protocol,
-                                 port,
-                                 nmap_service_name,
-                                 nessus_service_name,
-                                 nmap_service_confidence,
-                                 nessus_service_confidence,
-                                 nmap_service_name_original,
-                                 state,
-                                 nmap_service_state_reason,
-                                 nmap_product,
-                                 nmap_version,
-                                 nmap_tunnel,
-                                 nmap_os_type FROM service WHERE id = NEW.id) AS t ON t.host_id = s.host_id AND
-                                                                                      t.port = s.port AND
-                                                                                      t.protocol = s.protocol
-                    WHERE service.id = s.id;
+                                         nmap_os_type FROM service WHERE id = NEW.id) AS t ON t.host_id = s.host_id AND
+                                                                                              t.port = s.port AND
+                                                                                              t.protocol = s.protocol
+                            WHERE service.id = s.id;
+                        END IF;
+                    END LOOP;
+                    CLOSE mapping_host_cursor;
                 END IF;
-            END LOOP;
-            CLOSE mapping_host_cursor;
-        END IF;
-    END IF;
-    RETURN NULL;
-END;
-$$ LANGUAGE PLPGSQL;""")
+            END IF;
+            RETURN NULL;
+        END;
+        $$ LANGUAGE PLPGSQL;""")
         self._engine.execute("""CREATE OR REPLACE FUNCTION reassign_hosts_to_network() 
-RETURNS TEXT AS $$
-DECLARE
-network_cursor CURSOR FOR SELECT * FROM network;
-current_row network%%ROWTYPE;
-BEGIN
-  OPEN network_cursor;
-  LOOP
-    FETCH network_cursor INTO current_row;
-    EXIT WHEN NOT FOUND;
-    -- the new network is the smallest network in the network table. in this case, we assign hosts to this
-    -- network
-    IF (NOT EXISTS(SELECT * FROM network WHERE address << current_row.address AND workspace_id = current_row.workspace_id)) THEN
-      UPDATE host h
-      SET network_id = current_row.id
-      WHERE h.address <<= current_row.address and h.workspace_id = current_row.workspace_id;
-    END IF;
-  END LOOP;
-  CLOSE network_cursor;
-  RETURN NULL;
-END;
-$$ LANGUAGE PLPGSQL;""")
+        RETURNS TEXT AS $$
+        DECLARE
+        network_cursor CURSOR FOR SELECT * FROM network;
+        current_row network%%ROWTYPE;
+        BEGIN
+          OPEN network_cursor;
+          LOOP
+            FETCH network_cursor INTO current_row;
+            EXIT WHEN NOT FOUND;
+            -- the new network is the smallest network in the network table. in this case, we assign hosts to this
+            -- network
+            IF (NOT EXISTS(SELECT * FROM network WHERE address << current_row.address AND workspace_id = current_row.workspace_id)) THEN
+              UPDATE host h
+              SET network_id = current_row.id
+              WHERE h.address <<= current_row.address and h.workspace_id = current_row.workspace_id;
+            END IF;
+          END LOOP;
+          CLOSE network_cursor;
+          RETURN NULL;
+        END;
+        $$ LANGUAGE PLPGSQL;""")
 
     def _drop_functions(self) -> None:
         """This method drops all functions"""
-        self._engine.execute("""DROP FUNCTION update_host_names_after_domain_name_changes;""")
-        self._engine.execute("""DROP FUNCTION update_host_names_after_host_names_changes;""")
-        self._engine.execute("""DROP FUNCTION update_hosts_after_ipv4network_changes;""")
-        self._engine.execute("""DROP FUNCTION update_hosts_after_host_changes;""")
+        self._engine.execute("""DROP FUNCTION update_host_names_after_domain_name_scope_changes;""")
+        self._engine.execute("""DROP FUNCTION update_host_name_scope;""")
+        self._engine.execute("""DROP FUNCTION pre_update_network_scopes_after_network_changes;""")
+        self._engine.execute("""DROP FUNCTION post_update_network_scopes_after_network_changes;""")
+        self._engine.execute("""DROP FUNCTION pre_update_hosts_after_host_changes;""")
         self._engine.execute("""DROP FUNCTION assign_services_to_host_name;""")
         self._engine.execute("""DROP FUNCTION add_services_to_host_name;""")
         self._engine.execute("""DROP FUNCTION reassign_hosts_to_network;""")
@@ -641,15 +774,21 @@ $$ LANGUAGE PLPGSQL;""")
     def _create_triggers(self) -> None:
         """This method creates all triggers."""
         # Triggers on host_name and domain_name tables
-        self._engine.execute("""CREATE TRIGGER after_domain_name_changes AFTER INSERT OR UPDATE ON domain_name
- FOR EACH ROW EXECUTE PROCEDURE update_host_names_after_domain_name_changes();""")
-        self._engine.execute("""CREATE TRIGGER after_host_name_changes AFTER INSERT OR UPDATE ON host_name
- FOR EACH ROW EXECUTE PROCEDURE update_host_names_after_host_names_changes();""")
-        # Triggers on host and network tables
-        self._engine.execute("""CREATE TRIGGER after_network_changes AFTER INSERT OR UPDATE OR DELETE ON network
- FOR EACH ROW EXECUTE PROCEDURE update_hosts_after_ipv4network_changes();""")
-        self._engine.execute("""CREATE TRIGGER after_host_changes AFTER INSERT OR UPDATE ON host
- FOR EACH ROW EXECUTE PROCEDURE update_hosts_after_host_changes();""")
+        self._engine.execute("""CREATE TRIGGER update_domain_name_scope_trigger AFTER INSERT OR UPDATE ON domain_name
+ FOR EACH ROW EXECUTE PROCEDURE update_host_names_after_domain_name_scope_changes();""")
+        self._engine.execute("""CREATE TRIGGER update_host_name_scope_trigger BEFORE INSERT OR UPDATE ON host_name
+ FOR EACH ROW EXECUTE PROCEDURE update_host_name_scope();""")
+        # Trigger to update host/host names scopes when A, AAAA records are updated
+        self._engine.execute("""CREATE TRIGGER update_host_host_name_mapping_trigger AFTER INSERT OR DELETE OR UPDATE ON host_host_name_mapping
+ FOR EACH ROW EXECUTE PROCEDURE update_scopes_after_host_host_name_mapping_update();""")
+        # Triggers on network tables
+        self._engine.execute("""CREATE TRIGGER pre_update_network_scope_trigger BEFORE INSERT OR UPDATE OR DELETE ON network
+ FOR EACH ROW EXECUTE PROCEDURE pre_update_network_scopes_after_network_changes();""")
+        self._engine.execute("""CREATE TRIGGER post_update_network_scope_trigger AFTER INSERT OR UPDATE OR DELETE ON network
+ FOR EACH ROW EXECUTE PROCEDURE post_update_network_scopes_after_network_changes();""")
+        # Triggers on hosts
+        self._engine.execute("""CREATE TRIGGER update_host_scope_trigger BEFORE INSERT OR UPDATE ON host
+ FOR EACH ROW EXECUTE PROCEDURE pre_update_hosts_after_host_changes();""")
         self._engine.execute("""CREATE TRIGGER host_host_name_mapping_insert AFTER INSERT OR UPDATE ON host_host_name_mapping
  FOR EACH ROW EXECUTE PROCEDURE assign_services_to_host_name();""")
         self._engine.execute("""CREATE TRIGGER service_insert AFTER INSERT OR UPDATE ON service
@@ -657,10 +796,12 @@ $$ LANGUAGE PLPGSQL;""")
 
     def _drop_trigger(self) -> None:
         """This method drops all triggers."""
-        self._engine.execute("""DROP TRIGGER after_domain_name_changes ON domain_name""")
-        self._engine.execute("""DROP TRIGGER after_host_name_changes ON host_name""")
-        self._engine.execute("""DROP TRIGGER after_network_changes ON network""")
-        self._engine.execute("""DROP TRIGGER after_host_changes ON host""")
+        self._engine.execute("""DROP TRIGGER update_domain_name_scope_trigger ON domain_name""")
+        self._engine.execute("""DROP TRIGGER update_host_name_scope_trigger ON host_name""")
+        self._engine.execute("""DROP TRIGGER update_scopes_after_host_host_name_mapping_update ON host_host_name_mapping""")
+        self._engine.execute("""DROP TRIGGER pre_update_network_scope_trigger ON network""")
+        self._engine.execute("""DROP TRIGGER post_update_network_scope_trigger ON network""")
+        self._engine.execute("""DROP TRIGGER update_host_scope_trigger ON host""")
         self._engine.execute("""DROP TRIGGER host_name_mapping_insert ON host_name_mapping""")
         self._engine.execute("""DROP TRIGGER service_insert ON service""")
 

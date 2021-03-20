@@ -475,6 +475,8 @@ class ScopeType(enum.Enum):
     strict = enum.auto()
     # exclude item and all sub-items
     exclude = enum.auto()
+    # puts domain/network in scope if counterpart is in scope too
+    vhost = enum.auto()
 
 
 class IpSupport(enum.Enum):
@@ -767,7 +769,7 @@ class Host(DeclarativeBase):
     os_details = Column(Text, nullable=True, unique=False)
     workgroup = Column(Text, nullable=True, unique=False)
     workspace_id = Column(Integer, ForeignKey("workspace.id", ondelete='cascade'), nullable=False, unique=False)
-    ipv4_network_id = Column("network_id", Integer, ForeignKey("network.id"), nullable=True, unique=False)
+    ipv4_network_id = Column("network_id", Integer, ForeignKey("network.id", ondelete='SET NULL'), nullable=True, unique=False)
     creation_date = Column(DateTime, nullable=False, default=datetime.utcnow())
     last_modified = Column(DateTime, nullable=True, onupdate=datetime.utcnow())
     services = relationship("Service",
@@ -1084,7 +1086,7 @@ class Network(DeclarativeBase):
     __tablename__ = "network"
     id = Column(Integer, primary_key=True)
     network = Column("address", INET, nullable=False, unique=False)
-    scope = Column(Enum(ScopeType), nullable=False, unique=False, server_default='exclude')
+    scope = Column(Enum(ScopeType), nullable=True, unique=False)
     workspace_id = Column(Integer, ForeignKey("workspace.id", ondelete='cascade'), nullable=False, unique=False)
     creation_date = Column(DateTime, nullable=False, default=datetime.utcnow())
     last_modified = Column(DateTime, nullable=True, onupdate=datetime.utcnow())
@@ -1095,7 +1097,9 @@ class Network(DeclarativeBase):
 
     @property
     def in_scope(self) -> bool:
-        return self.scope is not None and (self.scope == ScopeType.all or self.scope == ScopeType.strict)
+        return self.scope is not None and (self.scope == ScopeType.all or
+                                           self.scope == ScopeType.strict or
+                                           self.scope == ScopeType.vhost)
 
     @property
     def ip_network(self):
@@ -1690,7 +1694,9 @@ class DomainName(DeclarativeBase):
 
     @property
     def in_scope(self) -> bool:
-        return self.scope is not None and (self.scope == ScopeType.all or self.scope == ScopeType.strict)
+        return self.scope is not None and (self.scope == ScopeType.all or
+                                           self.scope == ScopeType.strict or
+                                           self.scope == ScopeType.vhost)
 
     @property
     def scope_str(self) -> str:

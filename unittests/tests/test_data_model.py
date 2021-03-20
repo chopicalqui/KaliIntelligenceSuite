@@ -1536,8 +1536,7 @@ class HostScopingTestCases(BaseKisTestCase):
             workspace = self._domain_utils.add_workspace(session, self._workspaces[0])
             self._ip_utils.add_network(session=session,
                                        workspace=workspace,
-                                       network="10.0.0.0/8",
-                                       scope=ScopeType.exclude)
+                                       network="10.0.0.0/8")
         # check database setup
         with self._engine.session_scope() as session:
             session.query(Host).join(Network).filter(Host._in_scope,
@@ -1550,8 +1549,7 @@ class HostScopingTestCases(BaseKisTestCase):
             workspace = self._domain_utils.add_workspace(session, self._workspaces[0])
             self._ip_utils.add_network(session=session,
                                        workspace=workspace,
-                                       network="10.10.0.0/24",
-                                       scope=ScopeType.exclude)
+                                       network="10.10.0.0/24")
         # check database setup
         with self._engine.session_scope() as session:
             session.query(Host).join(Network).filter(Host._in_scope,
@@ -1678,7 +1676,7 @@ class HostScopingTestCases(BaseKisTestCase):
             self._check_data(workspace_str=workspace,
                              ipv4_address=ipv4_address,
                              ipv4_network=ipv4_network,
-                             in_scope=False)
+                             in_scope=True)
 
     def test_network_assignment(self):
         self.init_db()

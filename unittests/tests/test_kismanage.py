@@ -122,10 +122,11 @@ class BaseKismanageTestCase(BaseKisTestCase):
                                                "associated host information is deleted")
         parser_network.add_argument('-s', '--scope', choices=[item.name for item in ScopeType],
                                     type=str,
-                                    help="set only the given networks NETWORK in scope and exclude all IP addresses "
-                                         "(option explicit). set the given networks NETWORK including all IP addresses in "
-                                         "scope (option all). exclude the given networks NETWORK including all IP "
-                                         "addresses from scope. note that KIS only actively collects information from "
+                                    help="set only the given networks in scope and exclude all IP addresses (option "
+                                         "explicit). set the given networks including all IP addresses in scope (option "
+                                         "all). exclude the given networks including all IP addresses from scope. set "
+                                         "only those IP addresses (option vhost) in scope to which an in-scope host "
+                                         "name resolves to. note that KIS only actively collects information from "
                                          "in-scope hosts and networks",
                                     default=ScopeType.all.name)
         parser_network.add_argument('-c', '--create-hosts',
@@ -194,11 +195,12 @@ class BaseKismanageTestCase(BaseKisTestCase):
                                               "computer names into KIS for further intel collection")
         parser_domain.add_argument('-s', '--scope', choices=[item.name for item in ScopeType],
                                    type=str,
-                                   help="set only the given domains DOMAIN in scope and exclude all other sub-domains "
-                                        "(option explicit). set the given domains DOMAIN including all other sub-domains "
-                                        "in scope (option all). exclude the given domains DOMAIN including all other sub-"
-                                        "domains from scope. note that KIS only actively collects information from in-"
-                                        "scope second-level-domain/host name",
+                                   help="set only the given domains in scope and exclude all other sub-domains (option "
+                                        "explicit). set the given domains including all other sub-domains in scope "
+                                        "(option all). set only those sub-domains (option vhost) in scope that resolve "
+                                        "to an in-scope IP address. exclude the given domains (option exclude) "
+                                        "including all other sub-domains from scope. note that KIS only actively "
+                                        "collects information from in-scope second-level-domain/host name",
                                    default=ScopeType.all.name)
         parser_domain.add_argument("--source", metavar="SOURCE", type=str,
                                    help="specify the source of the second-level-domains/host names to be added")
@@ -945,8 +947,35 @@ class TestEmailModule(BaseKismanageTestCase):
         with self._engine.session_scope() as session:
             self.create_workspace(session=session, workspace=workspace)
         # run command
-        args = self.arg_parse(["email", "-w", workspace, "-a", email])
-        ManageDatabase(engine=self._engine, arguments=args, parser=self._parser).run()
+        ManageDatabase(engine=self._engine,
+                       arguments=self.arg_parse(["email", "-w", workspace, "-a", email]),
+                       parser=self._parser).run()
+        # append a host name afterwards
+        with self._engine.session_scope() as session:
+            workspace_object = self.create_workspace(session=session, workspace=workspace)
+            self._domain_utils.add_domain_name(session=session,
+                                               workspace=workspace_object,
+                                               item="www.test.com")
+            self.create_workspace(session=session, workspace=workspace)
+        with self._engine.session_scope() as session:
+            session.query(HostName).filter_by(name=None, _in_scope=False).one()
+            session.query(HostName).filter_by(name="www", _in_scope=False).one()
+            session.query(DomainName).filter_by(name="test.com", scope=ScopeType.strict)
+
+    def test_add3(self):
+        # setup database
+        self.init_db()
+        email = "test@test.com"
+        workspace = self._workspaces[0]
+        with self._engine.session_scope() as session:
+            self.create_workspace(session=session, workspace=workspace)
+        # run command
+        ManageDatabase(engine=self._engine,
+                       arguments=self.arg_parse(["domain", "-w", workspace, "-a", "test.com", "-s", "strict"]),
+                       parser=self._parser).run()
+        ManageDatabase(engine=self._engine,
+                       arguments=self.arg_parse(["email", "-w", workspace, "-a", email]),
+                       parser=self._parser).run()
         # append a host name afterwards
         with self._engine.session_scope() as session:
             workspace_object = self.create_workspace(session=session, workspace=workspace)

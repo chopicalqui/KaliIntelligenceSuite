@@ -222,11 +222,13 @@ class BaseKisTestCase(unittest.TestCase):
                                       host_name_str: str = "www.unittest.com",
                                       mapping_type: DnsResourceRecordType = None,
                                       host_name_scope: ScopeType = ScopeType.all,
+                                      host_scope: bool = True,
                                       source_str: str = None) -> HostHostNameMapping:
         source = self.create_source(session, source_str=source_str) if source_str else None
         host = self.create_host(session=session,
                                 workspace_str=workspace_str,
-                                address=ipv4_address)
+                                address=ipv4_address,
+                                in_scope=host_scope)
         host_name = self.create_hostname(session=session,
                                          workspace_str=workspace_str,
                                          host_name=host_name_str,

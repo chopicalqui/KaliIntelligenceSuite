@@ -556,33 +556,6 @@ class TestAddNetwork(BaseKisTestCase):
     def test_basic_insert_network_trigger(self):
         self._initial_setup_scope_tests(check=True)
 
-    def test_insert_smaller_outofscope_network(self):
-        self._initial_setup_scope_tests(check=False,
-                                        workspace1=self._workspaces[0],
-                                        workspace2=self._workspaces[1])
-        network = "192.168.1.0/25"
-        # insert new network
-        with self._engine.session_scope() as session:
-            self.create_network(session=session,
-                                workspace_str=self._workspaces[0],
-                                network=network,
-                                scope=ScopeType.exclude)
-        # check database
-        with self._engine.session_scope() as session:
-            result = session.query(Host) \
-                .join(Network) \
-                .join(Workspace) \
-                .filter(Host.address == "192.168.1.1", Workspace.name == self._workspaces[0]).one()
-            self.assertTrue(result.in_scope)
-            self.assertEqual(network, result.ipv4_network.network)
-            self.assertEqual(ScopeType.all, result.ipv4_network.scope)
-            result = session.query(Host) \
-                .join(Network) \
-                .join(Workspace) \
-                .filter(Host.address == "192.168.1.254", Workspace.name == self._workspaces[0]).one()
-            self.assertTrue(result.in_scope)
-            self.assertEqual("192.168.1.0/24", result.ipv4_network.network)
-
     def test_insert_larger_inscope_network(self):
         self._initial_setup_scope_tests(check=False,
                                         workspace1=self._workspaces[0],
@@ -668,18 +641,6 @@ class TestAddNetwork(BaseKisTestCase):
         self._initial_setup_scope_tests_check(workspace1=self._workspaces[0],
                                               workspace2=self._workspaces[1],
                                               ipv4_network2_scope=ScopeType.all)
-
-    def test_scope_update_network_address(self):
-        self._initial_setup_scope_tests(check=False,
-                                        workspace1=self._workspaces[0],
-                                        workspace2=self._workspaces[1])
-        # update new network
-        with self._engine.session_scope() as session:
-            network = session.query(Network) \
-                .join(Workspace) \
-                .filter(Network.network == "192.168.1.0/24",
-                        Workspace.name == self._workspaces[0]).one()
-            network.network = "192.168.1.0/25"
 
 
 class TestAddCompany(BaseKisTestCase):

@@ -148,7 +148,7 @@ class TestDeleteIpv4Network(BaseKisTestCase):
         # check database
         with self._engine.session_scope() as session:
             self.assertEqual(0, session.query(Network).count())
-            self.assertEqual(True, session.query(Host).one().in_scope)
+            self.assertEqual(False, session.query(Host).one().in_scope)
             self.assertEqual(1, session.query(Workspace).count())
 
     def test_delete_ipv4_network_with_additional_info(self):
