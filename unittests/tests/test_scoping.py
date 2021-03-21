@@ -34,6 +34,7 @@ from database.model import HostHostNameMapping
 from collectors.core import IpUtils
 from collectors.core import DomainUtils
 from sqlalchemy.orm.session import Session
+from sqlalchemy.exc import InternalError
 
 
 class NetworkScopeContradictionTestCases(BaseKisTestCase):
@@ -53,7 +54,7 @@ class NetworkScopeContradictionTestCases(BaseKisTestCase):
         """
         # set up database
         self.init_db()
-        try:
+        with self.assertRaises(InternalError):
             with self._engine.session_scope() as session:
                 self.create_network(session=session,
                                     workspace_str=self._workspace,
@@ -63,8 +64,11 @@ class NetworkScopeContradictionTestCases(BaseKisTestCase):
                                     workspace_str=self._workspace,
                                     network="192.168.1.128/25",
                                     scope=ScopeType.exclude)
-        except Exception as ex:
-            self.assertTrue("insert failed because there is the following scope contradiction" in str(ex))
+        with self._engine.session_scope() as session:
+            result = session.query(Network).filter_by(network="192.168.1.0/24").one_or_none()
+            self.assertIsNone(result)
+            result = session.query(Network).filter_by(network="192.168.1.128/25").one_or_none()
+            self.assertIsNone(result)
 
     def test_scope_contradiction_at_update(self):
         """
@@ -74,21 +78,24 @@ class NetworkScopeContradictionTestCases(BaseKisTestCase):
         """
         # set up database
         self.init_db()
-        try:
-            with self._engine.session_scope() as session:
-                self.create_network(session=session,
-                                    workspace_str=self._workspace,
-                                    network="192.168.1.0/24",
-                                    scope=ScopeType.all)
-                self.create_network(session=session,
-                                    workspace_str=self._workspace,
-                                    network="192.168.1.128/25",
-                                    scope=ScopeType.all)
+        with self._engine.session_scope() as session:
+            self.create_network(session=session,
+                                workspace_str=self._workspace,
+                                network="192.168.1.0/24",
+                                scope=ScopeType.all)
+            self.create_network(session=session,
+                                workspace_str=self._workspace,
+                                network="192.168.1.128/25",
+                                scope=ScopeType.all)
+        with self.assertRaises(InternalError):
             with self._engine.session_scope() as session:
                 network = session.query(Network).filter_by(network="192.168.1.128/25").one()
                 network.scope = ScopeType.strict
-        except Exception as ex:
-            self.assertTrue("insert failed because there is the following scope contradiction" in str(ex))
+        with self._engine.session_scope() as session:
+            result = session.query(Network).filter_by(network="192.168.1.0/24").one()
+            self.assertTrue(ScopeType.all, result)
+            result = session.query(Network).filter_by(network="192.168.1.128/25").one()
+            self.assertTrue(ScopeType.all, result)
 
     def test_network_address_update(self):
         """
@@ -98,17 +105,18 @@ class NetworkScopeContradictionTestCases(BaseKisTestCase):
         """
         # set up database
         self.init_db()
-        try:
-            with self._engine.session_scope() as session:
-                self.create_network(session=session,
-                                    workspace_str=self._workspace,
-                                    network="192.168.1.0/24",
-                                    scope=ScopeType.all)
+        with self._engine.session_scope() as session:
+            self.create_network(session=session,
+                                workspace_str=self._workspace,
+                                network="192.168.1.0/24",
+                                scope=ScopeType.all)
+        with self.assertRaises(InternalError):
             with self._engine.session_scope() as session:
                 network = session.query(Network).filter_by(network="192.168.1.0/24").one()
                 network.network = "127.0.0.0/24"
-        except Exception as ex:
-            self.assertTrue("changing the networks address (192.168.1.0/24) is not allowed as it might make scoping" in str(ex))
+        with self._engine.session_scope() as session:
+            result = session.query(Network).filter_by(network="192.168.1.0/24").one()
+            self.assertTrue(ScopeType.all, result)
 
 
 class NetworkAssignmentsAndScopeTypeAllTestCases(BaseKisTestCase):
@@ -468,6 +476,76 @@ class NetworkScopeTypeStrictTestCases(BaseKisTestCase):
             network = session.query(Network).filter_by(network="192.168.1.0/24").one()
             self.assertEqual(ScopeType.all, network.scope)
             self.assertTrue(network.in_scope)
+
+    def test_insert_strict_parent_network_to_subnetwork_all_02(self):
+        """
+        It should be possible to specify networks with scope type all within parent networks of scope type strict.
+        """
+        # set up database
+        self.init_db()
+        with self._engine.session_scope() as session:
+            workspace = IpUtils.add_workspace(session=session, name=self._workspace)
+            IpUtils.add_network(session=session,
+                                workspace=workspace,
+                                network="192.168.1.0/24",
+                                scope=ScopeType.all)
+            IpUtils.add_network(session=session,
+                                workspace=workspace,
+                                network="0.0.0.0/0",
+                                scope=ScopeType.strict)
+        with self._engine.session_scope() as session:
+            network = session.query(Network).filter_by(network="0.0.0.0/0").one()
+            self.assertEqual(ScopeType.strict, network.scope)
+            self.assertFalse(network.in_scope)
+            network = session.query(Network).filter_by(network="192.168.1.0/24").one()
+            self.assertEqual(ScopeType.all, network.scope)
+            self.assertTrue(network.in_scope)
+
+    def test_insert_strict_parent_network_to_subnetwork_none_01(self):
+        """
+        It should be possible to specify networks with scope type all within parent networks of scope type strict.
+        """
+        # set up database
+        self.init_db()
+        with self._engine.session_scope() as session:
+            workspace = IpUtils.add_workspace(session=session, name=self._workspace)
+            IpUtils.add_network(session=session,
+                                workspace=workspace,
+                                network="0.0.0.0/0",
+                                scope=ScopeType.strict)
+            IpUtils.add_network(session=session,
+                                workspace=workspace,
+                                network="192.168.1.0/24")
+        with self._engine.session_scope() as session:
+            network = session.query(Network).filter_by(network="0.0.0.0/0").one()
+            self.assertEqual(ScopeType.strict, network.scope)
+            self.assertFalse(network.in_scope)
+            network = session.query(Network).filter_by(network="192.168.1.0/24").one()
+            self.assertEqual(ScopeType.strict, network.scope)
+            self.assertFalse(network.in_scope)
+
+    def test_insert_strict_parent_network_to_subnetwork_none_02(self):
+        """
+        It should be possible to specify networks with scope type all within parent networks of scope type strict.
+        """
+        # set up database
+        self.init_db()
+        with self._engine.session_scope() as session:
+            workspace = IpUtils.add_workspace(session=session, name=self._workspace)
+            IpUtils.add_network(session=session,
+                                workspace=workspace,
+                                network="192.168.1.0/24")
+            IpUtils.add_network(session=session,
+                                workspace=workspace,
+                                network="0.0.0.0/0",
+                                scope=ScopeType.strict)
+        with self._engine.session_scope() as session:
+            network = session.query(Network).filter_by(network="0.0.0.0/0").one()
+            self.assertEqual(ScopeType.strict, network.scope)
+            self.assertFalse(network.in_scope)
+            network = session.query(Network).filter_by(network="192.168.1.0/24").one()
+            self.assertEqual(ScopeType.strict, network.scope)
+            self.assertFalse(network.in_scope)
 
 
 class HostScopeTypeNoneTestCases(BaseKisTestCase):
@@ -1496,7 +1574,7 @@ class DomainNameScopeTypeVhostTestCases(BaseScopeTypeVhostTestCases):
 
     def test_insert_network_scopetype_all(self):
         """
-        This method checks whether the host scope is correctly set during the initial creation with network scope all.
+        This method checks whether the host name scope is correctly set during the initial creation with network scope all.
 
         This unittest tests PostgreSQL functions: update_hosts_after_network_changes and update_hosts_after_host_changes
         """
@@ -1570,6 +1648,149 @@ class DomainNameScopeTypeVhostTestCases(BaseScopeTypeVhostTestCases):
                                                 network_scope=ScopeType.exclude,
                                                 domain_name_scope=ScopeType.vhost,
                                                 mapping_type=DnsResourceRecordType.alias)
+        # Check the database
+        with self._engine.session_scope() as session:
+            result = session.query(DomainName).filter_by(name="ipv4-test1.local").one()
+            self.assertTrue(result.in_scope)
+            result = self.query_hostname(session=session, workspace_str=self._workspace, host_name="ipv4-test1.local")
+            self.assertTrue(result._in_scope)
+            result = session.query(Host).filter_by(address="127.0.0.1").one()
+            self.assertTrue(result.in_scope)
+
+            result = session.query(DomainName).filter_by(name="ipv4-test2.local").one()
+            self.assertTrue(result.in_scope)
+            result = self.query_hostname(session=session, workspace_str=self._workspace, host_name="ipv4-test2.local")
+            self.assertFalse(result._in_scope)
+            result = session.query(Host).filter_by(address="127.0.0.2").one()
+            self.assertFalse(result.in_scope)
+
+            result = session.query(DomainName).filter_by(name="ipv4-test3.local").one()
+            self.assertTrue(result.in_scope)
+            result = self.query_hostname(session=session, workspace_str=self._workspace, host_name="ipv4-test3.local")
+            self.assertFalse(result._in_scope)
+            result = session.query(Host).filter_by(address="127.0.0.3").one()
+            self.assertTrue(result.in_scope)
+
+            result = session.query(DomainName).filter_by(name="ipv4-test4.local").one()
+            self.assertTrue(result.in_scope)
+            result = self.query_hostname(session=session, workspace_str=self._workspace, host_name="ipv4-test4.local")
+            self.assertFalse(result._in_scope)
+            result = session.query(Host).filter_by(address="127.0.0.4").one()
+            self.assertFalse(result.in_scope)
+
+            # IPv6
+            result = session.query(DomainName).filter_by(name="ipv6-test1.local").one()
+            self.assertTrue(result.in_scope)
+            result = self.query_hostname(session=session, workspace_str=self._workspace, host_name="ipv6-test1.local")
+            self.assertTrue(result._in_scope)
+            result = session.query(Host).filter_by(address="::1").one()
+            self.assertTrue(result.in_scope)
+
+            result = session.query(DomainName).filter_by(name="ipv6-test2.local").one()
+            self.assertTrue(result.in_scope)
+            result = self.query_hostname(session=session, workspace_str=self._workspace, host_name="ipv6-test2.local")
+            self.assertFalse(result._in_scope)
+            result = session.query(Host).filter_by(address="::2").one()
+            self.assertFalse(result.in_scope)
+
+            result = session.query(DomainName).filter_by(name="ipv6-test3.local").one()
+            self.assertTrue(result.in_scope)
+            result = self.query_hostname(session=session, workspace_str=self._workspace, host_name="ipv6-test4.local")
+            self.assertFalse(result._in_scope)
+            result = session.query(Host).filter_by(address="::3").one()
+            self.assertTrue(result.in_scope)
+
+            result = session.query(DomainName).filter_by(name="ipv6-test4.local").one()
+            self.assertTrue(result.in_scope)
+            result = self.query_hostname(session=session, workspace_str=self._workspace, host_name="ipv6-test4.local")
+            self.assertFalse(result._in_scope)
+            result = session.query(Host).filter_by(address="::4").one()
+            self.assertFalse(result.in_scope)
+
+    def test_insert_network_scopetype_strict(self):
+        """
+        This method checks whether the host name scope is correctly set during the initial creation with network scope strict.
+
+        This unittest tests PostgreSQL functions: update_hosts_after_network_changes and update_hosts_after_host_changes
+        """
+        # set up database
+        self.init_db()
+        with self._engine.session_scope() as session:
+            workspace = IpUtils.add_workspace(session=session, name=self._workspace)
+            # IPv4
+            self._create_host_host_name_mapping(session=session,
+                                                workspace=workspace,
+                                                host_str="127.0.0.1",
+                                                network_str="127.0.0.1/32",
+                                                host_name_str="ipv4-test1.local",
+                                                network_scope=ScopeType.strict,
+                                                domain_name_scope=ScopeType.vhost,
+                                                host_scope=True,
+                                                mapping_type=DnsResourceRecordType.a)
+            self._create_host_host_name_mapping(session=session,
+                                                workspace=workspace,
+                                                host_str="127.0.0.2",
+                                                network_str="127.0.0.2/32",
+                                                host_name_str="ipv4-test2.local",
+                                                network_scope=ScopeType.strict,
+                                                domain_name_scope=ScopeType.vhost,
+                                                host_scope=False,
+                                                mapping_type=DnsResourceRecordType.a)
+            self._create_host_host_name_mapping(session=session,
+                                                workspace=workspace,
+                                                host_str="127.0.0.3",
+                                                network_str="127.0.0.3/32",
+                                                host_name_str="ipv4-test3.local",
+                                                network_scope=ScopeType.strict,
+                                                domain_name_scope=ScopeType.vhost,
+                                                host_scope=True,
+                                                mapping_type=DnsResourceRecordType.alias)
+            self._create_host_host_name_mapping(session=session,
+                                                workspace=workspace,
+                                                host_str="127.0.0.4",
+                                                network_str="127.0.0.4/32",
+                                                host_name_str="ipv4-test4.local",
+                                                network_scope=ScopeType.strict,
+                                                domain_name_scope=ScopeType.vhost,
+                                                host_scope=False,
+                                                mapping_type=DnsResourceRecordType.alias)
+            # IPv6
+            self._create_host_host_name_mapping(session=session,
+                                                workspace=workspace,
+                                                host_str="::1",
+                                                network_str="::1/128",
+                                                host_name_str="ipv6-test1.local",
+                                                network_scope=ScopeType.strict,
+                                                domain_name_scope=ScopeType.vhost,
+                                                host_scope=True,
+                                                mapping_type=DnsResourceRecordType.aaaa)
+            self._create_host_host_name_mapping(session=session,
+                                                workspace=workspace,
+                                                host_str="::2",
+                                                network_str="::2/128",
+                                                host_name_str="ipv6-test2.local",
+                                                network_scope=ScopeType.strict,
+                                                domain_name_scope=ScopeType.vhost,
+                                                host_scope=False,
+                                                mapping_type=DnsResourceRecordType.aaaa)
+            self._create_host_host_name_mapping(session=session,
+                                                workspace=workspace,
+                                                host_str="::3",
+                                                network_str="::3/128",
+                                                host_name_str="ipv6-test3.local",
+                                                network_scope=ScopeType.strict,
+                                                domain_name_scope=ScopeType.vhost,
+                                                host_scope=True,
+                                                mapping_type=DnsResourceRecordType.alias)
+            self._create_host_host_name_mapping(session=session,
+                                                workspace=workspace,
+                                                host_str="::4",
+                                                network_str="::4/128",
+                                                host_name_str="ipv6-test4.local",
+                                                network_scope=ScopeType.strict,
+                                                domain_name_scope=ScopeType.vhost,
+                                                host_scope=False,
+                                                mapping_type=DnsResourceRecordType.alias)
         # Update the database
         with self._engine.session_scope() as session:
             result = session.query(DomainName).filter_by(name="ipv4-test1.local").one()
@@ -1629,795 +1850,299 @@ class DomainNameScopeTypeVhostTestCases(BaseScopeTypeVhostTestCases):
             result = session.query(Host).filter_by(address="::4").one()
             self.assertFalse(result.in_scope)
 
-
-
-
-
-
-
-
-class HostScopingTestCases(BaseKisTestCase):
-    """
-    This class implements functionalities for testing the host scope
-    """
-
-    def __init__(self, test_name: str):
-        super().__init__(test_name)
-
-    def _create_host_host_name_mapping(self,
-                                       session: Session,
-                                       workspace_str: str,
-                                       ipv4_address: str,
-                                       network_str: str,
-                                       network_scope: ScopeType,
-                                       host_name_str: str,
-                                       mapping_type: DnsResourceRecordType = None,
-                                       host_name_scope: ScopeType = ScopeType.all) -> HostHostNameMapping:
-        source = None
-        self.create_network(session=session,
-                            workspace_str=workspace_str,
-                            network=network_str,
-                            scope=network_scope)
-        host = self.create_host(session=session,
-                                workspace_str=workspace_str,
-                                address=ipv4_address,
-                                in_scope=None)
-        host_name = self.create_hostname(session=session,
-                                         workspace_str=workspace_str,
-                                         host_name=host_name_str,
-                                         scope=host_name_scope)
-        mapping = self._domain_utils.add_host_host_name_mapping(session=session,
-                                                                host=host,
-                                                                host_name=host_name,
-                                                                mapping_type=mapping_type,
-                                                                source=source)
-        return mapping
-
-    def test_network_test_insert_all(self):
+    def test_insert_network_scopetype_exclude(self):
         """
-        This method checks whether the host scope is correctly set during the initial creation with network scope all.
+        This method checks whether the host scope is correctly set during the initial creation with network scope exclude.
 
         This unittest tests PostgreSQL functions: update_hosts_after_network_changes and update_hosts_after_host_changes
         """
         # set up database
         self.init_db()
-        workspace = "unittest"
         with self._engine.session_scope() as session:
+            workspace = IpUtils.add_workspace(session=session, name=self._workspace)
             # IPv4
             self._create_host_host_name_mapping(session=session,
-                                                workspace_str=workspace,
-                                                ipv4_address="127.0.0.1",
+                                                workspace=workspace,
+                                                host_str="127.0.0.1",
                                                 network_str="127.0.0.1/32",
-                                                network_scope=ScopeType.all,
                                                 host_name_str="ipv4-test1.local",
-                                                mapping_type=DnsResourceRecordType.a,
-                                                host_name_scope=ScopeType.all)
+                                                network_scope=ScopeType.exclude,
+                                                domain_name_scope=ScopeType.vhost,
+                                                mapping_type=DnsResourceRecordType.a)
             self._create_host_host_name_mapping(session=session,
-                                                workspace_str=workspace,
-                                                ipv4_address="127.0.0.2",
+                                                workspace=workspace,
+                                                host_str="127.0.0.2",
                                                 network_str="127.0.0.2/32",
-                                                network_scope=ScopeType.all,
                                                 host_name_str="ipv4-test2.local",
-                                                mapping_type=DnsResourceRecordType.a,
-                                                host_name_scope=ScopeType.exclude)
+                                                network_scope=ScopeType.exclude,
+                                                domain_name_scope=ScopeType.vhost,
+                                                mapping_type=DnsResourceRecordType.a)
             self._create_host_host_name_mapping(session=session,
-                                                workspace_str=workspace,
-                                                ipv4_address="127.0.0.3",
+                                                workspace=workspace,
+                                                host_str="127.0.0.3",
                                                 network_str="127.0.0.3/32",
-                                                network_scope=ScopeType.all,
                                                 host_name_str="ipv4-test3.local",
-                                                mapping_type=DnsResourceRecordType.alias,
-                                                host_name_scope=ScopeType.all)
+                                                network_scope=ScopeType.exclude,
+                                                domain_name_scope=ScopeType.vhost,
+                                                mapping_type=DnsResourceRecordType.alias)
             self._create_host_host_name_mapping(session=session,
-                                                workspace_str=workspace,
-                                                ipv4_address="127.0.0.4",
+                                                workspace=workspace,
+                                                host_str="127.0.0.4",
                                                 network_str="127.0.0.4/32",
-                                                network_scope=ScopeType.all,
                                                 host_name_str="ipv4-test4.local",
-                                                mapping_type=DnsResourceRecordType.alias,
-                                                host_name_scope=ScopeType.exclude)
+                                                network_scope=ScopeType.exclude,
+                                                domain_name_scope=ScopeType.vhost,
+                                                mapping_type=DnsResourceRecordType.alias)
             # IPv6
             self._create_host_host_name_mapping(session=session,
-                                                workspace_str=workspace,
-                                                ipv4_address="::1",
+                                                workspace=workspace,
+                                                host_str="::1",
                                                 network_str="::1/128",
-                                                network_scope=ScopeType.all,
                                                 host_name_str="ipv6-test1.local",
-                                                mapping_type=DnsResourceRecordType.aaaa,
-                                                host_name_scope=ScopeType.all)
+                                                network_scope=ScopeType.exclude,
+                                                domain_name_scope=ScopeType.vhost,
+                                                mapping_type=DnsResourceRecordType.aaaa)
             self._create_host_host_name_mapping(session=session,
-                                                workspace_str=workspace,
-                                                ipv4_address="::2",
+                                                workspace=workspace,
+                                                host_str="::2",
                                                 network_str="::2/128",
-                                                network_scope=ScopeType.all,
                                                 host_name_str="ipv6-test2.local",
-                                                mapping_type=DnsResourceRecordType.aaaa,
-                                                host_name_scope=ScopeType.exclude)
+                                                network_scope=ScopeType.exclude,
+                                                domain_name_scope=ScopeType.vhost,
+                                                mapping_type=DnsResourceRecordType.aaaa)
             self._create_host_host_name_mapping(session=session,
-                                                workspace_str=workspace,
-                                                ipv4_address="::3",
+                                                workspace=workspace,
+                                                host_str="::3",
                                                 network_str="::3/128",
-                                                network_scope=ScopeType.all,
                                                 host_name_str="ipv6-test3.local",
-                                                mapping_type=DnsResourceRecordType.alias,
-                                                host_name_scope=ScopeType.all)
+                                                network_scope=ScopeType.exclude,
+                                                domain_name_scope=ScopeType.vhost,
+                                                mapping_type=DnsResourceRecordType.alias)
             self._create_host_host_name_mapping(session=session,
-                                                workspace_str=workspace,
-                                                ipv4_address="::4",
+                                                workspace=workspace,
+                                                host_str="::4",
                                                 network_str="::4/128",
-                                                network_scope=ScopeType.all,
                                                 host_name_str="ipv6-test4.local",
-                                                mapping_type=DnsResourceRecordType.alias,
-                                                host_name_scope=ScopeType.exclude)
+                                                network_scope=ScopeType.exclude,
+                                                domain_name_scope=ScopeType.vhost,
+                                                mapping_type=DnsResourceRecordType.alias)
         # Update the database
         with self._engine.session_scope() as session:
-            host = session.query(Host).filter_by(address="127.0.0.1").one()
-            self.assertTrue(host.in_scope)
-            host = session.query(Host).filter_by(address="127.0.0.2").one()
-            self.assertFalse(host.in_scope)
-            host = session.query(Host).filter_by(address="127.0.0.3").one()
-            self.assertEqual(True, host.in_scope)
-            host = session.query(Host).filter_by(address="127.0.0.4").one()
-            self.assertEqual(True, host.in_scope)
-            host = session.query(Host).filter_by(address="::1").one()
-            self.assertEqual(True, host.in_scope)
-            host = session.query(Host).filter_by(address="::2").one()
-            self.assertEqual(True, host.in_scope)
-            host = session.query(Host).filter_by(address="::3").one()
-            self.assertEqual(True, host.in_scope)
-            host = session.query(Host).filter_by(address="::4").one()
-            self.assertEqual(True, host.in_scope)
+            result = session.query(DomainName).filter_by(name="ipv4-test1.local").one()
+            self.assertTrue(result.in_scope)
+            result = self.query_hostname(session=session, workspace_str=self._workspace, host_name="ipv4-test1.local")
+            self.assertFalse(result._in_scope)
+            result = session.query(Host).filter_by(address="127.0.0.1").one()
+            self.assertFalse(result.in_scope)
 
-    def test_network_test_insert_strict(self):
+            result = session.query(DomainName).filter_by(name="ipv4-test2.local").one()
+            self.assertTrue(result.in_scope)
+            result = self.query_hostname(session=session, workspace_str=self._workspace, host_name="ipv4-test2.local")
+            self.assertFalse(result._in_scope)
+            result = session.query(Host).filter_by(address="127.0.0.2").one()
+            self.assertFalse(result.in_scope)
+
+            result = session.query(DomainName).filter_by(name="ipv4-test3.local").one()
+            self.assertTrue(result.in_scope)
+            result = self.query_hostname(session=session, workspace_str=self._workspace, host_name="ipv4-test3.local")
+            self.assertFalse(result._in_scope)
+            result = session.query(Host).filter_by(address="127.0.0.3").one()
+            self.assertFalse(result.in_scope)
+
+            result = session.query(DomainName).filter_by(name="ipv4-test4.local").one()
+            self.assertTrue(result.in_scope)
+            result = self.query_hostname(session=session, workspace_str=self._workspace, host_name="ipv4-test4.local")
+            self.assertFalse(result._in_scope)
+            result = session.query(Host).filter_by(address="127.0.0.4").one()
+            self.assertFalse(result.in_scope)
+
+            # IPv6
+            result = session.query(DomainName).filter_by(name="ipv6-test1.local").one()
+            self.assertTrue(result.in_scope)
+            result = self.query_hostname(session=session, workspace_str=self._workspace, host_name="ipv6-test1.local")
+            self.assertFalse(result._in_scope)
+            result = session.query(Host).filter_by(address="::1").one()
+            self.assertFalse(result.in_scope)
+
+            result = session.query(DomainName).filter_by(name="ipv6-test2.local").one()
+            self.assertTrue(result.in_scope)
+            result = self.query_hostname(session=session, workspace_str=self._workspace, host_name="ipv6-test2.local")
+            self.assertFalse(result._in_scope)
+            result = session.query(Host).filter_by(address="::2").one()
+            self.assertFalse(result.in_scope)
+
+            result = session.query(DomainName).filter_by(name="ipv6-test3.local").one()
+            self.assertTrue(result.in_scope)
+            result = self.query_hostname(session=session, workspace_str=self._workspace, host_name="ipv6-test4.local")
+            self.assertFalse(result._in_scope)
+            result = session.query(Host).filter_by(address="::3").one()
+            self.assertFalse(result.in_scope)
+
+            result = session.query(DomainName).filter_by(name="ipv6-test4.local").one()
+            self.assertTrue(result.in_scope)
+            result = self.query_hostname(session=session, workspace_str=self._workspace, host_name="ipv6-test4.local")
+            self.assertFalse(result._in_scope)
+            result = session.query(Host).filter_by(address="::4").one()
+            self.assertFalse(result.in_scope)
+
+    def test_update_domain_scope_to_all_after_insert_network_scopetype_all(self):
         """
-        This method checks whether the host scope is correctly set during the initial creation with network scope all.
+        This method checks whether the host name scope is correctly updated when domain name scope is updated from
+        vhost to all.
 
         This unittest tests PostgreSQL functions: update_hosts_after_network_changes and update_hosts_after_host_changes
         """
-        # set up database
-        self.init_db()
-        workspace = "unittest"
+        self.test_insert_network_scopetype_all()
+        # Check and update the domain name's scope
         with self._engine.session_scope() as session:
-            # IPv4
-            mapping = self._create_host_host_name_mapping(session=session,
-                                                          workspace_str=workspace,
-                                                          ipv4_address="127.0.0.1",
-                                                          network_str="127.0.0.1/32",
-                                                          network_scope=ScopeType.strict,
-                                                          host_name_str="ipv4-test1.local",
-                                                          mapping_type=DnsResourceRecordType.a,
-                                                          host_name_scope=ScopeType.all)
-            mapping.host.in_scope = True
-            self._create_host_host_name_mapping(session=session,
-                                                workspace_str=workspace,
-                                                ipv4_address="127.0.0.2",
-                                                network_str="127.0.0.2/32",
-                                                network_scope=ScopeType.strict,
-                                                host_name_str="ipv4-test2.local",
-                                                mapping_type=DnsResourceRecordType.a,
-                                                host_name_scope=ScopeType.exclude)
-            self._create_host_host_name_mapping(session=session,
-                                                workspace_str=workspace,
-                                                ipv4_address="127.0.0.3",
-                                                network_str="127.0.0.3/32",
-                                                network_scope=ScopeType.strict,
-                                                host_name_str="ipv4-test3.local",
-                                                mapping_type=DnsResourceRecordType.alias,
-                                                host_name_scope=ScopeType.all)
-            mapping = self._create_host_host_name_mapping(session=session,
-                                                          workspace_str=workspace,
-                                                          ipv4_address="127.0.0.4",
-                                                          network_str="127.0.0.4/32",
-                                                          network_scope=ScopeType.strict,
-                                                          host_name_str="ipv4-test4.local",
-                                                          mapping_type=DnsResourceRecordType.alias,
-                                                          host_name_scope=ScopeType.exclude)
-            mapping.host.in_scope = True
-            # IPv6
-            mapping = self._create_host_host_name_mapping(session=session,
-                                                          workspace_str=workspace,
-                                                          ipv4_address="::1",
-                                                          network_str="::1/128",
-                                                          network_scope=ScopeType.strict,
-                                                          host_name_str="ipv6-test1.local",
-                                                          mapping_type=DnsResourceRecordType.aaaa,
-                                                          host_name_scope=ScopeType.all)
-            mapping.host.in_scope = True
-            self._create_host_host_name_mapping(session=session,
-                                                workspace_str=workspace,
-                                                ipv4_address="::2",
-                                                network_str="::2/128",
-                                                network_scope=ScopeType.strict,
-                                                host_name_str="ipv6-test2.local",
-                                                mapping_type=DnsResourceRecordType.aaaa,
-                                                host_name_scope=ScopeType.exclude)
-            self._create_host_host_name_mapping(session=session,
-                                                workspace_str=workspace,
-                                                ipv4_address="::3",
-                                                network_str="::3/128",
-                                                network_scope=ScopeType.strict,
-                                                host_name_str="ipv6-test3.local",
-                                                mapping_type=DnsResourceRecordType.alias,
-                                                host_name_scope=ScopeType.all)
-            mapping = self._create_host_host_name_mapping(session=session,
-                                                          workspace_str=workspace,
-                                                          ipv4_address="::4",
-                                                          network_str="::4/128",
-                                                          network_scope=ScopeType.strict,
-                                                          host_name_str="ipv6-test4.local",
-                                                          mapping_type=DnsResourceRecordType.alias,
-                                                          host_name_scope=ScopeType.exclude)
-            mapping.host.in_scope = True
+            result = session.query(DomainName).filter_by(name="ipv4-test1.local").one()
+            self.assertEqual(ScopeType.vhost, result.scope)
+            result.scope = ScopeType.all
+            result = session.query(DomainName).filter_by(name="ipv4-test2.local").one()
+            self.assertEqual(ScopeType.vhost, result.scope)
+            result.scope = ScopeType.all
+            result = session.query(DomainName).filter_by(name="ipv6-test1.local").one()
+            self.assertEqual(ScopeType.vhost, result.scope)
+            result.scope = ScopeType.all
+            result = session.query(DomainName).filter_by(name="ipv6-test2.local").one()
+            self.assertEqual(ScopeType.vhost, result.scope)
+            result.scope = ScopeType.all
         # Update the database
         with self._engine.session_scope() as session:
-            host = session.query(Host).filter_by(address="127.0.0.1").one()
-            self.assertEqual(True, host.in_scope)
-            host = session.query(Host).filter_by(address="127.0.0.2").one()
-            self.assertEqual(False, host.in_scope)
-            host = session.query(Host).filter_by(address="127.0.0.3").one()
-            self.assertEqual(False, host.in_scope)
-            host = session.query(Host).filter_by(address="127.0.0.4").one()
-            self.assertEqual(True, host.in_scope)
-            host = session.query(Host).filter_by(address="::1").one()
-            self.assertEqual(True, host.in_scope)
-            host = session.query(Host).filter_by(address="::2").one()
-            self.assertEqual(False, host.in_scope)
-            host = session.query(Host).filter_by(address="::3").one()
-            self.assertEqual(False, host.in_scope)
-            host = session.query(Host).filter_by(address="::4").one()
-            self.assertEqual(True, host.in_scope)
+            result = session.query(DomainName).filter_by(name="ipv4-test1.local").one()
+            self.assertTrue(result.in_scope)
+            result = self.query_hostname(session=session, workspace_str=self._workspace, host_name="ipv4-test1.local")
+            self.assertTrue(result._in_scope)
+            result = session.query(Host).filter_by(address="127.0.0.1").one()
+            self.assertTrue(result.in_scope)
 
-    def test_network_test_insert_exclude(self):
+            result = session.query(DomainName).filter_by(name="ipv4-test2.local").one()
+            self.assertTrue(result.in_scope)
+            result = self.query_hostname(session=session, workspace_str=self._workspace, host_name="ipv4-test2.local")
+            self.assertTrue(result._in_scope)
+            result = session.query(Host).filter_by(address="127.0.0.2").one()
+            self.assertFalse(result.in_scope)
+
+            result = session.query(DomainName).filter_by(name="ipv4-test3.local").one()
+            self.assertTrue(result.in_scope)
+            result = self.query_hostname(session=session, workspace_str=self._workspace, host_name="ipv4-test3.local")
+            self.assertFalse(result._in_scope)
+            result = session.query(Host).filter_by(address="127.0.0.3").one()
+            self.assertTrue(result.in_scope)
+
+            result = session.query(DomainName).filter_by(name="ipv4-test4.local").one()
+            self.assertTrue(result.in_scope)
+            result = self.query_hostname(session=session, workspace_str=self._workspace, host_name="ipv4-test4.local")
+            self.assertFalse(result._in_scope)
+            result = session.query(Host).filter_by(address="127.0.0.4").one()
+            self.assertFalse(result.in_scope)
+
+            # IPv6
+            result = session.query(DomainName).filter_by(name="ipv6-test1.local").one()
+            self.assertTrue(result.in_scope)
+            result = self.query_hostname(session=session, workspace_str=self._workspace, host_name="ipv6-test1.local")
+            self.assertTrue(result._in_scope)
+            result = session.query(Host).filter_by(address="::1").one()
+            self.assertTrue(result.in_scope)
+
+            result = session.query(DomainName).filter_by(name="ipv6-test2.local").one()
+            self.assertTrue(result.in_scope)
+            result = self.query_hostname(session=session, workspace_str=self._workspace, host_name="ipv6-test2.local")
+            self.assertTrue(result._in_scope)
+            result = session.query(Host).filter_by(address="::2").one()
+            self.assertFalse(result.in_scope)
+
+            result = session.query(DomainName).filter_by(name="ipv6-test3.local").one()
+            self.assertTrue(result.in_scope)
+            result = self.query_hostname(session=session, workspace_str=self._workspace, host_name="ipv6-test4.local")
+            self.assertFalse(result._in_scope)
+            result = session.query(Host).filter_by(address="::3").one()
+            self.assertTrue(result.in_scope)
+
+            result = session.query(DomainName).filter_by(name="ipv6-test4.local").one()
+            self.assertTrue(result.in_scope)
+            result = self.query_hostname(session=session, workspace_str=self._workspace, host_name="ipv6-test4.local")
+            self.assertFalse(result._in_scope)
+            result = session.query(Host).filter_by(address="::4").one()
+            self.assertFalse(result.in_scope)
+
+    def test_update_network_scope_exclude_after_insert_network_scopetype_all(self):
         """
-        This method checks whether the host scope is correctly set during the initial creation with network scope all.
+        This method checks whether the host name scope is correctly updated when network scope is updated from all to
+        exclude.
 
         This unittest tests PostgreSQL functions: update_hosts_after_network_changes and update_hosts_after_host_changes
         """
-        # set up database
-        self.init_db()
-        workspace = "unittest"
+        self.test_insert_network_scopetype_all()
+        # Update database and swap network scope types
         with self._engine.session_scope() as session:
-            # IPv4
-            mapping = self._create_host_host_name_mapping(session=session,
-                                                          workspace_str=workspace,
-                                                          ipv4_address="127.0.0.1",
-                                                          network_str="127.0.0.1/32",
-                                                          network_scope=ScopeType.exclude,
-                                                          host_name_str="ipv4-test1.local",
-                                                          mapping_type=DnsResourceRecordType.a,
-                                                          host_name_scope=ScopeType.all)
-            mapping.host.in_scope = True
-            self._create_host_host_name_mapping(session=session,
-                                                workspace_str=workspace,
-                                                ipv4_address="127.0.0.2",
-                                                network_str="127.0.0.2/32",
-                                                network_scope=ScopeType.exclude,
-                                                host_name_str="ipv4-test2.local",
-                                                mapping_type=DnsResourceRecordType.a,
-                                                host_name_scope=ScopeType.exclude)
-            self._create_host_host_name_mapping(session=session,
-                                                workspace_str=workspace,
-                                                ipv4_address="127.0.0.3",
-                                                network_str="127.0.0.3/32",
-                                                network_scope=ScopeType.strict,
-                                                host_name_str="ipv4-test3.local",
-                                                mapping_type=DnsResourceRecordType.alias,
-                                                host_name_scope=ScopeType.all)
-            mapping = self._create_host_host_name_mapping(session=session,
-                                                          workspace_str=workspace,
-                                                          ipv4_address="127.0.0.4",
-                                                          network_str="127.0.0.4/32",
-                                                          network_scope=ScopeType.exclude,
-                                                          host_name_str="ipv4-test4.local",
-                                                          mapping_type=DnsResourceRecordType.alias,
-                                                          host_name_scope=ScopeType.exclude)
-            mapping.host.in_scope = True
+            for result in session.query(Network).filter_by().all():
+                result.scope = ScopeType.exclude if result.scope == ScopeType.all else ScopeType.all
+        # Check the database
+        with self._engine.session_scope() as session:
+            result = session.query(DomainName).filter_by(name="ipv4-test1.local").one()
+            self.assertTrue(result.in_scope)
+            result = self.query_hostname(session=session, workspace_str=self._workspace, host_name="ipv4-test1.local")
+            self.assertFalse(result._in_scope)
+            result = session.query(Host).filter_by(address="127.0.0.1").one()
+            self.assertFalse(result.in_scope)
+
+            result = session.query(DomainName).filter_by(name="ipv4-test2.local").one()
+            self.assertTrue(result.in_scope)
+            result = self.query_hostname(session=session, workspace_str=self._workspace, host_name="ipv4-test2.local")
+            self.assertTrue(result._in_scope)
+            result = session.query(Host).filter_by(address="127.0.0.2").one()
+            self.assertTrue(result.in_scope)
+
+            result = session.query(DomainName).filter_by(name="ipv4-test3.local").one()
+            self.assertTrue(result.in_scope)
+            result = self.query_hostname(session=session, workspace_str=self._workspace, host_name="ipv4-test3.local")
+            self.assertFalse(result._in_scope)
+            result = session.query(Host).filter_by(address="127.0.0.3").one()
+            self.assertFalse(result.in_scope)
+
+            result = session.query(DomainName).filter_by(name="ipv4-test4.local").one()
+            self.assertTrue(result.in_scope)
+            result = self.query_hostname(session=session, workspace_str=self._workspace, host_name="ipv4-test4.local")
+            self.assertFalse(result._in_scope)
+            result = session.query(Host).filter_by(address="127.0.0.4").one()
+            self.assertTrue(result.in_scope)
+
             # IPv6
-            mapping = self._create_host_host_name_mapping(session=session,
-                                                          workspace_str=workspace,
-                                                          ipv4_address="::1",
-                                                          network_str="::1/128",
-                                                          network_scope=ScopeType.exclude,
-                                                          host_name_str="ipv6-test1.local",
-                                                          mapping_type=DnsResourceRecordType.aaaa,
-                                                          host_name_scope=ScopeType.all)
-            mapping.host.in_scope = True
-            self._create_host_host_name_mapping(session=session,
-                                                workspace_str=workspace,
-                                                ipv4_address="::2",
-                                                network_str="::2/128",
-                                                network_scope=ScopeType.exclude,
-                                                host_name_str="ipv6-test2.local",
-                                                mapping_type=DnsResourceRecordType.aaaa,
-                                                host_name_scope=ScopeType.exclude)
-            self._create_host_host_name_mapping(session=session,
-                                                workspace_str=workspace,
-                                                ipv4_address="::3",
-                                                network_str="::3/128",
-                                                network_scope=ScopeType.exclude,
-                                                host_name_str="ipv6-test3.local",
-                                                mapping_type=DnsResourceRecordType.alias,
-                                                host_name_scope=ScopeType.all)
-            mapping = self._create_host_host_name_mapping(session=session,
-                                                          workspace_str=workspace,
-                                                          ipv4_address="::4",
-                                                          network_str="::4/128",
-                                                          network_scope=ScopeType.exclude,
-                                                          host_name_str="ipv6-test4.local",
-                                                          mapping_type=DnsResourceRecordType.alias,
-                                                          host_name_scope=ScopeType.exclude)
-            mapping.host.in_scope = True
-        # Update the database
-        with self._engine.session_scope() as session:
-            host = session.query(Host).filter_by(address="127.0.0.1").one()
-            self.assertEqual(False, host.in_scope)
-            host = session.query(Host).filter_by(address="127.0.0.2").one()
-            self.assertEqual(False, host.in_scope)
-            host = session.query(Host).filter_by(address="127.0.0.3").one()
-            self.assertEqual(False, host.in_scope)
-            host = session.query(Host).filter_by(address="127.0.0.4").one()
-            self.assertEqual(False, host.in_scope)
-            host = session.query(Host).filter_by(address="::1").one()
-            self.assertEqual(False, host.in_scope)
-            host = session.query(Host).filter_by(address="::2").one()
-            self.assertEqual(False, host.in_scope)
-            host = session.query(Host).filter_by(address="::3").one()
-            self.assertEqual(False, host.in_scope)
-            host = session.query(Host).filter_by(address="::4").one()
-            self.assertEqual(False, host.in_scope)
+            result = session.query(DomainName).filter_by(name="ipv6-test1.local").one()
+            self.assertTrue(result.in_scope)
+            result = self.query_hostname(session=session, workspace_str=self._workspace, host_name="ipv6-test1.local")
+            self.assertFalse(result._in_scope)
+            result = session.query(Host).filter_by(address="::1").one()
+            self.assertFalse(result.in_scope)
 
-    def test_network_test_insert_vhost(self):
-        """
-        This method checks whether the host scope is correctly set during the initial creation with network scope all.
+            result = session.query(DomainName).filter_by(name="ipv6-test2.local").one()
+            self.assertTrue(result.in_scope)
+            result = self.query_hostname(session=session, workspace_str=self._workspace, host_name="ipv6-test2.local")
+            self.assertTrue(result._in_scope)
+            result = session.query(Host).filter_by(address="::2").one()
+            self.assertTrue(result.in_scope)
 
-        This unittest tests PostgreSQL functions: update_hosts_after_network_changes and update_hosts_after_host_changes
-        """
-        # set up database
-        self.init_db()
-        workspace = "unittest"
-        with self._engine.session_scope() as session:
-            # IPv4
-            self._create_host_host_name_mapping(session=session,
-                                                workspace_str=workspace,
-                                                ipv4_address="127.0.0.1",
-                                                network_str="127.0.0.1/32",
-                                                network_scope=ScopeType.vhost,
-                                                host_name_str="ipv4-test1.local",
-                                                mapping_type=DnsResourceRecordType.a,
-                                                host_name_scope=ScopeType.all)
-            self._create_host_host_name_mapping(session=session,
-                                                workspace_str=workspace,
-                                                ipv4_address="127.0.0.2",
-                                                network_str="127.0.0.2/32",
-                                                network_scope=ScopeType.vhost,
-                                                host_name_str="ipv4-test2.local",
-                                                mapping_type=DnsResourceRecordType.a,
-                                                host_name_scope=ScopeType.exclude)
-            self._create_host_host_name_mapping(session=session,
-                                                workspace_str=workspace,
-                                                ipv4_address="127.0.0.3",
-                                                network_str="127.0.0.3/32",
-                                                network_scope=ScopeType.vhost,
-                                                host_name_str="ipv4-test3.local",
-                                                mapping_type=DnsResourceRecordType.alias,
-                                                host_name_scope=ScopeType.all)
-            self._create_host_host_name_mapping(session=session,
-                                                workspace_str=workspace,
-                                                ipv4_address="127.0.0.4",
-                                                network_str="127.0.0.4/32",
-                                                network_scope=ScopeType.vhost,
-                                                host_name_str="ipv4-test4.local",
-                                                mapping_type=DnsResourceRecordType.alias,
-                                                host_name_scope=ScopeType.exclude)
-            # IPv6
-            self._create_host_host_name_mapping(session=session,
-                                                workspace_str=workspace,
-                                                ipv4_address="::1",
-                                                network_str="::1/128",
-                                                network_scope=ScopeType.vhost,
-                                                host_name_str="ipv6-test1.local",
-                                                mapping_type=DnsResourceRecordType.aaaa,
-                                                host_name_scope=ScopeType.all)
-            self._create_host_host_name_mapping(session=session,
-                                                workspace_str=workspace,
-                                                ipv4_address="::2",
-                                                network_str="::2/128",
-                                                network_scope=ScopeType.vhost,
-                                                host_name_str="ipv6-test2.local",
-                                                mapping_type=DnsResourceRecordType.aaaa,
-                                                host_name_scope=ScopeType.exclude)
-            self._create_host_host_name_mapping(session=session,
-                                                workspace_str=workspace,
-                                                ipv4_address="::3",
-                                                network_str="::3/128",
-                                                network_scope=ScopeType.vhost,
-                                                host_name_str="ipv6-test3.local",
-                                                mapping_type=DnsResourceRecordType.alias,
-                                                host_name_scope=ScopeType.all)
-            self._create_host_host_name_mapping(session=session,
-                                                workspace_str=workspace,
-                                                ipv4_address="::4",
-                                                network_str="::4/128",
-                                                network_scope=ScopeType.vhost,
-                                                host_name_str="ipv6-test4.local",
-                                                mapping_type=DnsResourceRecordType.alias,
-                                                host_name_scope=ScopeType.exclude)
-        # Update the database
-        with self._engine.session_scope() as session:
-            host = session.query(Host).filter_by(address="127.0.0.1").one()
-            self.assertEqual(True, host.in_scope)
-            host = session.query(Host).filter_by(address="127.0.0.2").one()
-            self.assertEqual(False, host.in_scope)
-            host = session.query(Host).filter_by(address="127.0.0.3").one()
-            self.assertEqual(False, host.in_scope)
-            host = session.query(Host).filter_by(address="127.0.0.4").one()
-            self.assertEqual(False, host.in_scope)
-            host = session.query(Host).filter_by(address="::1").one()
-            self.assertEqual(True, host.in_scope)
-            host = session.query(Host).filter_by(address="::2").one()
-            self.assertEqual(False, host.in_scope)
-            host = session.query(Host).filter_by(address="::3").one()
-            self.assertEqual(False, host.in_scope)
-            host = session.query(Host).filter_by(address="::4").one()
-            self.assertEqual(False, host.in_scope)
+            result = session.query(DomainName).filter_by(name="ipv6-test3.local").one()
+            self.assertTrue(result.in_scope)
+            result = self.query_hostname(session=session, workspace_str=self._workspace, host_name="ipv6-test4.local")
+            self.assertFalse(result._in_scope)
+            result = session.query(Host).filter_by(address="::3").one()
+            self.assertFalse(result.in_scope)
+
+            result = session.query(DomainName).filter_by(name="ipv6-test4.local").one()
+            self.assertTrue(result.in_scope)
+            result = self.query_hostname(session=session, workspace_str=self._workspace, host_name="ipv6-test4.local")
+            self.assertFalse(result._in_scope)
+            result = session.query(Host).filter_by(address="::4").one()
+            self.assertTrue(result.in_scope)
 
 
-class HostNameScopingTestCases(BaseKisTestCase):
-    """
-    This class implements functionalities for testing the host name scope
-    """
+# Vhost cases to cover
+# 1. Update host_host_name_mapping (add/update new A/AAAA row, delete A/AAAA row)
+# 2. Update network scope (update scope, delete network)
+# 3. Update host scope
+# 4. Update domain scope
+# 5. Update host name scope
 
-    def __init__(self, test_name: str):
-        super().__init__(test_name)
-
-    def test_domain_name_test_insert_all(self):
-        """
-        This method checks whether the domain name's host name object (the object where the host_name.name
-        is null) is correctly set during the initial creation with domain scope all.
-
-        This unittest tests PostgreSQL functions: update_host_names_after_domain_name_scope_changes and
-        update_host_name_scope.
-        """
-        # set up database
-        self.init_db()
-        workspace = "unittest"
-        with self._engine.session_scope() as session:
-            self.create_host_host_name_mapping(session=session,
-                                               workspace_str=workspace,
-                                               ipv4_address="127.0.0.1",
-                                               host_name_str="ipv4-test1.local",
-                                               mapping_type=DnsResourceRecordType.a,
-                                               host_name_scope=ScopeType.all,
-                                               host_scope=True)
-            self.create_host_host_name_mapping(session=session,
-                                               workspace_str=workspace,
-                                               ipv4_address="127.0.0.2",
-                                               host_name_str="ipv4-test2.local",
-                                               mapping_type=DnsResourceRecordType.a,
-                                               host_name_scope=ScopeType.all,
-                                               host_scope=False)
-            self.create_host_host_name_mapping(session=session,
-                                               workspace_str=workspace,
-                                               ipv4_address="127.0.0.3",
-                                               host_name_str="ipv4-test3.local",
-                                               mapping_type=DnsResourceRecordType.alias,
-                                               host_name_scope=ScopeType.all,
-                                               host_scope=True)
-            self.create_host_host_name_mapping(session=session,
-                                               workspace_str=workspace,
-                                               ipv4_address="127.0.0.4",
-                                               host_name_str="ipv4-test4.local",
-                                               mapping_type=DnsResourceRecordType.alias,
-                                               host_name_scope=ScopeType.all,
-                                               host_scope=False)
-            self.create_host_host_name_mapping(session=session,
-                                               workspace_str=workspace,
-                                               ipv4_address="::1",
-                                               host_name_str="ipv6-test1.local",
-                                               mapping_type=DnsResourceRecordType.aaaa,
-                                               host_name_scope=ScopeType.all,
-                                               host_scope=True)
-            self.create_host_host_name_mapping(session=session,
-                                               workspace_str=workspace,
-                                               ipv4_address="::2",
-                                               host_name_str="ipv6-test2.local",
-                                               mapping_type=DnsResourceRecordType.aaaa,
-                                               host_name_scope=ScopeType.all,
-                                               host_scope=False)
-            self.create_host_host_name_mapping(session=session,
-                                               workspace_str=workspace,
-                                               ipv4_address="::3",
-                                               host_name_str="ipv6-test3.local",
-                                               mapping_type=DnsResourceRecordType.alias,
-                                               host_name_scope=ScopeType.all,
-                                               host_scope=True)
-            self.create_host_host_name_mapping(session=session,
-                                               workspace_str=workspace,
-                                               ipv4_address="::4",
-                                               host_name_str="ipv6-test4.local",
-                                               mapping_type=DnsResourceRecordType.alias,
-                                               host_name_scope=ScopeType.all,
-                                               host_scope=False)
-        # Update the database
-        with self._engine.session_scope() as session:
-            domain = session.query(DomainName).filter_by(name="ipv4-test1.local").one()
-            self.assertEqual(True, domain.host_names[0]._in_scope)
-            domain = session.query(DomainName).filter_by(name="ipv4-test2.local").one()
-            self.assertEqual(True, domain.host_names[0]._in_scope)
-            domain = session.query(DomainName).filter_by(name="ipv4-test3.local").one()
-            self.assertEqual(True, domain.host_names[0]._in_scope)
-            domain = session.query(DomainName).filter_by(name="ipv4-test4.local").one()
-            self.assertEqual(True, domain.host_names[0]._in_scope)
-            domain = session.query(DomainName).filter_by(name="ipv6-test1.local").one()
-            self.assertEqual(True, domain.host_names[0]._in_scope)
-            domain = session.query(DomainName).filter_by(name="ipv6-test2.local").one()
-            self.assertEqual(True, domain.host_names[0]._in_scope)
-            domain = session.query(DomainName).filter_by(name="ipv6-test3.local").one()
-            self.assertEqual(True, domain.host_names[0]._in_scope)
-            domain = session.query(DomainName).filter_by(name="ipv6-test4.local").one()
-            self.assertEqual(True, domain.host_names[0]._in_scope)
-
-    def test_domain_name_test_insert_strict(self):
-        """
-        This method checks whether the domain name's host name object (the object where the host_name.name
-        is null) is correctly set during the initial creation with domain scope explicit.
-
-        This unittest tests PostgreSQL functions: update_host_names_after_domain_name_scope_changes and
-        update_host_name_scope.
-        """
-        # set up database
-        self.init_db()
-        workspace = "unittest"
-        with self._engine.session_scope() as session:
-            mapping = self.create_host_host_name_mapping(session=session,
-                                                         workspace_str=workspace,
-                                                         ipv4_address="127.0.0.1",
-                                                         host_name_str="ipv4-test1.local",
-                                                         mapping_type=DnsResourceRecordType.a,
-                                                         host_name_scope=ScopeType.strict,
-                                                         host_scope=True)
-            mapping.host_name._in_scope = True
-            mapping = self.create_host_host_name_mapping(session=session,
-                                                         workspace_str=workspace,
-                                                         ipv4_address="127.0.0.2",
-                                                         host_name_str="ipv4-test2.local",
-                                                         mapping_type=DnsResourceRecordType.a,
-                                                         host_name_scope=ScopeType.strict,
-                                                         host_scope=False)
-            mapping = self.create_host_host_name_mapping(session=session,
-                                                         workspace_str=workspace,
-                                                         ipv4_address="127.0.0.3",
-                                                         host_name_str="ipv4-test3.local",
-                                                         mapping_type=DnsResourceRecordType.alias,
-                                                         host_name_scope=ScopeType.strict,
-                                                         host_scope=True)
-            mapping = self.create_host_host_name_mapping(session=session,
-                                                         workspace_str=workspace,
-                                                         ipv4_address="127.0.0.4",
-                                                         host_name_str="ipv4-test4.local",
-                                                         mapping_type=DnsResourceRecordType.alias,
-                                                         host_name_scope=ScopeType.strict,
-                                                         host_scope=False)
-            mapping.host_name._in_scope = True
-            mapping = self.create_host_host_name_mapping(session=session,
-                                                         workspace_str=workspace,
-                                                         ipv4_address="::1",
-                                                         host_name_str="ipv6-test1.local",
-                                                         mapping_type=DnsResourceRecordType.aaaa,
-                                                         host_name_scope=ScopeType.strict,
-                                                         host_scope=True)
-            mapping.host_name._in_scope = True
-            mapping = self.create_host_host_name_mapping(session=session,
-                                                         workspace_str=workspace,
-                                                         ipv4_address="::2",
-                                                         host_name_str="ipv6-test2.local",
-                                                         mapping_type=DnsResourceRecordType.aaaa,
-                                                         host_name_scope=ScopeType.strict,
-                                                         host_scope=False)
-            mapping = self.create_host_host_name_mapping(session=session,
-                                                         workspace_str=workspace,
-                                                         ipv4_address="::3",
-                                                         host_name_str="ipv6-test3.local",
-                                                         mapping_type=DnsResourceRecordType.alias,
-                                                         host_name_scope=ScopeType.strict,
-                                                         host_scope=True)
-            mapping = self.create_host_host_name_mapping(session=session,
-                                                         workspace_str=workspace,
-                                                         ipv4_address="::4",
-                                                         host_name_str="ipv6-test4.local",
-                                                         mapping_type=DnsResourceRecordType.alias,
-                                                         host_name_scope=ScopeType.strict,
-                                                         host_scope=False)
-            mapping.host_name._in_scope = True
-        # Update the database
-        with self._engine.session_scope() as session:
-            domain = session.query(DomainName).filter_by(name="ipv4-test1.local").one()
-            self.assertEqual(True, domain.host_names[0]._in_scope)
-            domain = session.query(DomainName).filter_by(name="ipv4-test2.local").one()
-            self.assertEqual(False, domain.host_names[0]._in_scope)
-            domain = session.query(DomainName).filter_by(name="ipv4-test3.local").one()
-            self.assertEqual(False, domain.host_names[0]._in_scope)
-            domain = session.query(DomainName).filter_by(name="ipv4-test4.local").one()
-            self.assertEqual(True, domain.host_names[0]._in_scope)
-            domain = session.query(DomainName).filter_by(name="ipv6-test1.local").one()
-            self.assertEqual(True, domain.host_names[0]._in_scope)
-            domain = session.query(DomainName).filter_by(name="ipv6-test2.local").one()
-            self.assertEqual(False, domain.host_names[0]._in_scope)
-            domain = session.query(DomainName).filter_by(name="ipv6-test3.local").one()
-            self.assertEqual(False, domain.host_names[0]._in_scope)
-            domain = session.query(DomainName).filter_by(name="ipv6-test4.local").one()
-            self.assertEqual(True, domain.host_names[0]._in_scope)
-
-    def test_domain_name_test_insert_exclude(self):
-        """
-        This method checks whether the domain name's host name object (the object where the host_name.name
-        is null) is correctly set during the initial creation with domain scope vhost.
-
-        This unittest tests PostgreSQL functions: update_host_names_after_domain_name_scope_changes and
-        update_host_name_scope.
-        """
-        # set up database
-        self.init_db()
-        workspace = "unittest"
-        with self._engine.session_scope() as session:
-            self.create_host_host_name_mapping(session=session,
-                                               workspace_str=workspace,
-                                               ipv4_address="127.0.0.1",
-                                               host_name_str="ipv4-test1.local",
-                                               mapping_type=DnsResourceRecordType.a,
-                                               host_name_scope=ScopeType.exclude,
-                                               host_scope=True)
-            self.create_host_host_name_mapping(session=session,
-                                               workspace_str=workspace,
-                                               ipv4_address="127.0.0.2",
-                                               host_name_str="ipv4-test2.local",
-                                               mapping_type=DnsResourceRecordType.a,
-                                               host_name_scope=ScopeType.exclude,
-                                               host_scope=False)
-            self.create_host_host_name_mapping(session=session,
-                                               workspace_str=workspace,
-                                               ipv4_address="127.0.0.3",
-                                               host_name_str="ipv4-test3.local",
-                                               mapping_type=DnsResourceRecordType.alias,
-                                               host_name_scope=ScopeType.exclude,
-                                               host_scope=True)
-            self.create_host_host_name_mapping(session=session,
-                                               workspace_str=workspace,
-                                               ipv4_address="127.0.0.4",
-                                               host_name_str="ipv4-test4.local",
-                                               mapping_type=DnsResourceRecordType.alias,
-                                               host_name_scope=ScopeType.exclude,
-                                               host_scope=False)
-            self.create_host_host_name_mapping(session=session,
-                                               workspace_str=workspace,
-                                               ipv4_address="::1",
-                                               host_name_str="ipv6-test1.local",
-                                               mapping_type=DnsResourceRecordType.aaaa,
-                                               host_name_scope=ScopeType.exclude,
-                                               host_scope=True)
-            self.create_host_host_name_mapping(session=session,
-                                               workspace_str=workspace,
-                                               ipv4_address="::2",
-                                               host_name_str="ipv6-test2.local",
-                                               mapping_type=DnsResourceRecordType.aaaa,
-                                               host_name_scope=ScopeType.exclude,
-                                               host_scope=False)
-            self.create_host_host_name_mapping(session=session,
-                                               workspace_str=workspace,
-                                               ipv4_address="::3",
-                                               host_name_str="ipv6-test3.local",
-                                               mapping_type=DnsResourceRecordType.alias,
-                                               host_name_scope=ScopeType.exclude,
-                                               host_scope=True)
-            self.create_host_host_name_mapping(session=session,
-                                               workspace_str=workspace,
-                                               ipv4_address="::4",
-                                               host_name_str="ipv6-test4.local",
-                                               mapping_type=DnsResourceRecordType.alias,
-                                               host_name_scope=ScopeType.exclude,
-                                               host_scope=False)
-        # Update the database
-        with self._engine.session_scope() as session:
-            domain = session.query(DomainName).filter_by(name="ipv4-test1.local").one()
-            self.assertEqual(False, domain.host_names[0]._in_scope)
-            domain = session.query(DomainName).filter_by(name="ipv4-test2.local").one()
-            self.assertEqual(False, domain.host_names[0]._in_scope)
-            domain = session.query(DomainName).filter_by(name="ipv4-test3.local").one()
-            self.assertEqual(False, domain.host_names[0]._in_scope)
-            domain = session.query(DomainName).filter_by(name="ipv4-test4.local").one()
-            self.assertEqual(False, domain.host_names[0]._in_scope)
-            domain = session.query(DomainName).filter_by(name="ipv6-test1.local").one()
-            self.assertEqual(False, domain.host_names[0]._in_scope)
-            domain = session.query(DomainName).filter_by(name="ipv6-test2.local").one()
-            self.assertEqual(False, domain.host_names[0]._in_scope)
-            domain = session.query(DomainName).filter_by(name="ipv6-test3.local").one()
-            self.assertEqual(False, domain.host_names[0]._in_scope)
-            domain = session.query(DomainName).filter_by(name="ipv6-test4.local").one()
-            self.assertEqual(False, domain.host_names[0]._in_scope)
-
-    def test_domain_name_test_insert_vhost(self):
-        """
-        This method checks whether the domain name's host name object (the object where the host_name.name
-        is null) is correctly set during the initial creation with domain scope vhost.
-
-        This unittest tests PostgreSQL functions: update_host_names_after_domain_name_scope_changes and
-        update_host_name_scope.
-        """
-        # set up database
-        self.init_db()
-        workspace = "unittest"
-        with self._engine.session_scope() as session:
-            self.create_host_host_name_mapping(session=session,
-                                               workspace_str=workspace,
-                                               ipv4_address="127.0.0.1",
-                                               host_name_str="ipv4-test1.local",
-                                               mapping_type=DnsResourceRecordType.a,
-                                               host_name_scope=ScopeType.vhost,
-                                               host_scope=True)
-            self.create_host_host_name_mapping(session=session,
-                                               workspace_str=workspace,
-                                               ipv4_address="127.0.0.2",
-                                               host_name_str="ipv4-test2.local",
-                                               mapping_type=DnsResourceRecordType.a,
-                                               host_name_scope=ScopeType.vhost,
-                                               host_scope=False)
-            self.create_host_host_name_mapping(session=session,
-                                               workspace_str=workspace,
-                                               ipv4_address="127.0.0.3",
-                                               host_name_str="ipv4-test3.local",
-                                               mapping_type=DnsResourceRecordType.alias,
-                                               host_name_scope=ScopeType.vhost,
-                                               host_scope=True)
-            self.create_host_host_name_mapping(session=session,
-                                               workspace_str=workspace,
-                                               ipv4_address="127.0.0.4",
-                                               host_name_str="ipv4-test4.local",
-                                               mapping_type=DnsResourceRecordType.alias,
-                                               host_name_scope=ScopeType.vhost,
-                                               host_scope=False)
-            self.create_host_host_name_mapping(session=session,
-                                               workspace_str=workspace,
-                                               ipv4_address="::1",
-                                               host_name_str="ipv6-test1.local",
-                                               mapping_type=DnsResourceRecordType.aaaa,
-                                               host_name_scope=ScopeType.vhost,
-                                               host_scope=True)
-            self.create_host_host_name_mapping(session=session,
-                                               workspace_str=workspace,
-                                               ipv4_address="::2",
-                                               host_name_str="ipv6-test2.local",
-                                               mapping_type=DnsResourceRecordType.aaaa,
-                                               host_name_scope=ScopeType.vhost,
-                                               host_scope=False)
-            self.create_host_host_name_mapping(session=session,
-                                               workspace_str=workspace,
-                                               ipv4_address="::3",
-                                               host_name_str="ipv6-test3.local",
-                                               mapping_type=DnsResourceRecordType.alias,
-                                               host_name_scope=ScopeType.vhost,
-                                               host_scope=True)
-            self.create_host_host_name_mapping(session=session,
-                                               workspace_str=workspace,
-                                               ipv4_address="::4",
-                                               host_name_str="ipv6-test4.local",
-                                               mapping_type=DnsResourceRecordType.alias,
-                                               host_name_scope=ScopeType.vhost,
-                                               host_scope=False)
-        # Update the database
-        with self._engine.session_scope() as session:
-            domain = session.query(DomainName).filter_by(name="ipv4-test1.local").one()
-            self.assertEqual(True, domain.host_names[0]._in_scope)
-            domain = session.query(DomainName).filter_by(name="ipv4-test2.local").one()
-            self.assertEqual(False, domain.host_names[0]._in_scope)
-            domain = session.query(DomainName).filter_by(name="ipv4-test3.local").one()
-            self.assertEqual(False, domain.host_names[0]._in_scope)
-            domain = session.query(DomainName).filter_by(name="ipv4-test4.local").one()
-            self.assertEqual(False, domain.host_names[0]._in_scope)
-            domain = session.query(DomainName).filter_by(name="ipv6-test1.local").one()
-            self.assertEqual(True, domain.host_names[0]._in_scope)
-            domain = session.query(DomainName).filter_by(name="ipv6-test2.local").one()
-            self.assertEqual(False, domain.host_names[0]._in_scope)
-            domain = session.query(DomainName).filter_by(name="ipv6-test3.local").one()
-            self.assertEqual(False, domain.host_names[0]._in_scope)
-            domain = session.query(DomainName).filter_by(name="ipv6-test4.local").one()
-            self.assertEqual(False, domain.host_names[0]._in_scope)
+# The domain name's scope and network's scope cannot be both of type vhost.

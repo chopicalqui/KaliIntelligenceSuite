@@ -21,8 +21,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 __version__ = 0.1
 
 import sys
-import pwd
-import os
 import grp
 import passgen
 import shutil
@@ -366,6 +364,7 @@ class Engine:
                         WHERE n.workspace_id = NEW.workspace_id AND
                               n.address >> NEW.address AND
                               n.scope IS NOT NULL AND
+                              n.scope <> 'strict' AND -- inserting strict and exclude as parent networks is valid
                               n.scope <> 'exclude' AND
                               n.scope <> NEW.scope
                         LIMIT 1;
@@ -414,7 +413,9 @@ class Engine:
                                       AND n.scope = NEW.scope)) THEN
                     UPDATE network n
                         SET scope = NEW.scope
-                        WHERE n.workspace_id = NEW.workspace_id AND n.address << NEW.address;
+                        WHERE n.workspace_id = NEW.workspace_id AND
+                            n.address << NEW.address AND
+                            ((NEW.scope = 'strict' AND n.scope IS NULL) OR NEW.scope <> 'strict');
                 END IF;
             END IF;
         
@@ -439,38 +440,6 @@ class Engine:
                         address <<= NEW.address;
                 END IF;
             END IF;
-        
-            -- IF (TG_OP = 'INSERT') THEN
-                -- If there is no contradiction, then we check whether all child networks have already the same
-                -- scope. If they don't, then we update their scope as well.
-            --    IF NOT EXISTS(SELECT n.id FROM network n
-            --                    WHERE n.workspace_id = NEW.workspace_id AND
-            --                          n.address >> NEW.address AND
-            --                          n.scope IS NOT NULL AND n.scope = NEW.scope) THEN
-            --        UPDATE network n
-            --            SET scope = NEW.scope
-            --            WHERE n.address << NEW.address AND n.workspace_id = NEW.workspace_id;
-            --    END IF;
-            
-                -- If the new network does not have a parent network, then we have to update the scope of all hosts
-                -- within this network
-            --    IF (NOT EXISTS(SELECT * FROM network WHERE address << NEW.address AND workspace_id = NEW.workspace_id)) THEN
-            --        UPDATE host h
-            --        SET network_id = NEW.id
-            --        WHERE h.address <<= NEW.address and h.workspace_id = NEW.workspace_id;
-            --    END IF;
-            --ELSIF (TG_OP = 'UPDATE' AND NEW.scope <> OLD.scope) THEN
-            --    -- update the scope
-            --    UPDATE host h
-            --   SET in_scope = (NEW.scope = 'all')
-            --    WHERE h.address <<= NEW.address AND h.workspace_id = NEW.workspace_id;
-            --ELSIF (TG_OP = 'DELETE') THEN
-            --    -- re-assign network
-            --    UPDATE host h
-            --    SET network_id = n.id
-            --    FROM network n
-            --    WHERE h.address <<= n.address AND h.workspace_id = n.workspace_id;
-            --END IF;
             RETURN NULL;
         END;
         $$ LANGUAGE PLPGSQL;""")
