@@ -396,7 +396,7 @@ class NetworkScopeTypeStrictTestCases(BaseKisTestCase):
             result = session.query(Host).filter_by(address="192.168.1.1").one()
             self.assertFalse(result.in_scope)
             self.assertEqual("192.168.1.0/24", result.ipv4_network.network)
-            self.assertTrue(result.ipv4_network.in_scope)
+            self.assertFalse(result.ipv4_network.in_scope)
             self.assertEqual(ScopeType.strict, result.ipv4_network.scope)
 
     def test_insert_strict_network_with_host_scope_false(self):
@@ -420,7 +420,7 @@ class NetworkScopeTypeStrictTestCases(BaseKisTestCase):
             self.assertFalse(result.in_scope)
             self.assertEqual("192.168.1.0/24", result.ipv4_network.network)
             self.assertEqual(ScopeType.strict, result.ipv4_network.scope)
-            self.assertTrue(result.ipv4_network.in_scope)
+            self.assertFalse(result.ipv4_network.in_scope)
 
     def test_insert_strict_network_with_host_scope_true(self):
         """
@@ -443,7 +443,7 @@ class NetworkScopeTypeStrictTestCases(BaseKisTestCase):
             self.assertTrue(result.in_scope)
             self.assertEqual("192.168.1.0/24", result.ipv4_network.network)
             self.assertEqual(ScopeType.strict, result.ipv4_network.scope)
-            self.assertTrue(result.ipv4_network.in_scope)
+            self.assertFalse(result.ipv4_network.in_scope)
 
     def test_insert_strict_parent_network_to_subnetwork_all_01(self):
         """
@@ -464,7 +464,7 @@ class NetworkScopeTypeStrictTestCases(BaseKisTestCase):
         with self._engine.session_scope() as session:
             network = session.query(Network).filter_by(network="0.0.0.0/0").one()
             self.assertEqual(ScopeType.strict, network.scope)
-            self.assertTrue(network.in_scope)
+            self.assertFalse(network.in_scope)
             network = session.query(Network).filter_by(network="192.168.1.0/24").one()
             self.assertEqual(ScopeType.all, network.scope)
             self.assertTrue(network.in_scope)
@@ -1316,7 +1316,7 @@ class DomainNameScopeTypeStrictTestCases(BaseKisTestCase):
         with self._engine.session_scope() as session:
             result = session.query(HostName).filter(HostName.name.is_(None)).one()
             self.assertEqual("test.local", result.domain_name.name)
-            self.assertTrue(result._in_scope)
+            self.assertFalse(result._in_scope)
             self.assertTrue(result.domain_name.in_scope)
             result = session.query(HostName).filter_by(name="www").one()
             self.assertEqual("test.local", result.domain_name.name)
@@ -1349,15 +1349,15 @@ class DomainNameScopeTypeStrictTestCases(BaseKisTestCase):
         with self._engine.session_scope() as session:
             result = session.query(HostName).filter(HostName.name.is_(None)).one()
             self.assertEqual("test.local", result.domain_name.name)
-            self.assertTrue(result._in_scope)
+            self.assertFalse(result._in_scope)
             self.assertTrue(result.domain_name.in_scope)
             result = session.query(HostName).filter_by(name="www").one()
             self.assertEqual("test.local", result.domain_name.name)
-            self.assertTrue(result._in_scope)
+            self.assertFalse(result._in_scope)
             self.assertTrue(result.domain_name.in_scope)
             result = session.query(HostName).filter_by(name="ftp").one()
             self.assertEqual("test.local", result.domain_name.name)
-            self.assertTrue(result._in_scope)
+            self.assertFalse(result._in_scope)
             self.assertTrue(result.domain_name.in_scope)
             result = session.query(HostName).filter_by(name="mail").one()
             self.assertEqual("test.local", result.domain_name.name)
@@ -1379,10 +1379,11 @@ class DomainNameScopeTypeStrictTestCases(BaseKisTestCase):
             self._domain_utils.add_domain_name(session=session,
                                                workspace=workspace,
                                                item="test1.local")
-            self._domain_utils.add_domain_name(session=session,
-                                               workspace=workspace,
-                                               item="www.test.local",
-                                               scope=ScopeType.strict)
+            host_name = self._domain_utils.add_domain_name(session=session,
+                                                           workspace=workspace,
+                                                           item="www.test.local",
+                                                           scope=ScopeType.strict)
+            host_name._in_scope = True
             self._domain_utils.add_domain_name(session=session,
                                                workspace=workspace,
                                                item="ftp.test.local")
