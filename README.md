@@ -65,8 +65,8 @@ Scopes can be set on the following items by using the script
     are within this network range in scope. As a result, KIS automatically executes any active and active* collectors 
     on such IP networks and IP addresses.
     
-      This type is useful during penetration tests where the scope is limited to certain IP networks and all their IP 
-    addresses.
+      This scope type is useful during penetration tests where the scope is limited to certain IP networks and all 
+    their IP addresses.
     
       The following listing provides an example on how this scope type is set during the initial intel collection setup:
       ```bash
@@ -76,15 +76,19 @@ Scopes can be set on the following items by using the script
       kali@kali: ~ $ kismanage network -w example -a 192.168.1.0/24
       # add new IP address 192.168.1.1 to workspace example. IP address is automatically in scope due to the network's scope all
       kali@kali: ~ $ kismanage host -w example -a 192.168.1.1
+      # verify the initial setup
+      kali@kali: ~ $ kisreport host -w example --csv | csvcut -c "Network","Network Scope","Address","Host In Scope" | csvlook
+      | Network        | Network Scope | Address     | Host In Scope |
+      | -------------- | ------------- | ----------- | ------------- |
+      | 192.168.1.0/24 | all           | 192.168.1.1 |          True |
       ```
-    * `strict`: Sets the given IP network (e.g., 192.168.1.0/24) in scope. In contrast to type `all`, IP addresses 
-    (e.g., 192.168.1.1), which are within this network range, are not automatically in scope, unless they are explicitly 
-    added. As a result, KIS automatically executes any active or active* collectors on such in-scope IP networks and 
-    additionally on those IP addresses that are explicitly added to the scope.
+    * `strict`: Sets the given IP networks' (e.g., 192.168.1.0/24) scope to `strict`. In contrast to type `all`, the
+    network itself is not in scope and IP addresses within this network range (e.g., 192.168.1.1) are not automatically 
+    in scope, unless they are explicitly added. As a result, KIS only automatically executes any active or active* 
+    collectors on IP addresses that are explicitly added to the scope.
     
-      This type is useful during penetration tests where the scope is limited to certain IP networks and some (not all) 
-    of their IP addresses. For example, the network-level collector `tcpnmapnetwork` performs an Nmap SYN scan on all 
-    in-scope IP networks but excludes all IP addresses that are out-of-scope.
+      This scope type is useful during penetration tests where the scope is limited to certain IP addresses within a 
+    given network.
     
       The following listing provides an example on how this scope type is set during the initial intel collection setup:
       ```bash
@@ -94,15 +98,21 @@ Scopes can be set on the following items by using the script
       kali@kali: ~ $ kismanage network -w example -a 192.168.1.0/24 -s strict
       # add new IP address 192.168.1.1 to workspace example and set it in scope (default)
       kali@kali: ~ $ kismanage host -w example -a 192.168.1.1
+      # verify the initial setup
+      kali@kali: ~ $ kisreport host -w example --csv | csvcut -c "Network","Network Scope","Address","Host In Scope" | csvlook
+      | Network        | Network Scope | Address     | Host In Scope |
+      | -------------- | ------------- | ----------- | ------------- |
+      | 192.168.1.0/24 | strict        | 192.168.1.1 |          True |
       ```
     * `exclude`: Sets the given IP network (e.g., 192.168.1.0/24) together with all IP addresses (e.g., 192.168.1.1) 
     that are within this network range out of scope. As a result, KIS does not execute any active and active* 
     collectors on this IP network and its IP addresses.
     
       This scope type is the default type for all IP networks and IP addresses that are automatically identified by KIS 
-    (e.g., via whois, DNS resolution, etc.). Thus, it is not necessary to explicitly set this scope type.
+    (e.g., via whois, DNS resolution, etc.). Nevertheless, this scope type can be used to manually exclude 
+    networks from scope at a later time.
  - **Second-level domain** and **host names**: For second-level domains (e.g., megacorpone.com), the same scope types 
- as for IP networks (see above) exist. Their mode of operation is described below:
+    as for IP networks (see above) exist. Their mode of operation is described below:
     * `all`: Sets the given second-level domain (e.g., megacorpone.com) together with all sub-domains (e.g. 
     www.megacorpone.com) in scope. As a result, KIS automatically executes any active and active* collectors 
     on such host names.
@@ -116,6 +126,16 @@ Scopes can be set on the following items by using the script
       kali@kali: ~ $ kismanage workspace -a example
       # add the second-level domain megacorpone.com to workspace example and set the scope to all (default)
       kali@kali: ~ $ kismanage domain -w example -a megacorpone.com
+      # add new host names to workspace example. The host names are automatically in scope due to the second-level 
+      # domain's scope all
+      kali@kali: ~ $ kismanage hostname -w example -a www.megacorpone.com ftp.megacorpone.com
+      # verify the initial setup
+      kali@kali: ~ $ kisreport domain -w example --csv | csvcut -c "Second-Level Domain","Second-Level Domain Scope","Host Name","Host Name In Scope" | csvlook
+      | Second-Level Domain | Second-Level Domain Scope | Host Name           | Host Name In Scope |
+      | ------------------- | ------------------------- | ------------------- | ------------------ |
+      | megacorpone.com     | all                       | megacorpone.com     |               True |
+      | megacorpone.com     | all                       | www.megacorpone.com |               True |
+      | megacorpone.com     | all                       | ftp.megacorpone.com |               True |
       ```
     * `strict`: Sets the given second-level domains (e.g., megacorpone.com) in scope. In contrast to type `all`, any 
     sub-level domains (e.g., www.megacorpone.com) are not automatically in scope, unless they are explicitly added.
@@ -128,20 +148,32 @@ Scopes can be set on the following items by using the script
       ```bash
       # create a new workspace example
       kali@kali: ~ $ kismanage workspace -a example
-      # add the network 192.168.1.0/24 to workspace example and set the scope to strict
-      kali@kali: ~ $ kismanage domain -w example -a www.megacorpone.com ftp.megacorpone.com -s strict
+      # add the second-level domain megacorpone.com to workspace example and set the scope to strict
+      kali@kali: ~ $ kismanage domain -w example -a megacorpone.com -s strict
+      # add new host names to workspace example. They are automatically in scope due to kismanage's default value.
+      kali@kali: ~ $ kismanage hostname -w example -a www.megacorpone.com ftp.megacorpone.com
+      # verify the initial setup
+      kali#kali: ~ $ kisreport domain -w example --csv | csvcut -c "Second-Level Domain","Second-Level Domain Scope","Host Name","Host Name In Scope" | csvlook
+      | Second-Level Domain | Second-Level Domain Scope | Host Name           | Host Name In Scope |
+      | ------------------- | ------------------------- | ------------------- | ------------------ |
+      | megacorpone.com     | strict                    | megacorpone.com     |              False |
+      | megacorpone.com     | strict                    | www.megacorpone.com |               True |
+      | megacorpone.com     | strict                    | ftp.megacorpone.com |               True |
+      # Note that KIS treates the second-level domain also as a host name. As it has not been explicitly put in scope, it
+      # is still out of scope.
       ```
     * `exclude`: Sets the given second-level domains (e.g., megacorpone.com) together with all sub-level domains 
     out of scope. As a result, KIS does not execute any active and active* collectors on these second-level domains.
     
       This scope type is the default type for all second-level domains and their sub-level domains that are 
     automatically identified by KIS (e.g., via extraction from certificates, etc.). Thus, it is not necessary to 
-    explicitly set this scope type.
+    explicitly set this scope type. Nevertheless, this scope type can be used to manually exclude 
+    second-level domains at a later time.
  - **Virtual hosts (vhost)**: KIS supports scanning vhosts (https://httpd.apache.org/docs/2.4/vhosts/) by using tools 
  like Nikto or Burp Suite Professional (see argument `--vhost` of script
- [kiscollect](https://github.com/chopicalqui/KaliIntelligenceSuite/blob/master/KISCOLLECT.md)). Which vhosts are in scope and
- which are not is indirectly specified by scoping **IP networks** and **IP addresses** (see above) together with 
- **Second-level domain** and **host names** (see above). Below are two examples to demonstrate how it works:
+ [kiscollect](https://github.com/chopicalqui/KaliIntelligenceSuite/blob/master/KISCOLLECT.md)). Which vhosts are in 
+ scope and which are not is indirectly specified by scoping **IP networks** and **IP addresses** (see above) together 
+ with **Second-level domain** and **host names** (see above). Below are two examples to demonstrate how it works:
  
    * Example 1: Let's assume the second-level domain google.com together with all sub-level domains that resolve to a 
    network range within 172.217.0.0/16 are in scope. In this case, the top-level domain google.com is added to the KIS 
@@ -184,15 +216,6 @@ Scopes can be set on the following items by using the script
      ```
 
 
- -  Networks: By setting a certain network (e.g., 192.168.0.0/24) in scope, this network together with all IP addresses within
- this network become in scope for active and active* collections. In other words, KIS is allowed to perform active
- scans on these network and IP addresses.
- -  Second-level domains: By setting a certain second-level domain (e.g., google.com) in scope, this second-level
- domain as well as all sub domains (e.g., www.google.com) become in scope for active and active* collections.
- Note: If scans shall be performed on virtual hosts (VHOST), then the second-level domain as well as the IP
- addresses to which the virtual host resolves must be set in scope.
-
-
 ## List of KIS Collectors
 
 The following table shows the list of existing collectors that are supported by KIS. These collectors are executed by
@@ -205,21 +228,23 @@ information. Collectors with a priority of `-` are not automatically executed as
 or additional information (e.g., domain credentials) for execution.
 
 The **Name** column contains the name of the collector. These names can be added as command arguments to
-[kiscollect](https://github.com/chopicalqui/KaliIntelligenceSuite/blob/master/KISCOLLECT.md) (e.g. `--nikto`). The name also
-indicates, which underlying OS command is executed. Column **Level** specifies whether the collector is operating on:
-  - services: Scans services by using IPv4 addresses and UDP/TCP port numbers
-  - vhosts: Scans web services by using host names and TCP port numbers
+[kiscollect](https://github.com/chopicalqui/KaliIntelligenceSuite/blob/master/KISCOLLECT.md) (e.g. `--httpnikto`). 
+The name also indicates, which underlying OS command is executed. Column **Level** specifies whether the collector is 
+operating on:
+  - services: Scans services by using IPv4/IPv6 addresses and UDP/TCP port numbers
+  - vhosts: Scans web services by using host names (instead of IP addresses) and TCP port numbers
   - hosts: Obtains information based on IPv4/IPv6 addresses
   - domains: Obtains information based on second-level domains and optionally sub-level domains
   - networks: Obtains information based on IPv4/IPv6 network ranges
   - emails: Obtains information based on emails
   - companies: Obtains information based on companies
+
 Column **Type** specifies whether the collector actively approaches the target (`active`) or obtains the information 
 from third-party sources (`passive` and `active*`).
 
 The **IP Support** column specifies the IP versions, which are supported by the underlying Kali tool (e.g., gobuster).
 Kali uses this information to decide which operating systems commands can be created and successfully executed. This
-column is only relevant for host, network, service, and vhost (see column Level) collectors.
+column is only relevant for host, network, service, and vhost collectors (see column Level).
 
 Column **Timeout** specifies the number of seconds after which the collector is automatically terminated.
 

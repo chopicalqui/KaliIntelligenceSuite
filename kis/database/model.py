@@ -84,7 +84,12 @@ class NetworkNotFound(Exception):
 
 class HostNameNotFound(Exception):
     def __init__(self, domain: str):
-        super().__init__("domain '{}' does not exist in database".format(domain))
+        super().__init__("host name '{}' does not exist in database".format(domain))
+
+
+class DomainNameNotFound(Exception):
+    def __init__(self, domain: str):
+        super().__init__("second-level domain name '{}' does not exist in database".format(domain))
 
 
 class HostNotFound(Exception):
@@ -1097,9 +1102,7 @@ class Network(DeclarativeBase):
 
     @property
     def in_scope(self) -> bool:
-        return self.scope is not None and (self.scope == ScopeType.all or
-                                           self.scope == ScopeType.strict or
-                                           self.scope == ScopeType.vhost)
+        return self.scope is not None and (self.scope == ScopeType.all)
 
     @property
     def ip_network(self):
@@ -1980,6 +1983,9 @@ class Source(DeclarativeBase):
     cert_info = relationship("CertInfo",
                              secondary=source_cert_info_mapping,
                              backref=backref("sources", order_by="asc(Source.name)"))
+
+    def __eq__(self, other) -> bool:
+        return self.name == other.name
 
 
 class ServiceMethod(DeclarativeBase):

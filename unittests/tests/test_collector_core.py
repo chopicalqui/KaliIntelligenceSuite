@@ -65,6 +65,7 @@ from database.model import CertType
 from database.model import TlsInfoCipherSuiteMapping
 from database.model import ScopeType
 from database.model import ExecutionInfoType
+from database.model import DomainNameNotFound
 from collectors.core import IpUtils
 from datetime import datetime
 from view.core import ReportItem
@@ -2361,6 +2362,149 @@ class TestAddDomainName(BaseKisTestCase):
                 self.assertEqual("unittest", host_name.sources[0].name)
                 if host_name.name is not None:
                     self.assertEqual("192.168.1.1", host_name.host_host_name_mappings[0].host.address)
+
+
+class TestAddSecondLevelDomain(BaseKisTestCase):
+    """
+    This test case tests DomainUtils.add_sld
+    """
+
+    def __init__(self, test_name: str):
+        super().__init__(test_name)
+
+    def test_add_sld_simple(self):
+        self.init_db()
+        with self._engine.session_scope() as session:
+            source = self._domain_utils.add_source(session=session, name="user")
+            workspace = self._domain_utils.add_workspace(session=session, name=self._workspaces[0])
+            domain_name = self._domain_utils.add_sld(session=session,
+                                                     workspace=workspace,
+                                                     name="test.local",
+                                                     scope=ScopeType.all,
+                                                     source=source)
+        with self._engine.session_scope() as session:
+            result = session.query(DomainName).filter_by(name="test.local").one()
+            self.assertEqual(ScopeType.all, result.scope)
+            self.assertIsNone(result.host_names[0].name)
+            self.assertTrue(result.host_names[0]._in_scope)
+            self.assertEqual(1, len(result.host_names[0].sources))
+
+    def test_add_sld_invalid(self):
+        self.init_db()
+        with self._engine.session_scope() as session:
+            try:
+                source = self.create_source(session)
+                workspace = self._domain_utils.add_workspace(session=session, name=self._workspaces[0])
+                domain_name = self._domain_utils.add_sld(session=session,
+                                                         workspace=workspace,
+                                                         name="www.test.local",
+                                                         scope=ScopeType.all,
+                                                         source=source)
+                self.assertIsNone(domain_name)
+            except ValueError as ex:
+                self.assertEqual("www.test.local is not a second-level domain", str(ex))
+
+    def test_update_sld_simple_01(self):
+        self.test_add_sld_simple()
+        with self._engine.session_scope() as session:
+            workspace = self._domain_utils.add_workspace(session=session, name=self._workspaces[0])
+            source = self._domain_utils.add_source(session=session, name="user")
+            self._domain_utils.add_sld(session=session,
+                                       workspace=workspace,
+                                       name="test.local",
+                                       source=source,
+                                       scope=ScopeType.strict)
+        with self._engine.session_scope() as session:
+            result = session.query(DomainName).filter_by(name="test.local").one()
+            self.assertEqual(ScopeType.strict, result.scope)
+            self.assertIsNone(result.host_names[0].name)
+            self.assertTrue(result.host_names[0]._in_scope)
+            self.assertEqual(1, len(result.host_names[0].sources))
+
+    def test_update_sld_simple_02(self):
+        self.test_add_sld_simple()
+        with self._engine.session_scope() as session:
+            workspace = self._domain_utils.add_workspace(session=session, name=self._workspaces[0])
+            source = self._domain_utils.add_source(session=session, name="user1")
+            self._domain_utils.add_sld(session=session,
+                                       workspace=workspace,
+                                       name="test.local",
+                                       source=source,
+                                       scope=ScopeType.strict)
+        with self._engine.session_scope() as session:
+            result = session.query(DomainName).filter_by(name="test.local").one()
+            self.assertEqual(ScopeType.strict, result.scope)
+            self.assertIsNone(result.host_names[0].name)
+            self.assertTrue(result.host_names[0]._in_scope)
+            self.assertEqual(2, len(result.host_names[0].sources))
+
+
+class TestAddHostName(BaseKisTestCase):
+    """
+    This test case tests DomainUtils.add_host_name
+    """
+
+    def __init__(self, test_name: str):
+        super().__init__(test_name)
+
+    def test_add_invalid_host_name(self):
+        self.init_db()
+        with self._engine.session_scope() as session:
+            try:
+                source = self._domain_utils.add_source(session=session, name="user")
+                workspace = self._domain_utils.add_workspace(session=session, name=self._workspaces[0])
+                domain_name = self._domain_utils.add_host_name(session=session,
+                                                               workspace=workspace,
+                                                               name="local",
+                                                               in_scope=True,
+                                                               source=source)
+                self.assertIsNotNone(domain_name)
+            except ValueError as ex:
+                self.assertEqual("local is not a valid sub-domain", str(ex))
+
+    def test_add_without_second_level_domain(self):
+        self.init_db()
+        with self._engine.session_scope() as session:
+            try:
+                source = self._domain_utils.add_source(session=session, name="user")
+                workspace = self._domain_utils.add_workspace(session=session, name=self._workspaces[0])
+                domain_name = self._domain_utils.add_host_name(session=session,
+                                                               workspace=workspace,
+                                                               name="www.test.local",
+                                                               in_scope=True,
+                                                               source=source)
+                self.assertIsNotNone(domain_name)
+            except DomainNameNotFound as ex:
+                self.assertEqual("second-level domain name 'test.local' does not exist in database", str(ex))
+
+    def test_add_second_level_domain_in_scope(self):
+        self.init_db()
+        with self._engine.session_scope() as session:
+            source = self._domain_utils.add_source(session=session, name="user")
+            workspace = self._domain_utils.add_workspace(session=session, name=self._workspaces[0])
+            self._domain_utils.add_sld(session=session,
+                                       workspace=workspace,
+                                       name="test.local",
+                                       source=source,
+                                       scope=ScopeType.strict)
+        with self._engine.session_scope() as session:
+            source = self._domain_utils.add_source(session=session, name="user1")
+            workspace = self._domain_utils.get_workspace(session=session, name=self._workspaces[0])
+            result = session.query(DomainName).filter_by(name="test.local").one()
+            self.assertEqual(ScopeType.strict, result.scope)
+            self.assertIsNone(result.host_names[0].name)
+            self.assertFalse(result.host_names[0]._in_scope)
+            self._domain_utils.add_host_name(session=session,
+                                             workspace=workspace,
+                                             name="test.local",
+                                             in_scope=True,
+                                             source=source)
+        with self._engine.session_scope() as session:
+            result = session.query(DomainName).filter_by(name="test.local").one()
+            self.assertEqual(ScopeType.strict, result.scope)
+            self.assertIsNone(result.host_names[0].name)
+            self.assertTrue(result.host_names[0]._in_scope)
+            self.assertEqual(2, len(result.host_names[0].sources))
 
 
 class TestAddEmail(BaseKisTestCase):

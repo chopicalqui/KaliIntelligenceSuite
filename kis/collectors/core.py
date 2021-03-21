@@ -71,6 +71,7 @@ from database.model import CertInfo
 from database.model import AsymmetricAlgorithm
 from database.model import ExtensionType
 from database.model import ScopeType
+from database.model import DomainNameNotFound
 from datetime import datetime
 from database.model import ExecutionInfoType
 from database.utils import Engine
@@ -1526,8 +1527,6 @@ class BaseUtils:
                     if not host_name_object:
                         host_name_object = HostName(name=host_name,
                                                     domain_name=domain_object)
-                        if scope == ScopeType.strict:
-                            host_name_object._in_scope = True
                         session.add(host_name_object)
                         session.flush()
                     if source:
@@ -1576,6 +1575,17 @@ class BaseUtils:
                         Workspace.id == workspace.id).one_or_none()
         return result
 
+    def delete_domain_name(self,
+                           session: Session,
+                           workspace: Workspace,
+                           domain_name: str):
+        result = session.query(DomainName) \
+            .join(Workspace) \
+            .filter(Workspace.id == workspace.id, DomainName.name == domain_name).one_or_none()
+        if not result:
+            raise DomainNameNotFound(domain_name)
+        session.delete(result)
+
     def delete_host_name(self,
                          session: Session,
                          workspace: Workspace,
@@ -1592,7 +1602,7 @@ class BaseUtils:
             if result.name is not None:
                 session.delete(result)
             else:
-                session.delete(result.domain_name)
+                raise ValueError("{} is not a valid host name.".format(host_name))
 
     def matches_tld(self, domain: str) -> str:
         """
@@ -1670,9 +1680,7 @@ class BaseUtils:
         return rvalue
 
     @staticmethod
-    def delete_host_name(session,
-                         workspace: Workspace,
-                         host_name: str) -> HostName:
+    def delete_host_name(session: Session, workspace: Workspace, host_name: str):
         """
         Returns the corresponding host name object, if the host_name exist in the database.
         :param session:
@@ -1685,6 +1693,69 @@ class BaseUtils:
             session.delete(host_name.domain_name)
         elif host_name:
             session.delete(host_name)
+
+    def add_host_name(self,
+                      session: Session,
+                      workspace: Workspace,
+                      name: str,
+                      in_scope: bool,
+                      source: Source = None) -> HostName:
+        """
+        This method adds the given sub-domain. Note that the corresponding second-level domain must already exists.
+        """
+        result = None
+        if not name:
+            return result
+        name = name.lstrip("*.")
+        name = name.lower()
+        host_name_items = self.split_host_name(name)
+        if not host_name_items or len(host_name_items) < 2:
+            raise ValueError("{} is not a valid sub-domain".format(name))
+        domain_name = ".".join(host_name_items[-2:])
+        # The host name's second-level domain must exist
+        if session.query(DomainName)\
+            .join(Workspace)\
+            .filter(Workspace.id == workspace.id,
+                    DomainName.name == domain_name).count() <= 0:
+            raise DomainNameNotFound(domain_name)
+        result = self.add_domain_name(session=session,
+                                      workspace=workspace,
+                                      item=name,
+                                      source=source)
+        if not result:
+            raise ValueError("{} was not added to the database")
+        if result._in_scope != in_scope:
+            result._in_scope = in_scope
+        return result
+
+    def add_sld(self,
+                session: Session,
+                workspace: Workspace,
+                name: str,
+                scope: ScopeType,
+                source: Source = None) -> DomainName:
+        """
+        This method adds the given second-level domain.
+        """
+        result = None
+        if not name:
+            return result
+        name = name.lstrip("*.")
+        name = name.lower()
+        if name.count(".") != 1:
+            raise ValueError("{} is not a second-level domain".format(name))
+        result = self.add_domain_name(session=session,
+                                      workspace=workspace,
+                                      item=name,
+                                      source=source,
+                                      scope=scope)
+        if not result:
+            raise ValueError("{} was not added to the database")
+        if result.domain_name.scope != scope:
+            result.domain_name.scope = scope
+        if source not in result.sources:
+            result.sources.append(source)
+        return result.domain_name
 
     def add_domain_name(self,
                         session: Session,

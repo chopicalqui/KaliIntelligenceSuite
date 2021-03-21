@@ -76,20 +76,23 @@ if __name__ == "__main__":
 conservatively collect information (e.g., subdomains, email addresses, IPv4/IPv6 addresses, or IPv4/IPv6 address 
 ownerships) about second-level domains using whois, theharvester, sublist3r, etc.
 
-before you  start: specify a workspace $ws (e.g., ws=osint) and the list of public domains $domains to 
-investigate (e.g., domains=megacorpone.com or domains=www.megacorpone.com)
+before you  start: specify a workspace $ws (e.g., ws=osint), the list of public second-level domains $domains as well 
+as their sub-domains $hostnames to investigate (e.g., domains=megacorpone.com and hostnames=www.megacorpone.com)
 
 import domains into database and execute collection
 $ kismanage workspace --add $ws
 $ kismanage domain -w $ws --add $domains
-$ kiscollect -w $ws --debug --whoisdomain --whoishost --theharvester --dnsdumpster --securitytrails --censysdomain \
---hunter --haveibeenbreach --haveibeenpaste --builtwith --crtshdomain --virustotal --certspotter --dnssublist3r \
---dnsspf --hostio --dnshostpublic --awsslurp --dnsamasspassive --dnscrobatdomain --dnscrobattld
+$ kismanage hostname -w $ws --add $domains $hostnames
+$ kiscollect -w $ws --debug --whoisdomain --whoishost --dnsdumpster --securitytrails --censysdomain --crtshdomain \
+--virustotal --certspotter --dnssublist3r --dnsspf --hostio --dnshostpublic --dnsamasspassive --dnscrobatdomain \
+--dnscrobattld --theharvester --hunter --builtwith --haveibeenbreach --haveibeenpaste --awsslurp
 
-review collected domain information and eventually add domains in scope
+review collected domain information and eventually add additional second-level domains and sub-domains in scope
 $ kisreport domain -w $ws --csv | csvcut -c "Second-Level Domain Scope","Second-Level Domain","Companies" | sort -u | csvlook
 $ domains=
 $ kismanage domain -w $ws -s {all,strict} $domains
+$ hostnames=
+$ kismanage hostname -w $ws --add $domains $hostnames
 
 review collected network information and eventually add networks in scope
 $ kisreport network -w $ws --csv | csvlook
@@ -102,16 +105,16 @@ $ companies=
 $ kismanage company -w $ws -s within $companies
 
 continue collection with updated scope
-$ kiscollect -w $ws --debug --whoisdomain --whoishost --theharvester --dnsdumpster --securitytrails --censysdomain \
---hunter --haveibeenbreach --haveibeenpaste --builtwith --crtshdomain --virustotal --certspotter --dnssublist3r \
---dnsspf --hostio --dnshostpublic --awsslurp --dnsamasspassive --dnscrobatdomain --dnscrobattld --reversewhois \
+$ kiscollect -w $ws --debug --whoisdomain --whoishost --dnsdumpster --securitytrails --censysdomain --crtshdomain \
+--virustotal --certspotter --dnssublist3r --dnsspf --hostio --dnshostpublic --dnsamasspassive --dnscrobatdomain \
+--dnscrobattld --theharvester --hunter --builtwith --haveibeenbreach --haveibeenpaste --awsslurp --reversewhois \
 --crtshcompany --dnscrobatreversehost --dnscrobatreversenetwork --dnsreverselookup --shodanhost --shodannetwork
 
 obtain CSV list of identified host names
-$ kisreport domain -w $ws --csv
+$ kisreport domain -w $ws --csv | csvlook
 
 obtain CSV list of identified IPv4/IPv6 addresses
-$ kisreport host -w $ws --csv
+$ kisreport host -w $ws --csv | csvlook
 
 
 - II. active intel gathering during external and internal penetration tests
@@ -143,7 +146,7 @@ $ kisreport domain -w $ws --csv | csvcut -c "Second-Level Domain Scope","Second-
 $ domains=
 $ kismanage domain -w $ws -s {all,strict} $domains
 
-continue collection based on virtual hosts
+continue collection based on virtual hosts (might be useful in external penetration tests)
 $ kiscollect -w $ws --debug --strict -t5 --ftphydra --snmphydra --snmpcheck --snmpwalk --onesixtyone --showmount --ipmi \
 --nbtscan --ikescan --ldapsearch --oraclesidguess --ntpq --sshnmap --httpgobuster --httpnikto --httphydra --smtpnmap \
 --mysqlhydra --pgsqlhydra --smbnmap --smbmap --smbclient --rpcclient --rpcnmap --rpcinfo --mssqlhydra --mssqlnmap \
@@ -153,11 +156,15 @@ $ kiscollect -w $ws --debug --strict -t5 --ftphydra --snmphydra --snmpcheck --sn
 --dnsaxfr --ftpfilelist --certopenssl --httpntlmnmap --ikescan --anyservicenmap --smbcme --httpburpsuitepro \
 --vhost domain
 
+collect screenshots with aquatone
+$ kisreport path -w $ws --scope within --type Http --csv | csvcut -H -c 15 | aquatone -out aquatone
+
 export collected information into microsoft excel
 $ kisreport excel /tmp/kis-scan-results.xlsx -w $ws
 
-collect screenshots with aquatone
-$ kisreport path -w $ws --scope within --type Http --csv | csvcut -H -c 15 | aquatone -out aquatone
+review scan results of all relevant commands (note that option --visibility hides commands whose output was fully 
+processed by KIS and therefore do not require manual inspection anymore)
+$ kisreport host -w $ws --text --visibility relevant | less -R
 
 review scan results of hosts with IPv4/IPv6 addresses $ip1 and $ip2
 $ kisreport host -w $ws --text --filter +$ip1 +$ip2

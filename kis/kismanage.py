@@ -43,6 +43,7 @@ from database.model import ReportScopeType
 from database.model import WorkspaceNotFound
 from database.model import Workspace
 from database.model import Source
+from database.model import DomainName
 from database.model import ProtocolType
 from database.model import ServiceState
 from collectors.core import IpUtils
@@ -274,53 +275,70 @@ class ManageDatabase:
             scope = ScopeType[self._arguments.scope]
             for domain in self._get_items("DOMAIN"):
                 if self._arguments.add or self._arguments.Add:
-                    domain_object = self._domain_utils.add_domain_name(session=session,
-                                                                       workspace=workspace,
-                                                                       item=domain,
-                                                                       source=source,
-                                                                       scope=scope)
+                    domain_object = self._domain_utils.add_sld(session=session,
+                                                               workspace=workspace,
+                                                               name=domain,
+                                                               scope=scope,
+                                                               source=source)
                     if not domain_object:
                         raise ValueError("adding domain '{}' failed".format(domain))
-                    elif scope == ScopeType.strict:
-                        domain_object._in_scope = True
                 elif self._arguments.delete or self._arguments.Delete:
-                    self._domain_utils.delete_host_name(session=session,
-                                                        workspace=workspace,
-                                                        host_name=domain)
+                    self._domain_utils.delete_domain_name(session=session,
+                                                          workspace=workspace,
+                                                          domain_name=domain)
+                elif self._arguments.scope:
+                    result = session.query(DomainName) \
+                        .join(Workspace) \
+                        .filter(Workspace.id == workspace.id, DomainName.name == domain).one_or_none()
+                    if not result:
+                        raise ValueError("cannot set scope as second-level domain '{}' does not exist".format(domain))
+                    elif result.scope != scope:
+                        result.scope = scope
+
+    def _manage_host_name(self, session: Session, workspace: Workspace, source: Source):
+        if self._arguments.module == "hostname":
+            scope = ReportScopeType[self._arguments.scope]
+            in_scope = scope == ReportScopeType.within
+            for host_name in self._get_items("HOSTNAME"):
+                if self._arguments.add or self._arguments.Add:
+                    host_name = self._domain_utils.add_host_name(session=session,
+                                                                 workspace=workspace,
+                                                                 name=host_name,
+                                                                 in_scope=in_scope,
+                                                                 source=source)
+                    if not host_name:
+                        raise ValueError("adding host name '{}' failed".format(host_name))
                 elif self._arguments.sharphound:
-                    with open(domain, "rb") as file:
+                    with open(host_name, "rb") as file:
                         json_object = json.loads(file.read())
                         if "computers" in json_object and isinstance(json_object["computers"], list):
                             source = self._domain_utils.add_source(session=session, name="sharphound")
                             for item in json_object["computers"]:
                                 if "Properties" in item and "name" in item["Properties"]:
                                     computer_name = item["Properties"]["name"]
-                                    domain_object = self._domain_utils.add_domain_name(session=session,
-                                                                                       workspace=workspace,
-                                                                                       item=computer_name,
-                                                                                       source=source,
-                                                                                       scope=scope)
-                                    if not domain_object:
-                                        print("invalid domain name format for '{}'. "
-                                              "computer name not imported".format(computer_name), file=sys.stderr)
-                                    elif scope == ScopeType.strict:
-                                        domain_object._in_scope = True
+                                    host_name = self._domain_utils.add_host_name(session=session,
+                                                                                 workspace=workspace,
+                                                                                 name=computer_name,
+                                                                                 in_scope=in_scope,
+                                                                                 source=source)
+                                    if not host_name:
+                                        raise ValueError("adding host name '{}' failed".format(host_name))
                                 else:
                                     raise KeyError("invalid sharphound computer file. file does not contain "
                                                    "attribute 'Properties' and/or 'name'")
                         else:
                             raise KeyError("invalid sharphound computer file. file does not contain "
                                            "attribute 'computers'")
-                elif self._arguments.scope:
-                    result = self._domain_utils.get_host_name(session=session,
-                                                              workspace=workspace,
-                                                              host_name=domain)
+                elif self._arguments.delete or self._arguments.Delete:
+                    self._domain_utils.delete_host_name(session=session,
+                                                        workspace=workspace,
+                                                        host_name=host_name)
+                else:
+                    result = self._domain_utils.get_host_name(session=session, workspace=workspace, host_name=host_name)
                     if not result:
-                        raise ValueError("cannot set scope as host name '{}' does not exist".format(domain))
-                    else:
-                        result.domain_name.scope = scope
-                        if scope == ScopeType.strict:
-                            result._in_scope = True
+                        raise ValueError("cannot set scope as host name '{}' does not exist".format(host_name))
+                    elif result._in_scope != in_scope:
+                        result._in_scope = in_scope
 
     def _manage_email(self, session: Session, workspace: Workspace, source: Source):
         if self._arguments.module == "email":
@@ -444,6 +462,7 @@ class ManageDatabase:
                     self._manage_host(session=session, workspace=workspace, source=source)
                     self._manage_service(session=session, workspace=workspace, source=source)
                     self._manage_domain(session=session, workspace=workspace, source=source)
+                    self._manage_host_name(session=session, workspace=workspace, source=source)
                     self._manage_email(session=session, workspace=workspace, source=source)
                     self._manage_company(session=session, workspace=workspace, source=source)
                     self._manage_scan(session=session, workspace=workspace)
@@ -490,7 +509,9 @@ $ kismanage workspace --add $workspace
     parser_network = sub_parser.add_parser('network', help='allows managing networks')
     parser_host = sub_parser.add_parser('host', help='allows managing hosts')
     parser_service = sub_parser.add_parser('service', help='allows managing services')
-    parser_domain = sub_parser.add_parser('domain', help='allows managing second-level-domains and host names')
+    parser_domain = sub_parser.add_parser('domain', help='allows managing second-level domains')
+    parser_host_name = sub_parser.add_parser('hostname', help='allows managing host names (sub-domains of second-level'
+                                                              'domains')
     parser_email = sub_parser.add_parser('email', help='allows managing emails')
     parser_company = sub_parser.add_parser('company', help='allows managing companies')
     # setup workspace parser
@@ -604,36 +625,65 @@ $ kismanage workspace --add $workspace
     parser_domain_group = parser_domain.add_mutually_exclusive_group()
     parser_domain_group.add_argument('-a', '--add',
                                      action="store_true",
-                                     help="create the given second-level-domain/host name DOMAIN in workspace "
-                                          "WORKSPACE")
+                                     help="create the given second-level domain DOMAIN in workspace WORKSPACE")
     parser_domain_group.add_argument('-A', '--Add',
                                      action="store_true",
-                                     help="read the given second-level-domain/host name (one per line) from file "
-                                          "DOMAIN and add them to workspace WORKSPACE")
+                                     help="read the given second-level domain (one per line) from file DOMAIN and "
+                                          "add them to workspace WORKSPACE")
     parser_domain_group.add_argument('-d', '--delete',
                                      action="store_true",
-                                     help="delete the given second-level-domain/host name DOMAIN together with all "
-                                          "associated emails from workspace WORKSPACE (use with caution)")
+                                     help="delete the given second-level domain DOMAIN together with all associated "
+                                          "host names and email addresses from workspace WORKSPACE (use with caution)")
     parser_domain_group.add_argument('-D', '--Delete',
                                      action="store_true",
-                                     help="read the given second-level-domain/host name (one per line) from file "
-                                          "DOMAIN and delete them together with all associated emails from "
+                                     help="read the given second-level domain (one per line) from file DOMAIN and "
+                                          "delete them together with all associated host names and emails from "
                                           "workspace WORKSPACE")
-    parser_domain_group.add_argument('--sharphound',
-                                     action="store_true",
-                                     help="read the given computer.json file created by sharphound and import all "
-                                          "computer names into KIS for further intel collection")
     parser_domain.add_argument('-s', '--scope', choices=[item.name for item in ScopeType],
                                type=str,
                                help="set only the given domains in scope and exclude all other sub-domains (option "
                                     "explicit). set the given domains including all other sub-domains in scope "
                                     "(option all). set only those sub-domains (option vhost) in scope that resolve "
-                                    "to an in-scope IP address. exclude the given domains (option exclude) "
+                                    "to an in-scope IP address. exclude the given domains (option exclude). "
                                     "including all other sub-domains from scope. note that KIS only actively "
-                                    "collects information from in-scope second-level-domain/host name",
+                                    "collects information from in-scope second-level domain/host name",
                                default=ScopeType.all.name)
     parser_domain.add_argument("--source", metavar="SOURCE", type=str,
-                               help="specify the source of the second-level-domains/host names to be added")
+                               help="specify the source of the second-level-domains to be added")
+    # setup host name parser
+    parser_host_name.add_argument('HOSTNAME', type=str, nargs="+")
+    parser_host_name.add_argument("-w", "--workspace",
+                                  metavar="WORKSPACE",
+                                  help="use the given workspace",
+                                  required=True,
+                                  type=str)
+    parser_host_name_group = parser_host_name.add_mutually_exclusive_group()
+    parser_host_name_group.add_argument('-a', '--add',
+                                        action="store_true",
+                                        help="create the given host name in workspace WORKSPACE")
+    parser_host_name_group.add_argument('-A', '--Add',
+                                        action="store_true",
+                                        help="read the given host names (one per line) from file HOSTNAME and add "
+                                             "them to workspace WORKSPACE")
+    parser_host_name_group.add_argument('-d', '--delete',
+                                        action="store_true",
+                                        help="delete the given host name HOSTNAME together with all associated email "
+                                             "addresses in workspace WORKSPACE (use with caution)")
+    parser_host_name_group.add_argument('-D', '--Delete',
+                                        action="store_true",
+                                        help="read the given host names (one per line) from file HOSTNAME and delete "
+                                             "them together with all associated email addresses from workspace "
+                                             "WORKSPACE")
+    parser_host_name_group.add_argument('--sharphound',
+                                        action="store_true",
+                                        help="read the given computer.json file created by sharphound and import all "
+                                             "computer names into KIS for further intel collection")
+    parser_host_name.add_argument('-s', '--scope', choices=[item.name for item in ReportScopeType],
+                                  help="set the given host names HOSTNAME in or out of scope. note that KIS only "
+                                       "actively collects information from in-scope host names",
+                                  default=ReportScopeType.within.name)
+    parser_host_name_group.add_argument("--source", metavar="SOURCE", type=str,
+                                        help="specify the source of the host name to be added")
     # setup email parser
     parser_email.add_argument('EMAIL', type=str, nargs="+")
     parser_email.add_argument("-w", "--workspace",

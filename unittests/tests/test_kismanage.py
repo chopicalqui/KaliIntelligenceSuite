@@ -63,6 +63,7 @@ class BaseKismanageTestCase(BaseKisTestCase):
         parser_host = sub_parser.add_parser('host', help='allows managing hosts')
         parser_service = sub_parser.add_parser('service', help='allows managing services')
         parser_domain = sub_parser.add_parser('domain', help='allows managing second-level-domains and host names')
+        parser_host_name = sub_parser.add_parser('hostname', help='allows managing host names')
         parser_email = sub_parser.add_parser('email', help='allows managing emails')
         parser_company = sub_parser.add_parser('company', help='allows managing companies')
         # setup workspace parser
@@ -204,6 +205,40 @@ class BaseKismanageTestCase(BaseKisTestCase):
                                    default=ScopeType.all.name)
         parser_domain.add_argument("--source", metavar="SOURCE", type=str,
                                    help="specify the source of the second-level-domains/host names to be added")
+        # setup host name parser
+        parser_host_name.add_argument('HOSTNAME', type=str, nargs="+")
+        parser_host_name.add_argument("-w", "--workspace",
+                                      metavar="WORKSPACE",
+                                      help="use the given workspace",
+                                      required=True,
+                                      type=str)
+        parser_host_name_group = parser_host_name.add_mutually_exclusive_group()
+        parser_host_name_group.add_argument('-a', '--add',
+                                            action="store_true",
+                                            help="create the given host name in workspace WORKSPACE")
+        parser_host_name_group.add_argument('-A', '--Add',
+                                            action="store_true",
+                                            help="read the given host names (one per line) from file HOSTNAME and add "
+                                                 "them to workspace WORKSPACE")
+        parser_host_name_group.add_argument('-d', '--delete',
+                                            action="store_true",
+                                            help="delete the given host name HOSTNAME together with all associated email "
+                                                 "addresses in workspace WORKSPACE (use with caution)")
+        parser_host_name_group.add_argument('-D', '--Delete',
+                                            action="store_true",
+                                            help="read the given host names (one per line) from file HOSTNAME and delete "
+                                                 "them together with all associated email addresses from workspace "
+                                                 "WORKSPACE")
+        parser_host_name_group.add_argument('--sharphound',
+                                            action="store_true",
+                                            help="read the given computer.json file created by sharphound and import all "
+                                                 "computer names into KIS for further intel collection")
+        parser_host_name.add_argument('-s', '--scope', choices=[item.name for item in ReportScopeType],
+                                      help="set the given host names HOSTNAME in or out of scope. note that KIS only "
+                                           "actively collects information from in-scope host names",
+                                      default=ReportScopeType.within.name)
+        parser_host_name_group.add_argument("--source", metavar="SOURCE", type=str,
+                                            help="specify the source of the host name to be added")
         # setup email parser
         parser_email.add_argument('EMAIL', type=str, nargs="+")
         parser_email.add_argument("-w", "--workspace",
@@ -571,7 +606,7 @@ class TestDomainModule(BaseKismanageTestCase):
     def test_add_inscope(self):
         # setup database
         self.init_db()
-        domain = "www.test.com"
+        domain = "test.com"
         workspace = self._workspaces[0]
         with self._engine.session_scope() as session:
             self.create_workspace(session=session, workspace=workspace)
@@ -587,7 +622,7 @@ class TestDomainModule(BaseKismanageTestCase):
     def test_Add_inscope(self):
         # setup database
         self.init_db()
-        domain = "www.test.com"
+        domain = "test.com"
         workspace = self._workspaces[0]
         with self._engine.session_scope() as session:
             self.create_workspace(session=session, workspace=workspace)
@@ -606,22 +641,22 @@ class TestDomainModule(BaseKismanageTestCase):
     def test_add_outofscope(self):
         # run command
         self.init_db()
-        network = "192.168.0.0/24"
+        domain = "test.com"
         workspace = self._workspaces[0]
         with self._engine.session_scope() as session:
             self.create_workspace(session=session, workspace=workspace)
-        args = self.arg_parse(["network", "-w", workspace, "-a", network, "--scope", "all"])
+        args = self.arg_parse(["domain", "-w", workspace, "-a", domain, "--scope", "all"])
         ManageDatabase(engine=self._engine, arguments=args, parser=self._parser).run()
         # check database
         self.check_results(workspace_str=workspace,
-                           networks=[network],
+                           domains=[domain],
                            scope=ScopeType.all,
                            source_name="user")
 
     def test_Add_outofscope(self):
         # setup database
         self.init_db()
-        domain = "www.test.com"
+        domain = "test.com"
         workspace = self._workspaces[0]
         with self._engine.session_scope() as session:
             self.create_workspace(session=session, workspace=workspace)
@@ -640,26 +675,25 @@ class TestDomainModule(BaseKismanageTestCase):
     def test_delete(self):
         # setup database
         self.init_db()
-        domain = "www.test.com"
+        domain = "test.com"
         workspace = self._workspaces[0]
         with self._engine.session_scope() as session:
             self.create_workspace(session=session, workspace=workspace)
-            self.create_network(session=session, workspace_str=workspace, network=domain)
+            self.create_domain_name(session=session, workspace_str=workspace, host_name=domain)
         # run command
         args = self.arg_parse(["domain", "-w", workspace, "-d", domain])
         ManageDatabase(engine=self._engine, arguments=args, parser=self._parser).run()
         # check database
-        self.check_results(workspace_str=workspace,
-                           domains=[])
+        self.check_results(workspace_str=workspace, domains=[])
 
     def test_Delete(self):
         # setup database
         self.init_db()
-        domain = "www.test.com"
+        domain = "test.com"
         workspace = self._workspaces[0]
         with self._engine.session_scope() as session:
             self.create_workspace(session=session, workspace=workspace)
-            self.create_network(session=session, workspace_str=workspace, network=domain)
+            self.create_domain_name(session=session, workspace_str=workspace, host_name=domain)
         # run command
         with tempfile.NamedTemporaryFile(mode="w") as file:
             file.write(domain)
@@ -667,8 +701,7 @@ class TestDomainModule(BaseKismanageTestCase):
             args = self.arg_parse(["domain", "-w", workspace, "-D", file.name])
             ManageDatabase(engine=self._engine, arguments=args, parser=self._parser).run()
         # check database
-        self.check_results(workspace_str=workspace,
-                           domains=[])
+        self.check_results(workspace_str=workspace, domains=[])
 
     def test_scope(self):
         # setup database
@@ -697,7 +730,9 @@ class TestDomainModule(BaseKismanageTestCase):
         with self._engine.session_scope() as session:
             self.create_workspace(session=session, workspace=workspace)
         # run command
-        args = self.arg_parse(["domain", "-w", workspace, "-a", "--scope", "strict", host_name])
+        args = self.arg_parse(["domain", "-w", workspace, "-a", "--scope", "strict", "test.com"])
+        ManageDatabase(engine=self._engine, arguments=args, parser=self._parser).run()
+        args = self.arg_parse(["hostname", "-w", workspace, "-a", "--scope", "within", host_name])
         ManageDatabase(engine=self._engine, arguments=args, parser=self._parser).run()
         # check database
         with self._engine.session_scope() as session:
@@ -723,7 +758,9 @@ class TestDomainModule(BaseKismanageTestCase):
         with self._engine.session_scope() as session:
             self.create_workspace(session=session, workspace=workspace)
         # run command
-        args = self.arg_parse(["domain", "-w", workspace, "-a", "--scope", "all", host_name])
+        args = self.arg_parse(["domain", "-w", workspace, "-a", "--scope", "all", "test.com"])
+        ManageDatabase(engine=self._engine, arguments=args, parser=self._parser).run()
+        args = self.arg_parse(["hostname", "-w", workspace, "-a", "--scope", "outside", "www.test.com"])
         ManageDatabase(engine=self._engine, arguments=args, parser=self._parser).run()
         # check database
         with self._engine.session_scope() as session:
@@ -972,6 +1009,9 @@ class TestEmailModule(BaseKismanageTestCase):
         # run command
         ManageDatabase(engine=self._engine,
                        arguments=self.arg_parse(["domain", "-w", workspace, "-a", "test.com", "-s", "strict"]),
+                       parser=self._parser).run()
+        ManageDatabase(engine=self._engine,
+                       arguments=self.arg_parse(["hostname", "-w", workspace, "test.com", "--scope", "within"]),
                        parser=self._parser).run()
         ManageDatabase(engine=self._engine,
                        arguments=self.arg_parse(["email", "-w", workspace, "-a", email]),
