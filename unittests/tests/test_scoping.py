@@ -2066,6 +2066,80 @@ class DomainNameScopeTypeVhostTestCases(BaseScopeTypeVhostTestCases):
             result = session.query(Host).filter_by(address="::4").one()
             self.assertFalse(result.in_scope)
 
+    def test_update_domain_scope_to_vhost_after_update_domain_scope_to_all_after_insert_network_scopetype_all(self):
+        self.test_update_domain_scope_to_all_after_insert_network_scopetype_all()
+        # Update database
+        with self._engine.session_scope() as session:
+            result = session.query(DomainName).filter_by(name="ipv4-test1.local").one()
+            self.assertEqual(ScopeType.all, result.scope)
+            result.scope = ScopeType.vhost
+            result = session.query(DomainName).filter_by(name="ipv4-test2.local").one()
+            self.assertEqual(ScopeType.all, result.scope)
+            result.scope = ScopeType.vhost
+            result = session.query(DomainName).filter_by(name="ipv6-test1.local").one()
+            self.assertEqual(ScopeType.all, result.scope)
+            result.scope = ScopeType.vhost
+            result = session.query(DomainName).filter_by(name="ipv6-test2.local").one()
+            self.assertEqual(ScopeType.all, result.scope)
+            result.scope = ScopeType.vhost
+        with self._engine.session_scope() as session:
+            result = session.query(DomainName).filter_by(name="ipv4-test1.local").one()
+            self.assertTrue(result.in_scope)
+            result = self.query_hostname(session=session, workspace_str=self._workspace, host_name="ipv4-test1.local")
+            self.assertTrue(result._in_scope)
+            result = session.query(Host).filter_by(address="127.0.0.1").one()
+            self.assertTrue(result.in_scope)
+
+            result = session.query(DomainName).filter_by(name="ipv4-test2.local").one()
+            self.assertTrue(result.in_scope)
+            result = self.query_hostname(session=session, workspace_str=self._workspace, host_name="ipv4-test2.local")
+            self.assertFalse(result._in_scope)
+            result = session.query(Host).filter_by(address="127.0.0.2").one()
+            self.assertFalse(result.in_scope)
+
+            result = session.query(DomainName).filter_by(name="ipv4-test3.local").one()
+            self.assertTrue(result.in_scope)
+            result = self.query_hostname(session=session, workspace_str=self._workspace, host_name="ipv4-test3.local")
+            self.assertFalse(result._in_scope)
+            result = session.query(Host).filter_by(address="127.0.0.3").one()
+            self.assertTrue(result.in_scope)
+
+            result = session.query(DomainName).filter_by(name="ipv4-test4.local").one()
+            self.assertTrue(result.in_scope)
+            result = self.query_hostname(session=session, workspace_str=self._workspace, host_name="ipv4-test4.local")
+            self.assertFalse(result._in_scope)
+            result = session.query(Host).filter_by(address="127.0.0.4").one()
+            self.assertFalse(result.in_scope)
+
+            # IPv6
+            result = session.query(DomainName).filter_by(name="ipv6-test1.local").one()
+            self.assertTrue(result.in_scope)
+            result = self.query_hostname(session=session, workspace_str=self._workspace, host_name="ipv6-test1.local")
+            self.assertTrue(result._in_scope)
+            result = session.query(Host).filter_by(address="::1").one()
+            self.assertTrue(result.in_scope)
+
+            result = session.query(DomainName).filter_by(name="ipv6-test2.local").one()
+            self.assertTrue(result.in_scope)
+            result = self.query_hostname(session=session, workspace_str=self._workspace, host_name="ipv6-test2.local")
+            self.assertFalse(result._in_scope)
+            result = session.query(Host).filter_by(address="::2").one()
+            self.assertFalse(result.in_scope)
+
+            result = session.query(DomainName).filter_by(name="ipv6-test3.local").one()
+            self.assertTrue(result.in_scope)
+            result = self.query_hostname(session=session, workspace_str=self._workspace, host_name="ipv6-test4.local")
+            self.assertFalse(result._in_scope)
+            result = session.query(Host).filter_by(address="::3").one()
+            self.assertTrue(result.in_scope)
+
+            result = session.query(DomainName).filter_by(name="ipv6-test4.local").one()
+            self.assertTrue(result.in_scope)
+            result = self.query_hostname(session=session, workspace_str=self._workspace, host_name="ipv6-test4.local")
+            self.assertFalse(result._in_scope)
+            result = session.query(Host).filter_by(address="::4").one()
+            self.assertFalse(result.in_scope)
+
     def test_update_network_scope_exclude_after_insert_network_scopetype_all(self):
         """
         This method checks whether the host name scope is correctly updated when network scope is updated from all to
@@ -2144,5 +2218,7 @@ class DomainNameScopeTypeVhostTestCases(BaseScopeTypeVhostTestCases):
 # 3. Update host scope
 # 4. Update domain scope
 # 5. Update host name scope
+
+# host_host_name_mapping.type ENFORCE NOT NULL
 
 # The domain name's scope and network's scope cannot be both of type vhost.

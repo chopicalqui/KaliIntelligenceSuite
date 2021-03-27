@@ -43,6 +43,8 @@ from database.model import Source
 from database.model import PathType
 from collectors.core import XmlUtils
 from sqlalchemy.orm.session import Session
+from urllib.parse import unquote
+from urllib.parse import urlparse
 
 
 class HttpServiceDescriptor(ServiceDescriptorBase):
@@ -50,6 +52,7 @@ class HttpServiceDescriptor(ServiceDescriptorBase):
 
     def __init__(self):
         super().__init__(default_tcp_ports=[80, 443],
+                         # If you update this list, then you also have to update the last part of database function: assign_services_to_host_name
                          nmap_tcp_service_names=["^ssl\|http$",
                                                  "^http$",
                                                  "^http-alt$",
@@ -57,6 +60,7 @@ class HttpServiceDescriptor(ServiceDescriptorBase):
                                                  "^http\-proxy$",
                                                  "^sgi-soap$",
                                                  "^caldav$"],
+                         # If you update this list, then you also have to update the last part of database function: assign_services_to_host_name
                          nessus_tcp_service_names=["^www$",
                                                    "^http\-alt$",
                                                    "^http$",
@@ -245,6 +249,7 @@ class HttpExtraInfoExtraction(BaseExtraServiceInfoExtraction):
     ROBOTS_TXT = "http-robots.txt"
     WEB_PATHS = "web-paths"
     HTTP_TITLE = "http-title"
+    HTTP_HEADERS = "http-headers"
     HTTP_SERVER_HEADER = "http-server-header"
     HTTP_AUTH_FINDER = "http-auth-finder"
     HTTP_BACKUP_FINDER = "http-backup-finder"
@@ -259,6 +264,7 @@ class HttpExtraInfoExtraction(BaseExtraServiceInfoExtraction):
         self._re_http_backup_finder = re.compile("^\s*(?P<url>https?://.*?)$", re.IGNORECASE)
         self._re_comments_displayer_path = re.compile("^\s*Path:\s*(?P<url>https?://.*?)$", re.IGNORECASE)
         self._re_http_enum = re.compile("^\s*(?P<path>.+?):.*$")
+        self._re_location = re.compile("^\s+Location:\s*(?P<value>.+)\s*$", re.IGNORECASE | re.M)
         self._source_auth_finder = Engine.get_or_create(self._session,
                                                         Source,
                                                         name=HttpExtraInfoExtraction.HTTP_AUTH_FINDER)
@@ -277,6 +283,14 @@ class HttpExtraInfoExtraction(BaseExtraServiceInfoExtraction):
                                                        values=[output],
                                                        source=self._source,
                                                        service=self._service,
+                                                       report_item=self._report_item)
+                host_names = self._domain_utils.extract_domains(unquote(output))
+                for host_name in host_names:
+                    self._domain_utils.add_domain_name(session=self._session,
+                                                       workspace=self._workspace,
+                                                       item=host_name,
+                                                       source=self._source,
+                                                       verify=True,
                                                        report_item=self._report_item)
 
     def _extract_http_server_header(self, port_tag: str) -> None:
@@ -406,6 +420,28 @@ class HttpExtraInfoExtraction(BaseExtraServiceInfoExtraction):
                                                                service=self._service,
                                                                report_item=self._report_item)
 
+    def _extract_http_headers(self, port_tag):
+        """This method extracts information from HTTP headers."""
+        for script_tag in port_tag.findall("script/[@id='{}']".format(HttpExtraInfoExtraction.HTTP_HEADERS)):
+            output = XmlUtils.get_xml_attribute("output", script_tag.attrib)
+            locations = [item.strip() for item in self._re_location.findall(output)]
+            if locations:
+                self._domain_utils.add_additional_info(session=self._session,
+                                                       name="HTTP Header Location",
+                                                       values=locations,
+                                                       source=self._source,
+                                                       service=self._service,
+                                                       report_item=self._report_item)
+                for location in locations:
+                    url = urlparse(location)
+                    if url.netloc:
+                        self._domain_utils.add_domain_name(session=self._session,
+                                                           workspace=self._workspace,
+                                                           item=url.netloc,
+                                                           source=self._source,
+                                                           verify=True,
+                                                           report_item=self._report_item)
+
     def extract(self, **kwargs):
         """This method extracts HTTP information disclosed by the HTTP service."""
         self._extract_robots_txt(kwargs["port_tag"])
@@ -418,3 +454,4 @@ class HttpExtraInfoExtraction(BaseExtraServiceInfoExtraction):
         self._extract_ntlm_info(kwargs["port_tag"])
         self._extract_http_enum(kwargs["port_tag"])
         self._extract_security_headers(kwargs["port_tag"])
+        self._extract_http_headers(kwargs["port_tag"])

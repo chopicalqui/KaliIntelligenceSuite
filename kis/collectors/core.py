@@ -196,8 +196,8 @@ class BaseUtils:
     def add_host_host_name_mapping(session: Session,
                                    host: Host,
                                    host_name: HostName,
+                                   mapping_type: DnsResourceRecordType,
                                    source: Source = None,
-                                   mapping_type: DnsResourceRecordType = None,
                                    report_item: ReportItem = None) -> HostHostNameMapping:
         """
         This method establishes a link between a host and a host name
@@ -213,7 +213,7 @@ class BaseUtils:
         mapping = session.query(HostHostNameMapping) \
             .filter_by(host_id=host.id, host_name_id=host_name.id).one_or_none()
         if not mapping:
-            mapping = HostHostNameMapping(host=host, host_name=host_name)
+            mapping = HostHostNameMapping(host=host, host_name=host_name, type=mapping_type)
             session.add(mapping)
         if mapping_type:
             mapping.type |= mapping_type
@@ -655,7 +655,10 @@ class BaseUtils:
         if additional_info:
             if source:
                 source.additional_info.append(additional_info)
-            additional_info.extend(values)
+            # Make sure that values remain unique
+            for item in values:
+                if item not in additional_info.values:
+                    additional_info.append(item)
             if report_item:
                 report_item.details = "{}: {}".format(name, ", ".join(values))
                 report_item.report_type = "GENERIC"
@@ -895,16 +898,6 @@ class BaseUtils:
             result.nessus_service_name = nessus_service_name if nessus_service_name else result.nessus_service_name
             result.nessus_service_confidence = nessus_service_confidence if nessus_service_confidence \
                 else result.nessus_service_confidence
-            if (result.nmap_service_name and "http" in result.nmap_service_name and
-                result.nmap_service_confidence == 10) or (result.nessus_service_name and
-                                                          "http" in result.nessus_service_name and
-                                                          result.nessus_service_confidence == 10):
-                BaseUtils.add_path(session=session,
-                                   service=result,
-                                   path="/",
-                                   path_type=PathType.Http,
-                                   source=source,
-                                   report_item=report_item)
             if source:
                 source.services.append(result)
             if report_item:
@@ -1742,7 +1735,8 @@ class BaseUtils:
             return result
         name = name.lstrip("*.")
         name = name.lower()
-        if name.count(".") != 1:
+        host_name_items = self.split_host_name(name)
+        if len(host_name_items) != 2:
             raise ValueError("{} is not a second-level domain".format(name))
         result = self.add_domain_name(session=session,
                                       workspace=workspace,

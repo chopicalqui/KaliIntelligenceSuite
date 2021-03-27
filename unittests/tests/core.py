@@ -220,7 +220,7 @@ class BaseKisTestCase(unittest.TestCase):
                                       workspace_str: str = "unittest",
                                       ipv4_address: str = "192.168.1.1",
                                       host_name_str: str = "www.unittest.com",
-                                      mapping_type: DnsResourceRecordType = None,
+                                      mapping_type: DnsResourceRecordType = DnsResourceRecordType.a,
                                       host_name_scope: ScopeType = ScopeType.all,
                                       host_scope: bool = True,
                                       source_str: str = None) -> HostHostNameMapping:

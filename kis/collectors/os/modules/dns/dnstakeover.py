@@ -109,7 +109,7 @@ class CollectorClass(BaseDnsCollector, DomainCollector):
                 if type_str:
                     type = DnsResourceRecordType[type_str.lower()]
                 else:
-                    type = None
+                    raise NotImplementedError("DNS type '{}' unknown.".format(type_str))
                 destination_domain = match.group("destination_domain")
                 host_name = self.add_host_name(session=session,
                                                command=command,

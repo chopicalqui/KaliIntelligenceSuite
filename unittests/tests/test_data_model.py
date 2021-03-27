@@ -62,6 +62,7 @@ from database.model import TlsInfoCipherSuiteMapping
 from database.model import CertInfo
 from database.model import AsymmetricAlgorithm
 from database.model import CertType
+from database.model import DnsResourceRecordType
 from datetime import datetime
 
 
@@ -857,8 +858,8 @@ class TestHostHostNameMapping(BaseDataModelTestCase):
         with self._engine.session_scope() as session:
             host_name = self.create_hostname(session=session, workspace_str=self._workspaces[0])
             host = self.create_host(session=session, workspace_str=self._workspaces[0])
-            self._test_unique_constraint(session, host=host, host_name=host_name)
-            self._test_unique_constraint(session, host=host, host_name=host_name)
+            self._test_unique_constraint(session, host=host, host_name=host_name, type=DnsResourceRecordType.a)
+            self._test_unique_constraint(session, host=host, host_name=host_name, type=DnsResourceRecordType.a)
 
     def test_not_null_constraint(self):
         self.init_db()
@@ -868,6 +869,8 @@ class TestHostHostNameMapping(BaseDataModelTestCase):
             self._test_not_null_constraint(session)
             self._test_not_null_constraint(session, host=host)
             self._test_not_null_constraint(session, host_name=host_name)
+            self._test_not_null_constraint(session, type=DnsResourceRecordType.a, host=host)
+            self._test_not_null_constraint(session, host_name=host_name, type=DnsResourceRecordType.a)
 
     def test_check_constraint(self):
         pass
@@ -877,7 +880,7 @@ class TestHostHostNameMapping(BaseDataModelTestCase):
         with self._engine.session_scope() as session:
             host_name = self.create_hostname(session=session, workspace_str=self._workspaces[0])
             host = self.create_host(session=session, workspace_str=self._workspaces[0])
-            self._test_success(session, host=host, host_name=host_name)
+            self._test_success(session, host=host, host_name=host_name, type=DnsResourceRecordType.a)
 
 
 class TestHostNameHostNameMapping(BaseDataModelTestCase):

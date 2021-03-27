@@ -81,6 +81,7 @@ class ReportLanguage(enum.Enum):
         except KeyError:
             return s
 
+
 class _BaseReportGenerator:
     """
     This class implements all base functionality for generating reports
@@ -392,12 +393,12 @@ class _HostReportGenerator(_BaseReportGenerator):
                    "OS Details",
                    "Sources (Host Name)",
                    "Sources (Service)",
-                   "Command Count (Service)"]]
+                   "No. Commands (Service)",
+                   "No. Vulnerabilities (Service)"]]
         for workspace in self._workspaces:
             for host in workspace.hosts:
                 host_names = host.get_host_host_name_mappings_str([DnsResourceRecordType.a,
-                                                                   DnsResourceRecordType.aaaa,
-                                                                   DnsResourceRecordType.ptr])
+                                                                   DnsResourceRecordType.aaaa])
                 host_sources = host.sources_str
                 ipv4_network = None
                 companies = None
@@ -443,7 +444,8 @@ class _HostReportGenerator(_BaseReportGenerator):
                                            host.os_details,
                                            host_sources,
                                            service.sources_str,
-                                           len(service.commands)])
+                                           len(service.get_completed_commands()),
+                                           len(service.vulnerabilities)])
                     else:
                         rvalue.append([host.id,
                                        workspace.name,
@@ -479,6 +481,7 @@ class _HostReportGenerator(_BaseReportGenerator):
                                        None,
                                        host_sources,
                                        None,
+                                       None,
                                        None])
         return rvalue
 
@@ -510,7 +513,7 @@ class _HostReportGenerator(_BaseReportGenerator):
                                            service.state_str,
                                            self.TRUE if service.nmap_tunnel == "ssl" else None,
                                            service.nmap_product_version])
-        if result:
+        if len(result) > 1:
             self.fill_excel_sheet(worksheet=workbook.create_sheet(),
                                   csv_list=result,
                                   name="Service Results",
@@ -645,13 +648,13 @@ class _HostNameReportGenerator(_BaseReportGenerator):
                    "RDP NLA",
                    "Sources (Host Name)",
                    "Sources (Service)",
-                   "Command Count (Service)"]]
+                   "No. Commands (Service)",
+                   "No. Vulnerabilities (Service)"]]
         for workspace in self._workspaces:
             for domain in workspace.domain_names:
                 for host_name in domain.host_names:
                     if host_name.name and self._filter(host_name):
-                        ipv4_addresses = host_name.get_host_host_name_mappings_str(types=[DnsResourceRecordType.ptr,
-                                                                                          DnsResourceRecordType.a,
+                        ipv4_addresses = host_name.get_host_host_name_mappings_str(types=[DnsResourceRecordType.a,
                                                                                           DnsResourceRecordType.aaaa])
                         host_name_sources = host_name.sources_str
                         in_scope = host_name.in_scope(CollectorType.host_name_service)
@@ -686,7 +689,8 @@ class _HostNameReportGenerator(_BaseReportGenerator):
                                                service.rdp_nla,
                                                host_name_sources,
                                                service.sources_str,
-                                               len(service.commands)])
+                                               len(service.get_completed_commands()),
+                                               len(service.vulnerabilities)])
                         else:
                             rvalue.append([domain.id,
                                            host_name.id,
@@ -699,7 +703,7 @@ class _HostNameReportGenerator(_BaseReportGenerator):
                                            in_scope,
                                            host_name.summary,
                                            ipv4_addresses, None, None, None, None, None, None, None, None, None, None,
-                                           None, None, None, None, None, None, host_name_sources, None, None])
+                                           None, None, None, None, None, None, host_name_sources, None, None, None])
             return rvalue
 
 
@@ -940,7 +944,7 @@ class _DomainNameReportGenerator(_BaseReportGenerator):
                                            None,
                                            None,
                                            host_name.sources_str])
-        if result:
+        if len(result) > 1:
             self.fill_excel_sheet(worksheet=workbook.create_sheet(),
                                   csv_list=result,
                                   name="Domain Results",
@@ -1363,7 +1367,7 @@ class _TlsInfoReportGenerator(_BaseReportGenerator):
                     else:
                         row.append(None)
                 result.append(row)
-            if result:
+            if len(result) > 1:
                 self.fill_excel_sheet(worksheet=workbook.create_sheet(),
                                       csv_list=result,
                                       name="TLS - Versions",
@@ -1386,7 +1390,7 @@ class _TlsInfoReportGenerator(_BaseReportGenerator):
                                                    service.protocol_port_str,
                                                    mapping.cipher_suite.iana_name,
                                                    mapping.cipher_suite.security_str])
-        if result:
+        if len(result) > 1:
             self.fill_excel_sheet(worksheet=workbook.create_sheet(),
                                   csv_list=result,
                                   name="TLS - Weak Ciphers",
@@ -1654,7 +1658,7 @@ class _CertInfoReportGenerator(_BaseReportGenerator):
                                            cert_info.common_name,
                                            cert_info.subject_alt_names_str,
                                            self.TRUE if matching_host else None])
-        if result:
+        if len(result) > 1:
             self.fill_excel_sheet(worksheet=workbook.create_sheet(),
                                   csv_list=result,
                                   name="Cert - Name Coverage",
@@ -1676,7 +1680,7 @@ class _CertInfoReportGenerator(_BaseReportGenerator):
                                            cert_info.common_name,
                                            cert_info.issuer_name,
                                            self.TRUE if cert_info.is_self_signed() else None])
-        if result:
+        if len(result) > 1:
             self.fill_excel_sheet(worksheet=workbook.create_sheet(),
                                   csv_list=result,
                                   name="Cert - Valid CAs",
@@ -1697,7 +1701,7 @@ class _CertInfoReportGenerator(_BaseReportGenerator):
                                            service.service_name_with_confidence,
                                            cert_info.signature_asym_algorithm_summary,
                                            cert_info.hash_algorithm_str])
-        if result:
+        if len(result) > 1:
             self.fill_excel_sheet(worksheet=workbook.create_sheet(),
                                   csv_list=result,
                                   name="Cert - Signing Algorithms",
@@ -1721,7 +1725,7 @@ class _CertInfoReportGenerator(_BaseReportGenerator):
                                            self.TRUE if cert_info.is_valid() else None,
                                            "{:.2f}".format(cert_info.validity_period_days / 365),
                                            self.TRUE if cert_info.has_recommended_duration() else None])
-        if result:
+        if len(result) > 1:
             self.fill_excel_sheet(worksheet=workbook.create_sheet(),
                                   csv_list=result,
                                   name="Cert - Durations",
@@ -1741,7 +1745,7 @@ class _CertInfoReportGenerator(_BaseReportGenerator):
                                            service.protocol_port_str,
                                            service.service_name_with_confidence,
                                            cert_info.key_usage_str])
-        if result:
+        if len(result) > 1:
             self.fill_excel_sheet(worksheet=workbook.create_sheet(),
                                   csv_list=result,
                                   name="Cert - Key Usage",
@@ -1761,7 +1765,7 @@ class _CertInfoReportGenerator(_BaseReportGenerator):
                                            service.protocol_port_str,
                                            service.service_name_with_confidence,
                                            ", ".join(cert_info.critical_extension_names)])
-        if result:
+        if len(result) > 1:
             self.fill_excel_sheet(worksheet=workbook.create_sheet(),
                                   csv_list=result,
                                   name="Cert - Crit. Extensions",
@@ -2746,12 +2750,12 @@ class _VulnerabilityReportGenerator(_BaseReportGenerator):
                  "Service",
                  "Nmap Service Name",
                  "Nessus Service Name",
+                 "Sources",
                  "CVE",
                  "CVSSv3",
                  "CVSSv2",
                  "Plugin ID",
-                 "Description",
-                 "Sources"]]
+                 "Description"]]
         additional_info = self._session.query(AdditionalInfo)\
             .join(Service)\
             .join(Host)\

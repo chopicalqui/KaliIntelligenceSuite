@@ -41,6 +41,7 @@ from database.model import Network
 from database.model import CollectorName
 from database.model import Source
 from database.model import DnsResourceRecordType
+from database.model import ExecutionInfoType
 from view.core import ReportItem
 from typing import List
 from sqlalchemy.orm.session import Session
@@ -277,8 +278,16 @@ class BaseAmass(BaseDnsCollector, DomainCollector):
             output_path = self.create_path(host_name=host_name, sub_directory="output", create_new=True)
             if additional_arguments:
                 os_command += additional_arguments
-            os_command += ["-nocolor", "-src", "-nolocaldb", "-dir", output_path, "-d", host_name.full_name]
-            collector = self._get_or_create_command(session, os_command, collector_name, host_name=host_name)
+            os_command += ["-nocolor",
+                           "-src",
+                           "-nolocaldb",
+                           "-dir", ExecutionInfoType.output_path.argument,
+                           "-d", host_name.full_name]
+            collector = self._get_or_create_command(session,
+                                                    os_command,
+                                                    collector_name,
+                                                    host_name=host_name,
+                                                    output_path=output_path)
             collectors.append(collector)
         return collectors
 

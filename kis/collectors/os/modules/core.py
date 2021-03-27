@@ -2163,7 +2163,7 @@ class BaseMsfConsole(BaseCollector):
                  **kwargs):
         super().__init__(priority=priority,
                          timeout=timeout,
-                         exec_user="kali",
+                         exec_user="root",
                          service_descriptors=service_descriptors,
                          **kwargs)
         self._ip_support = ip_support
@@ -2636,6 +2636,17 @@ class BaseNmap(BaseCollector):
                                                             protocol=command.service.protocol,
                                                             port_number=command.service.port)
                 if port_tag:
+                    service_tag = port_tag.find("service")
+                    if service_tag:
+                        if not command.service.nmap_product:
+                            command.service.nmap_product = XmlUtils.get_xml_attribute("product", service_tag.attrib)
+                        if not command.service.nmap_version:
+                            command.service.nmap_version = XmlUtils.get_xml_attribute("version", service_tag.attrib)
+                        if not command.service.nmap_version:
+                            command.service.nmap_tunnel = XmlUtils.get_xml_attribute("tunnel", service_tag.attrib)
+                        if not command.service.nmap_extra_info:
+                            command.service.nmap_extra_info = XmlUtils.get_xml_attribute("extrainfo",
+                                                                                         service_tag.attrib)
                     for extractor_class in self._nmap_xml_extractor_classes:
                         if report_item:
                             report_item.listener = self._ui_manager

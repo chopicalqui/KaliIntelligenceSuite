@@ -241,12 +241,7 @@ class DatabaseImporter(BaseDatabaseXmlImporter):
                                 print("[I]   ignoring host name: {}".format(hostname.lower()), file=self._stdout)
                         extra_info = DatabaseImporter.get_xml_attribute("extrainfo", service_tag.attrib)
                         if extra_info:
-                            self._domain_utils.add_additional_info(session=self._session,
-                                                                   name="Nmap Extrainfo",
-                                                                   values=[extra_info],
-                                                                   source=source,
-                                                                   service=service,
-                                                                   report_item=self._report_item)
+                            service.nmap_extra_info = extra_info
                             match_domain = re_domain.match(extra_info)
                             if match_domain:
                                 domain = match_domain.group("domain")

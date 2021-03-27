@@ -262,18 +262,11 @@ class Engine:
                     SET in_scope = False
                     WHERE domain_name_id = NEW.id;
                 ELSIF (NEW.scope = 'vhost') THEN
+                    -- We only have to set all host names out of scope. The corresponding host name trigger will then
+                    -- automatically update the scope.
                     UPDATE host_name
                     SET in_scope = False
-                    WHERE domain_name_id = NEW.id AND name IS NULL;
-                    
-                    UPDATE host_name
-                    SET in_scope = True
-                    WHERE domain_name_id = NEW.id AND name IS NULL AND
-                            id IN (SELECT hn.id FROM host_name hn
-                                   INNER JOIN host_host_name_mapping m ON hn.domain_name_id = NEW.id AND
-                                                                          hn.id = m.host_name_id AND
-                                                                          ((m.type | 1) = 1 or (m.type | 2) = 2)
-                                   INNER JOIN host h ON h.id = m.host_id AND h.in_scope);
+                    WHERE domain_name_id = NEW.id;
                 END IF;
             END IF;
             RETURN NULL;
@@ -290,10 +283,11 @@ class Engine:
             IF (domain_scope = 'all' OR
                 (domain_scope = 'vhost' AND
                  EXISTS(SELECT hn.id FROM host_name hn
-                                          INNER JOIN host_host_name_mapping m ON hn.domain_name_id = NEW.domain_name_id AND
-                                                                                 hn.id = m.host_name_id AND
-                                                                                 ((m.type | 1) = 1 or (m.type | 2) = 2)
-                                          INNER JOIN host h ON h.id = m.host_id AND h.in_scope))) THEN
+                                          INNER JOIN host_host_name_mapping m ON m.host_name_id = hn.id AND
+                                                                                 hn.id = NEW.id AND
+                                                                                 m.type IS NOT NULL AND
+                                                                                 ((m.type & 1) = 1 OR (m.type & 2) = 2)
+                                          INNER JOIN host h ON h.id = m.host_id  AND h.in_scope IS NOT NULL AND h.in_scope))) THEN
                  NEW.in_scope := True;
             ELSIF (domain_scope = 'exclude') THEN
                 NEW.in_scope := False;
@@ -688,6 +682,14 @@ class Engine:
                     END LOOP;
                     CLOSE mapping_host_cursor;
                 END IF;
+            END IF;
+            
+            -- If web service, then add the default path '/' to the path table
+            IF ((TG_OP = 'INSERT' OR TG_OP = 'UPDATE') AND NEW.state = 'Open' AND
+                (NEW.nmap_service_name IN ('ssl|http', 'http', 'http-alt', 'https', 'http-proxy', 'sgi-soap', 'caldav') OR
+                 NEW.nessus_service_name IN ('www', 'http-alt', 'http', 'https', 'pcsync-https', 'homepage', 'greenbone-administrator', 'openvas-administrator')) AND
+                NOT EXISTS(SELECT * FROM path WHERE service_id = NEW.id AND name = '/')) THEN
+                INSERT INTO path (service_id, name, type, creation_date) VALUES (NEW.id, '/', 'Http', NOW());
             END IF;
             RETURN NULL;
         END;

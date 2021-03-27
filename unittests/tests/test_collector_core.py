@@ -24,6 +24,7 @@ __version__ = 0.1
 
 import unittest
 import tempfile
+import subprocess
 from urllib.parse import urlparse
 from typing import List
 from typing import Dict
@@ -66,6 +67,8 @@ from database.model import TlsInfoCipherSuiteMapping
 from database.model import ScopeType
 from database.model import ExecutionInfoType
 from database.model import DomainNameNotFound
+from collectors.os.core import PopenCommand
+from collectors.os.core import PopenCommandOpenSsl
 from collectors.core import IpUtils
 from datetime import datetime
 from view.core import ReportItem
@@ -110,6 +113,27 @@ class TestDelayMethods(unittest.TestCase):
         self.assertTrue(1 <= Delay(1, 3, False, False).sleep_time <= 3)
 
 
+class TestExecutionThreadTimeoutTermination(BaseKisTestCase):
+    """
+
+    """
+
+    def __init__(self, test_name: str):
+        super().__init__(test_name)
+
+    def test_terminate(self):
+        process = PopenCommand(os_command=["sleep", "10"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        process.start()
+        process.wait(1)
+        self.assertTrue(process.killed)
+
+    def test_terminate_02(self):
+        process = PopenCommandOpenSsl(os_command=["sleep", "10"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        process.start()
+        process.wait(1)
+        self.assertTrue(process.killed)
+
+
 class TestDatabaseVerificationMethods(BaseKisTestCase):
     """
     This class implements checks for testing the methods, which check validation methods
@@ -134,6 +158,29 @@ class TestDatabaseVerificationMethods(BaseKisTestCase):
         self.assertFalse(self._domain_utils.is_valid_domain("192.168.1.1"))
         self.assertFalse(self._domain_utils.is_valid_domain("0.1"))
         self.assertFalse(self._domain_utils.is_valid_domain("test"))
+
+    def test_extract_domains(self):
+        """
+        Unittests for DomainUtils.extract_domains
+        """
+        self.assertListEqual([],
+                             self._domain_utils.extract_domains("Did not follow redirect to https://test"))
+        self.assertListEqual(["test.local"],
+                             self._domain_utils.extract_domains("Did not follow redirect to https://test.local/"))
+        self.assertListEqual(["test.local"],
+                             self._domain_utils.extract_domains("Did not follow redirect to https://test.local"))
+        self.assertListEqual(["test.local"],
+                             self._domain_utils.extract_domains("Did not follow redirect to https://test.local:8080/"))
+        self.assertListEqual(["test.local"],
+                             self._domain_utils.extract_domains("Did not follow redirect to https://test.local:8080"))
+        self.assertListEqual(["www.test.local"],
+                             self._domain_utils.extract_domains("Did not follow redirect to https://www.test.local/"))
+        self.assertListEqual(["www.test.local"],
+                             self._domain_utils.extract_domains("Did not follow redirect to https://www.test.local"))
+        self.assertListEqual(["www.test.local"],
+                             self._domain_utils.extract_domains("Did not follow redirect to https://www.test.local:8080/"))
+        self.assertListEqual(["www.test.local"],
+                             self._domain_utils.extract_domains("Did not follow redirect to https://www.test.local:8080"))
 
     def test_match_tld(self):
         """
@@ -231,7 +278,6 @@ class TestDatabaseVerificationMethods(BaseKisTestCase):
         self.assertTrue(self._domain_utils.is_verified_company_name(" Test GmbH"))
         self.assertFalse(self._domain_utils.is_verified_company_name("Test GmbH "))
         self.assertFalse(self._domain_utils.is_verified_company_name(" Test GmbH "))
-        self.assertTrue(self._domain_utils.is_verified_company_name("Test INC."))
         self.assertFalse(self._domain_utils.is_verified_company_name("Test INC.."))
 
 
@@ -2133,6 +2179,130 @@ class TestAddService(BaseKisTestCase):
                                    state=ServiceState.Open,
                                    host_name_str="www.test.com")
 
+    def test_add_service_and_path(self):
+        """
+        If a web service is added, then the database trigger add_services_to_host_name automatically adds the default
+        path / to table path.
+        """
+        self.init_db()
+        with self._engine.session_scope() as session:
+            workspace = self._domain_utils.add_workspace(session=session, name=self._workspaces[0])
+            host = IpUtils.add_host(session=session,
+                                    workspace=workspace,
+                                    address="192.168.1.1")
+            # Test Nmap Service Names
+            IpUtils.add_service(session=session,
+                                port=1,
+                                protocol_type=ProtocolType.tcp,
+                                state=ServiceState.Open,
+                                host=host,
+                                nmap_service_name='ssl|http')
+            IpUtils.add_service(session=session,
+                                port=2,
+                                protocol_type=ProtocolType.tcp,
+                                state=ServiceState.Open,
+                                host=host,
+                                nmap_service_name='http')
+            IpUtils.add_service(session=session,
+                                port=3,
+                                protocol_type=ProtocolType.tcp,
+                                state=ServiceState.Open,
+                                host=host,
+                                nmap_service_name='http-alt')
+            IpUtils.add_service(session=session,
+                                port=4,
+                                protocol_type=ProtocolType.tcp,
+                                state=ServiceState.Open,
+                                host=host,
+                                nmap_service_name='https')
+            IpUtils.add_service(session=session,
+                                port=5,
+                                protocol_type=ProtocolType.tcp,
+                                state=ServiceState.Open,
+                                host=host,
+                                nmap_service_name='http-proxy')
+            IpUtils.add_service(session=session,
+                                port=6,
+                                protocol_type=ProtocolType.tcp,
+                                state=ServiceState.Open,
+                                host=host,
+                                nmap_service_name='sgi-soap')
+            IpUtils.add_service(session=session,
+                                port=7,
+                                protocol_type=ProtocolType.tcp,
+                                state=ServiceState.Open,
+                                host=host,
+                                nmap_service_name='caldav')
+            # Test Nessus Service Names
+            IpUtils.add_service(session=session,
+                                port=11,
+                                protocol_type=ProtocolType.tcp,
+                                state=ServiceState.Open,
+                                host=host,
+                                nessus_service_name='www')
+            IpUtils.add_service(session=session,
+                                port=12,
+                                protocol_type=ProtocolType.tcp,
+                                state=ServiceState.Open,
+                                host=host,
+                                nessus_service_name='http-alt')
+            IpUtils.add_service(session=session,
+                                port=13,
+                                protocol_type=ProtocolType.tcp,
+                                state=ServiceState.Open,
+                                host=host,
+                                nessus_service_name='http')
+            IpUtils.add_service(session=session,
+                                port=14,
+                                protocol_type=ProtocolType.tcp,
+                                state=ServiceState.Open,
+                                host=host,
+                                nessus_service_name='https')
+            IpUtils.add_service(session=session,
+                                port=15,
+                                protocol_type=ProtocolType.tcp,
+                                state=ServiceState.Open,
+                                host=host,
+                                nessus_service_name='pcsync-https')
+            IpUtils.add_service(session=session,
+                                port=16,
+                                protocol_type=ProtocolType.tcp,
+                                state=ServiceState.Open,
+                                host=host,
+                                nessus_service_name='homepage')
+            IpUtils.add_service(session=session,
+                                port=17,
+                                protocol_type=ProtocolType.tcp,
+                                state=ServiceState.Open,
+                                host=host,
+                                nessus_service_name='greenbone-administrator')
+            IpUtils.add_service(session=session,
+                                port=18,
+                                protocol_type=ProtocolType.tcp,
+                                state=ServiceState.Open,
+                                host=host,
+                                nessus_service_name='openvas-administrator')
+            # Negative Test
+            IpUtils.add_service(session=session,
+                                port=100,
+                                protocol_type=ProtocolType.tcp,
+                                state=ServiceState.Open,
+                                host=host,
+                                nmap_service_name='ssh')
+            IpUtils.add_service(session=session,
+                                port=101,
+                                protocol_type=ProtocolType.tcp,
+                                state=ServiceState.Open,
+                                host=host,
+                                nmap_service_name=None)
+        with self._engine.session_scope() as session:
+            for item in session.query(Service).all():
+                if item.port < 100:
+                    self.assertEqual(1, len(item.paths))
+                    self.assertEqual('/', item.paths[0].name)
+                else:
+                    self.assertEqual(0, len(item.paths))
+
 
 class TestAddDomainName(BaseKisTestCase):
     """
@@ -2149,6 +2319,7 @@ class TestAddDomainName(BaseKisTestCase):
                          verify: bool = False,
                          address: str = None,
                          source: Source = None,
+                         mapping_type: DnsResourceRecordType = DnsResourceRecordType.a,
                          report_item: ReportItem = None) -> None:
         """
         This is a helper method for testing DomainUtils.add_domain_name
@@ -2165,11 +2336,17 @@ class TestAddDomainName(BaseKisTestCase):
             result = self._domain_utils.add_domain_name(session=session,
                                                         workspace=workspace,
                                                         item=host_name_str,
-                                                        host=host,
                                                         source=source,
                                                         scope=scope,
                                                         verify=verify,
                                                         report_item=report_item)
+            if result and host:
+                self._domain_utils.add_host_host_name_mapping(session=session,
+                                                              host=host,
+                                                              host_name=result,
+                                                              mapping_type=mapping_type,
+                                                              source=source,
+                                                              report_item=report_item)
             session.commit()
             if valid or not verify:
                 host_part, domain_part = self.split_domain_name(host_name_str)
@@ -2203,7 +2380,10 @@ class TestAddDomainName(BaseKisTestCase):
                                 HostName.name == host_part,
                                 Workspace.name == item).count()
                     self.assertEqual(1, results)
-                if report_item:
+                if report_item and host_name_str and address:
+                    self.assertIn("add potentially new link between {} and {}".format(address, host_name_str),
+                                  report_item.get_report())
+                elif report_item:
                     self.assertIn("potentially new host name {}".format(host_name_str), report_item.get_report())
             else:
                 self.assertIsNone(result)
@@ -2331,27 +2511,36 @@ class TestAddDomainName(BaseKisTestCase):
         with self._engine.session_scope() as session:
             source = self.create_source(session, source_str="unittest")
             workspace = self._domain_utils.add_workspace(session, self._workspaces[0])
-            self._domain_utils.add_domain_name(session=session,
-                                               workspace=workspace,
-                                               item=".*.www.test.unittest.com",
-                                               host=self._ip_utils.add_host(session=session,
-                                                                            workspace=workspace,
-                                                                            address="192.168.1.1",
-                                                                            source=source),
-                                               source=source,
-                                               scope=ScopeType.all,
-                                               verify=True)
+            host_name = self._domain_utils.add_domain_name(session=session,
+                                                           workspace=workspace,
+                                                           item=".*.www.test.unittest.com",
+                                                           scope=ScopeType.all,
+                                                           verify=True,
+                                                           source=source)
+            self._domain_utils.add_host_host_name_mapping(session=session,
+                                                          host=self._ip_utils.add_host(session=session,
+                                                                                       workspace=workspace,
+                                                                                       address="192.168.1.1",
+                                                                                       source=source),
+                                                          host_name=host_name,
+                                                          mapping_type=DnsResourceRecordType.a,
+                                                          source=source)
             rvalue = self._domain_utils.add_domain_name(session=session,
                                                         workspace=workspace,
                                                         item="test..test.unittest.com",
-                                                        host=self._ip_utils.add_host(session=session,
-                                                                                     workspace=workspace,
-                                                                                     address="192.168.1.1",
-                                                                                     source=source),
                                                         source=source,
                                                         scope=ScopeType.all,
                                                         verify=True)
             self.assertIsNone(rvalue)
+            if rvalue:
+                self._domain_utils.add_host_host_name_mapping(session=session,
+                                                              host=self._ip_utils.add_host(session=session,
+                                                                                           workspace=workspace,
+                                                                                           address="192.168.1.1",
+                                                                                           source=source),
+                                                              host_name=rvalue,
+                                                              mapping_type=DnsResourceRecordType.a,
+                                                              source=source)
         with self._engine.session_scope() as session:
             host_names = session.query(HostName)\
                 .join(DomainName).join(Workspace)\
@@ -2360,8 +2549,10 @@ class TestAddDomainName(BaseKisTestCase):
             self.assertListEqual(["test.unittest.com", "www.test.unittest.com", "unittest.com"], host_names_str)
             for host_name in host_names:
                 self.assertEqual("unittest", host_name.sources[0].name)
-                if host_name.name is not None:
+                if host_name.name is not None and host_name.full_name == "www.test.unittest.com":
                     self.assertEqual("192.168.1.1", host_name.host_host_name_mappings[0].host.address)
+                else:
+                    self.assertListEqual([], host_name.host_host_name_mappings)
 
 
 class TestAddSecondLevelDomain(BaseKisTestCase):
@@ -2384,6 +2575,23 @@ class TestAddSecondLevelDomain(BaseKisTestCase):
                                                      source=source)
         with self._engine.session_scope() as session:
             result = session.query(DomainName).filter_by(name="test.local").one()
+            self.assertEqual(ScopeType.all, result.scope)
+            self.assertIsNone(result.host_names[0].name)
+            self.assertTrue(result.host_names[0]._in_scope)
+            self.assertEqual(1, len(result.host_names[0].sources))
+
+    def test_add_sld_simple_02(self):
+        self.init_db()
+        with self._engine.session_scope() as session:
+            source = self._domain_utils.add_source(session=session, name="user")
+            workspace = self._domain_utils.add_workspace(session=session, name=self._workspaces[0])
+            domain_name = self._domain_utils.add_sld(session=session,
+                                                     workspace=workspace,
+                                                     name="test.co.kr",
+                                                     scope=ScopeType.all,
+                                                     source=source)
+        with self._engine.session_scope() as session:
+            result = session.query(DomainName).filter_by(name="test.co.kr").one()
             self.assertEqual(ScopeType.all, result.scope)
             self.assertIsNone(result.host_names[0].name)
             self.assertTrue(result.host_names[0]._in_scope)
@@ -3661,7 +3869,7 @@ class TestAddHostHostNameMapping(BaseKisTestCase):
     def _unittest_add_host_host_name_mapping(self,
                                              address: str = None,
                                              host_name_str: str = None,
-                                             mapping_type: DnsResourceRecordType = None,
+                                             mapping_type: DnsResourceRecordType = DnsResourceRecordType.a,
                                              ex_message: str = None) -> None:
         """
         Unittests for BaseUtils.add_host_host_name_mapping

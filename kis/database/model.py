@@ -891,9 +891,13 @@ class Host(DeclarativeBase):
         :param types:
         :return:
         """
-        return ", ".join(
-            ["{} [{}]".format(item.host_name.full_name, item.type_str)
-             for item in self.get_host_host_name_mappings(types)])
+        result = []
+        for item in self.get_host_host_name_mappings(types):
+            if item.host_name.in_scope:
+                result.append("{} [{}, In-Scope]".format(item.host_name.full_name, item.type_str))
+            else:
+                result.append("{} [{}]".format(item.host_name.full_name, item.type_str))
+        return ", ".join(result)
 
     @property
     def summary(self) -> str:
@@ -1274,14 +1278,16 @@ class HostName(DeclarativeBase):
 
     def in_scope(self, collector_type: CollectorType) -> bool:
         result = self.domain_name is not None and (self.domain_name.scope == ScopeType.all or (
-            self.domain_name.scope == ScopeType.strict and self._in_scope))
+            (self.domain_name.scope == ScopeType.strict or self.domain_name.scope == ScopeType.vhost) and
+            self._in_scope))
         if result and collector_type == CollectorType.host_name_service:
             result = result and self.resolves_to_in_scope_ipv4_address()
         return result
 
     def in_scope_ipv6(self, collector_type: CollectorType) -> bool:
         result = self.domain_name is not None and (self.domain_name.scope == ScopeType.all or (
-            self.domain_name.scope == ScopeType.strict and self._in_scope))
+            (self.domain_name.scope == ScopeType.strict or self.domain_name.scope == ScopeType.vhost) and
+            self._in_scope))
         if result and collector_type == CollectorType.host_name_service:
             result = result and self.resolves_to_in_scope_ipv6_address()
         return result
@@ -1345,8 +1351,13 @@ class HostName(DeclarativeBase):
         :param types:
         :return:
         """
-        return ", ".join(["{} [{}]".format(item.host.address, item.type_str)
-                          for item in self.get_host_host_name_mappings(types)])
+        result = []
+        for item in self.get_host_host_name_mappings(types):
+            if item.host.in_scope:
+                result.append("{} [{}, In-Scope]".format(item.host.address, item.type_str))
+            else:
+                result.append("{} [{}]".format(item.host.address, item.type_str))
+        return ", ".join(result)
 
     def resolves_to_in_scope_ipv4_address(self) -> bool:
         """
@@ -1550,7 +1561,7 @@ class HostHostNameMapping(DeclarativeBase):
     id = Column("id", Integer, primary_key=True)
     host_id = Column(Integer, ForeignKey('host.id', ondelete='cascade'), nullable=False)
     host_name_id = Column(Integer, ForeignKey('host_name.id', ondelete='cascade'), nullable=False)
-    _type = Column("type", Integer, nullable=True)
+    _type = Column("type", Integer, nullable=False)
     creation_date = Column(DateTime, nullable=False, default=datetime.utcnow())
     last_modified = Column(DateTime, nullable=True, onupdate=datetime.utcnow())
     host_name = relationship(HostName, backref=backref('host_host_name_mappings', cascade="delete, delete-orphan"))
@@ -2027,6 +2038,7 @@ class Service(DeclarativeBase):
     nmap_service_state_reason = Column(String(25), nullable=True, unique=False)
     nmap_product = Column(Text, nullable=True, unique=False)
     nmap_version = Column(Text, nullable=True, unique=False)
+    nmap_extra_info = Column(Text, nullable=True, unique=False)
     nmap_tunnel = Column(Text, nullable=True, unique=False)
     nmap_os_type = Column(Text, nullable=True, unique=False)
     smb_message_signing = Column(Boolean, nullable=True, unique=False)
@@ -2160,12 +2172,25 @@ class Service(DeclarativeBase):
 
     @property
     def nmap_product_version(self) -> str:
-        return "{} {}".format(self.nmap_product if self.nmap_product else "",
-                              self.nmap_version if self.nmap_version else "").strip()
+        if self.nmap_extra_info:
+            result = "{} {} ({})".format(self.nmap_product if self.nmap_product else "",
+                                         self.nmap_version if self.nmap_version else "",
+                                         self.nmap_extra_info).strip()
+        else:
+            result = "{} {}".format(self.nmap_product if self.nmap_product else "",
+                                    self.nmap_version if self.nmap_version else "").strip()
+        return result
 
     @property
     def has_credentials(self) -> bool:
         return len([item for item in self.credentials if item.complete]) > 0
+
+    @property
+    def vulnerabilities(self) -> list:
+        """
+        Returns list of vulnerabilities
+        """
+        return [item for item in self.additional_info if item.name == "CVEs"]
 
     def has_given_collectors(self, include_collectors: List[str] = [], **kwargs) -> bool:
         """
@@ -2182,6 +2207,22 @@ class Service(DeclarativeBase):
                     rvalue = True
                     break
         return rvalue
+
+    def get_completed_commands(self) -> list:
+        """
+        This method returns all commands that have a status above status collecting
+        """
+        return [item for item in self.commands if item.status.value > CommandStatus.collecting.value]
+
+    def get_additional_info_by_name(self, key: str) -> List[str]:
+        """
+        Returns the values of the given key
+        """
+        result = []
+        for item in self.additional_info:
+            if item.name == key:
+                result.extend(item.values)
+        return result
 
     @staticmethod
     def _obtain_properties(collection, ident: int = 0, full: bool = False, **kwargs) -> List[str]:

@@ -308,7 +308,7 @@ The column **User** specifies the user with which the respective operating syste
 | 1320     | vhostgobuster             | service         | Active   | IPv4, IPv6 | -       | nobody |
 | 1350     | anyservicenmap            | service         | Active   | IPv4, IPv6 | -       | root   |
 | 1820     | tcptraceroute             | host            | Active   | IPv4, IPv6 | -       | nobody |
-| 1900     | httpmsfrobotstxt          | service, vhost  | Active   | IPv4, IPv6 | -       | kali   |
+| 1900     | httpmsfrobotstxt          | service, vhost  | Active   | IPv4, IPv6 | -       | root   |
 | 2000     | dnsnmap                   | service         | Active   | IPv4, IPv6 | -       | root   |
 | 2020     | telnetnmap                | service         | Active   | IPv4, IPv6 | -       | root   |
 | 2040     | vncnmap                   | service         | Active   | IPv4, IPv6 | -       | root   |
@@ -328,9 +328,9 @@ The column **User** specifies the user with which the respective operating syste
 | 3100     | finger                    | service         | Active   | IPv4       | -       | nobody |
 | 3200     | ntpdate                   | service         | Active   | IPv4, IPv6 | -       | nobody |
 | 3300     | ntpq                      | service         | Active   | IPv4, IPv6 | -       | nobody |
-| 4000     | h323version               | service         | Active   | IPv4, IPv6 | -       | kali   |
+| 4000     | h323version               | service         | Active   | IPv4, IPv6 | -       | root   |
 | 4100     | sipnmap                   | service         | Active   | IPv4, IPv6 | -       | root   |
-| 4120     | sipmsf                    | service         | Active   | IPv4, IPv6 | -       | kali   |
+| 4120     | sipmsf                    | service         | Active   | IPv4, IPv6 | -       | root   |
 | 4200     | stunnmap                  | service         | Active   | IPv4, IPv6 | -       | root   |
 | 11100    | ftphydra                  | service         | Active   | IPv4, IPv6 | -       | nobody |
 | 11200    | mssqlhydra                | service         | Active   | IPv4, IPv6 | -       | nobody |
@@ -338,7 +338,7 @@ The column **User** specifies the user with which the respective operating syste
 | 11500    | snmphydra                 | service         | Active   | IPv4, IPv6 | -       | nobody |
 | 11600    | sshchangeme               | service         | Active   | IPv4, IPv6 | -       | kali   |
 | 11610    | httpchangeme              | service, vhost  | Active   | IPv4, IPv6 | -       | kali   |
-| 11700    | ipmi                      | service         | Active   | IPv4, IPv6 | -       | kali   |
+| 11700    | ipmi                      | service         | Active   | IPv4, IPv6 | -       | root   |
 | 12100    | ftpfilelist               | service         | Active   | IPv4, IPv6 | -       | nobody |
 | 13000    | showmount                 | service         | Active   | IPv4, IPv6 | 300     | nobody |
 | 13090    | smbcme                    | service         | Active   | IPv4       | -       | kali   |

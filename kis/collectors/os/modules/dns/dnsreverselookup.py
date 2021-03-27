@@ -106,7 +106,6 @@ class CollectorClass(BaseDnsCollector, HostCollector):
                 host_name = self.add_host_name(session=session,
                                                command=command,
                                                source=source,
-                                               host=command.host,
                                                host_name=host_name,
                                                report_item=report_item)
                 if not host_name:

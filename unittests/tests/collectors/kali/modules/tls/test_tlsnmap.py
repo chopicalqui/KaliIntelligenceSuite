@@ -513,14 +513,16 @@ class BaseTlsNmapCollectorTestCase(BaseNmapCollectorTestCase):
                                           report_item=self._report_item)
         with self._engine.session_scope() as session:
             # TlsInfo
-            results = session.query(TlsInfo).all()
-            results = [item.version_str for item in results]
+            tls_info = session.query(TlsInfo).all()
+            results = [item.version_str for item in tls_info]
             results.sort()
-            expected_results = ["TLSv1.0",
-                                "TLSv1.1",
-                                "TLSv1.2"]
+            expected_results = ["TLSv1.0", "TLSv1.1", "TLSv1.2"]
             expected_results.sort()
             self.assertListEqual(expected_results, results)
+            self.assertEqual("Apache httpd", tls_info[0].service.nmap_product)
+            self.assertEqual("2.4.39", tls_info[0].service.nmap_version)
+            self.assertEqual("Apache httpd 2.4.39 ((Win64) OpenSSL/1.1.1b PHP/7.3.4)",
+                             tls_info[0].service.nmap_product_version)
             # TlsInfoCipherSuiteMapping
             results = session.query(TlsInfoCipherSuiteMapping).count()
             self.assertEqual(72, results)

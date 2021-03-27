@@ -93,7 +93,6 @@ class CollectorClass(BaseKisImportDomain, DomainCollector):
         for query_results in command.json_output:
             if "dns_records" in query_results and "host" in query_results["dns_records"]:
                 for item in query_results["dns_records"]["host"]:
-                    host = None
                     domain = item["domain"] if "domain" in item else None
                     ip = item["ip"] if "ip" in item else None
                     reverse_dns = item["reverse_dns"] if "reverse_dns" in item else None
@@ -110,14 +109,8 @@ class CollectorClass(BaseKisImportDomain, DomainCollector):
                                              address=ip,
                                              source=source,
                                              report_item=report_item)
-                        dedup_host[ip] = True
-                    if host_name_01 and host:
-                        self.add_host_host_name_mapping(session=session,
-                                                        command=command,
-                                                        host=host,
-                                                        host_name=host_name_01,
-                                                        source=source,
-                                                        report_item=report_item)
+                        if host:
+                            dedup_host[ip] = True
                     if reverse_dns:
                         host_name_02 = self.add_host_name(session=session,
                                                           command=command,
@@ -126,10 +119,3 @@ class CollectorClass(BaseKisImportDomain, DomainCollector):
                                                           report_item=report_item)
                         if host_name_02:
                             dedup_domain[reverse_dns] = True
-                            if host:
-                                self.add_host_host_name_mapping(session=session,
-                                                                command=command,
-                                                                host=host,
-                                                                host_name=host_name_02,
-                                                                source=source,
-                                                                report_item=report_item)
