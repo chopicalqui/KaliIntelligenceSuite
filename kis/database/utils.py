@@ -247,33 +247,47 @@ class Engine:
     def _create_functions(self) -> None:
         """This method creates all functions"""
         # Triggers for setting host_names in or out of scope
-        # update_host_names_after_domain_name_scope_changes
-        self._engine.execute("""CREATE OR REPLACE FUNCTION update_host_names_after_domain_name_scope_changes()
+        # pre_update_domain_name_scope_changes
+        self._engine.execute("""CREATE OR REPLACE FUNCTION pre_update_domain_name_scope_changes()
         RETURNS TRIGGER AS $$
         BEGIN
-            IF (TG_OP = 'UPDATE' AND OLD.scope <> NEW.scope) THEN
+            IF (TG_OP = 'INSERT' OR TG_OP = 'UPDATE') AND
+                COALESCE(NEW.scope, 'exclude') = 'vhost' AND
+                EXISTS(SELECT * FROM network
+                        WHERE workspace_id = NEW.workspace_id AND
+                              COALESCE(scope, 'exclude') = 'vhost') THEN
+                    RAISE EXCEPTION 'scope vhost cannot be set at domain and network level at the same time';
+            END IF;
+            RETURN NEW;
+        END;
+        $$ LANGUAGE PLPGSQL;""")
+        # post_update_host_names_after_domain_name_scope_changes
+        self._engine.execute("""CREATE OR REPLACE FUNCTION post_update_host_names_after_domain_name_scope_changes()
+        RETURNS TRIGGER AS $$
+        BEGIN
+            IF (TG_OP = 'UPDATE' AND COALESCE(OLD.scope, 'exclude') <> COALESCE(NEW.scope, 'exclude')) THEN
                 -- Update scope of all sub-domains if the scope of the second-level domain is updated
-                IF (NEW.scope = 'all') THEN
+                IF (COALESCE(NEW.scope, 'exclude') = 'all') THEN
                     UPDATE host_name
-                    SET in_scope = True
-                    WHERE domain_name_id = NEW.id;
-                ELSIF (NEW.scope IS NULL OR NEW.scope = 'exclude') THEN
+                        SET in_scope = True
+                        WHERE domain_name_id = NEW.id;
+                ELSIF (COALESCE(NEW.scope, 'exclude') = 'exclude') THEN
                     UPDATE host_name
-                    SET in_scope = False
-                    WHERE domain_name_id = NEW.id;
-                ELSIF (NEW.scope = 'vhost') THEN
+                        SET in_scope = False
+                        WHERE domain_name_id = NEW.id;
+                ELSIF (COALESCE(NEW.scope, 'exclude') = 'vhost') THEN
                     -- We only have to set all host names out of scope. The corresponding host name trigger will then
                     -- automatically update the scope.
                     UPDATE host_name
-                    SET in_scope = False
-                    WHERE domain_name_id = NEW.id;
+                        SET in_scope = False
+                        WHERE domain_name_id = NEW.id;
                 END IF;
             END IF;
             RETURN NULL;
         END;
         $$ LANGUAGE PLPGSQL;""")
-        # update_host_name_scope
-        self._engine.execute("""CREATE OR REPLACE FUNCTION update_host_name_scope()
+        # pre_update_host_name_scope
+        self._engine.execute("""CREATE OR REPLACE FUNCTION pre_update_host_name_scope()
         RETURNS TRIGGER AS $$
         DECLARE
             domain_scope scopetype;
@@ -283,11 +297,11 @@ class Engine:
             IF (domain_scope = 'all' OR
                 (domain_scope = 'vhost' AND
                  EXISTS(SELECT hn.id FROM host_name hn
-                                          INNER JOIN host_host_name_mapping m ON m.host_name_id = hn.id AND
-                                                                                 hn.id = NEW.id AND
-                                                                                 m.type IS NOT NULL AND
-                                                                                 ((m.type & 1) = 1 OR (m.type & 2) = 2)
-                                          INNER JOIN host h ON h.id = m.host_id  AND h.in_scope IS NOT NULL AND h.in_scope))) THEN
+                        INNER JOIN host_host_name_mapping m ON m.host_name_id = hn.id AND
+                                                               hn.id = NEW.id AND
+                                                               COALESCE(m.type, 4) < 3
+                        INNER JOIN host h ON h.id = m.host_id AND
+                                             COALESCE(h.in_scope, False)))) THEN
                  NEW.in_scope := True;
             ELSIF (domain_scope = 'exclude') THEN
                 NEW.in_scope := False;
@@ -295,8 +309,8 @@ class Engine:
             RETURN NEW;
         END;
         $$ LANGUAGE PLPGSQL;""")
-        # update_scopes_after_host_host_name_mapping_update
-        self._engine.execute("""CREATE OR REPLACE FUNCTION update_scopes_after_host_host_name_mapping_update()
+        # post_update_scopes_after_host_host_name_mapping_update
+        self._engine.execute("""CREATE OR REPLACE FUNCTION post_update_scopes_after_host_host_name_mapping_update()
         RETURNS TRIGGER AS $$
         DECLARE
             domain_scope scopetype;
@@ -304,34 +318,41 @@ class Engine:
             host_name_record_count INTEGER;
             host_record_count INTEGER;
         BEGIN
-            IF ((TG_OP = 'INSERT' OR TG_OP = 'UPDATE') AND ((NEW.type & 1) = 1 OR (NEW.type & 2) = 2)) THEN
+            -- RAISE NOTICE 'BEGIN POST HOST_HOST_NAME_MAPPING: TG_OP = %%, host_id = %%, host_name_id = %%', TG_OP, NEW.host_id, NEW.host_name_id;
+            IF ((TG_OP = 'INSERT' OR TG_OP = 'UPDATE') AND COALESCE(NEW.type, 4) < 3) THEN
                 -- Determine the domain scope settings
                 SELECT d.scope INTO domain_scope FROM domain_name d
                     INNER JOIN host_name h ON d.id = h.domain_name_id AND h.id = NEW.host_name_id;
                 -- Determine the host scope settings
                 SELECT n.scope INTO network_scope FROM host h
-                    LEFT JOIN network n ON h.id = NEW.host_id AND n.id = h.network_id;
+                    INNER JOIN network n ON n.id = h.network_id AND h.id = NEW.host_id;
                    
                 -- Determine if the current host name still has an A or AAAA relationship to a in scope host.
                 host_name_record_count := (SELECT COUNT(*) FROM host_name hn
-                    INNER JOIN host_host_name_mapping m ON hn.id = m.host_name_id AND hn.id = NEW.host_name_id AND
-                                                           ((m.type | 1) = 1 or (m.type | 2) = 2)
+                    INNER JOIN host_host_name_mapping m ON hn.id = m.host_name_id AND
+                                                           hn.id = NEW.host_name_id AND
+                                                           COALESCE(m.type, 4) < 3
                     INNER JOIN domain_name dn ON dn.scope = 'vhost' AND dn.id = hn.domain_name_id
-                    INNER JOIN host h ON h.id = m.host_id AND h.in_scope);
+                    INNER JOIN host h ON h.id = m.host_id AND h.in_scope IS NOT NULL AND h.in_scope);
                 -- Determine if the current host still has an A or AAAA relationship to a in scope host.
                 host_record_count := (SELECT COUNT(*) FROM host h
-                    INNER JOIN host_host_name_mapping m ON h.id = m.host_id AND h.id = NEW.host_id AND
-                                                           ((m.type | 1) = 1 or (m.type | 2) = 2)
+                    INNER JOIN host_host_name_mapping m ON h.id = m.host_id AND
+                                                           h.id = NEW.host_id AND
+                                                           COALESCE(m.type, 4) < 3
                     INNER JOIN network n ON n.scope = 'vhost' AND n.id = h.network_id
-                    INNER JOIN host_name hn ON hn.id = m.host_name_id AND hn.in_scope);
-
+                    INNER JOIN host_name hn ON hn.id = m.host_name_id AND COALESCE(hn.in_scope, False));
+                -- RAISE NOTICE '  network_scope = %%, host_record_count = %%', network_scope, COALESCE(host_record_count, 0);
+                
                 -- If we have a domain scope of type vhost and an in scope host, then we have to put the host_name in scope
-                IF domain_scope IS NOT NULL AND domain_scope = 'vhost' THEN
-                    UPDATE host_name SET in_scope = (host_name_record_count > 0) WHERE id = NEW.host_name_id;
+                IF COALESCE(domain_scope, 'exclude') = 'vhost' THEN
+                    UPDATE host_name SET in_scope = COALESCE(host_name_record_count, 0) > 0
+                        WHERE id = NEW.host_name_id;
                 END IF;
-                IF network_scope IS NOT NULL AND network_scope = 'vhost' THEN
-                    UPDATE host SET in_scope = (host_record_count > 0) WHERE id = NEW.host_id;
+                IF COALESCE(network_scope, 'exclude') = 'vhost' THEN
+                    UPDATE host SET in_scope = COALESCE(host_record_count, 0) > 0
+                        WHERE id = NEW.host_id;
                 END IF;
+                -- RAISE NOTICE 'END POST HOST_HOST_NAME_MAPPING: TG_OP = %%, host_id = %%, host_name_id = %%', TG_OP, NEW.host_id, NEW.host_name_id;
             END IF;
             RETURN NULL;
         END;
@@ -345,10 +366,16 @@ class Engine:
             scope scopetype;
             net_id integer;
         BEGIN
+            -- RAISE NOTICE 'BEGIN PRE NETWORK: TG_OP = %%, address = %%, new scope = %% old scope = %%', TG_OP, NEW.address, NEW.scope, OLD.scope;
             -- This trigger performs consistency checks as well as updates the scope of the current network
             -- accordingly.
             IF (TG_OP = 'INSERT' OR TG_OP = 'UPDATE') THEN
-                IF (TG_OP = 'UPDATE' AND OLD.address <> NEW.address) THEN
+                IF COALESCE(NEW.scope, 'exclude') = 'vhost' AND
+                   EXISTS(SELECT * FROM domain_name d
+                            WHERE d.workspace_id = NEW.workspace_id AND
+                                  COALESCE(d.scope, 'exclude') = 'vhost') THEN
+                    RAISE EXCEPTION 'scope vhost cannot be set at domain and network level at the same time';
+                ELSIF (TG_OP = 'UPDATE' AND OLD.address <> NEW.address) THEN
                     RAISE EXCEPTION 'changing the networks address (%%) is not allowed as it might make scoping
                                      inconsistent.', OLD.address;
                 ELSIF (NEW.scope IS NOT NULL) THEN
@@ -384,10 +411,11 @@ class Engine:
                     END IF;
                 END IF;
                 RETURN NEW;
+                -- RAISE NOTICE 'END PRE NETWORK: TG_OP = %%, address = %%, new scope = %% old scope = %%', TG_OP, NEW.address, NEW.scope, OLD.scope;
             ELSIF (TG_OP = 'DELETE') THEN
                 RETURN OLD;
             END IF;
-            RETURN NULL;
+            RETURN NEW;
         END;
         $$ LANGUAGE PLPGSQL;""")
         # post_update_network_scopes_after_network_changes
@@ -397,6 +425,7 @@ class Engine:
             sub_net inet;
         BEGIN
             -- This trigger updates all networks and hosts based on the current network's scope
+            -- RAISE NOTICE 'BEGIN POST NETWORK: TG_OP = %%, address = %%, new scope = %% old scope = %%', TG_OP, NEW.address, NEW.scope, OLD.scope;
             IF (NEW.scope IS NOT NULL) THEN
                 -- Check whether all child networks have already the same scope. If they don't, then we update their
                 -- scope as well.
@@ -434,6 +463,21 @@ class Engine:
                         address <<= NEW.address;
                 END IF;
             END IF;
+            IF TG_OP = 'UPDATE' AND COALESCE(OLD.scope, 'exclude') <> COALESCE(NEW.scope, 'exclude') THEN
+                -- Update scope of all hosts if the scope of the network is updated
+                IF NEW.scope = 'all' THEN
+                    UPDATE host
+                        SET in_scope = True
+                        WHERE network_id = NEW.id;
+                ELSIF COALESCE(NEW.scope, 'exclude') = 'exclude' OR COALESCE(NEW.scope, 'exclude') = 'vhost' THEN
+                    -- In case of vhost, we only have to set all hosts out of scope. The corresponding trigger
+                    -- will then automatically update the scope.
+                    UPDATE host
+                        SET in_scope = False
+                        WHERE network_id = NEW.id;
+                END IF;
+            END IF;
+            -- RAISE NOTICE 'END POST NETWORK: TG_OP = %%, address = %%, new scope = %% old scope = %%', TG_OP, NEW.address, NEW.scope, OLD.scope;
             RETURN NULL;
         END;
         $$ LANGUAGE PLPGSQL;""")
@@ -443,22 +487,27 @@ class Engine:
         DECLARE
             network_scope scopetype;
         BEGIN
+            -- RAISE NOTICE 'BEGIN PRE HOST: TG_OP = %%, address = %%, new scope = %%, old scope = %%, network_id = %%', TG_OP, NEW.address, NEW.in_scope, OLD.in_scope, NEW.network_id;
             IF (TG_OP = 'INSERT' OR TG_OP = 'UPDATE') THEN
                 -- Usually network assignments are performed when a new network is inserted or updated. If all
                 -- networks, however, are already inserted, then this case ensures that it is inserted to the smallest
                 -- network.
-                SELECT id INTO NEW.network_id FROM network
+                SELECT id, scope INTO NEW.network_id, network_scope FROM network
                     WHERE address >>= NEW.address AND
                           workspace_id = NEW.workspace_id
                     ORDER BY masklen(address) DESC
                     LIMIT 1;
 
-                -- Obtain the host's network scope
-                SELECT scope INTO network_scope FROM network
-                    WHERE id = NEW.network_id;
-
                 IF network_scope IS NOT NULL THEN
-                    IF network_scope = 'all' THEN
+                    IF network_scope = 'all' OR 
+                       (network_scope = 'vhost' AND
+                        EXISTS(SELECT * FROM host h
+                                   INNER JOIN host_host_name_mapping m ON m.host_id = h.id AND
+                                                                          h.id = NEW.id AND
+                                                                          COALESCE(m.type, 4) < 3
+                                   INNER JOIN host_name hn ON m.host_name_id = hn.id AND
+                                                              hn.in_scope IS NOT NULL AND
+                                                              hn.in_scope)) THEN
                         NEW.in_scope = True;
                     ELSIF network_scope = 'exclude' THEN
                         NEW.in_scope = False;
@@ -467,6 +516,7 @@ class Engine:
                     NEW.in_scope = False;
                 END IF;
             END IF;
+            -- RAISE NOTICE 'END PRE HOST: TG_OP = %%, address = %%, new scope = %%, old scope = %%, network_id = %%', TG_OP, NEW.address, NEW.in_scope, OLD.in_scope, NEW.network_id;
             RETURN NEW;
         END;
         $$ LANGUAGE PLPGSQL;""")
@@ -694,57 +744,37 @@ class Engine:
             RETURN NULL;
         END;
         $$ LANGUAGE PLPGSQL;""")
-        self._engine.execute("""CREATE OR REPLACE FUNCTION reassign_hosts_to_network() 
-        RETURNS TEXT AS $$
-        DECLARE
-        network_cursor CURSOR FOR SELECT * FROM network;
-        current_row network%%ROWTYPE;
-        BEGIN
-          OPEN network_cursor;
-          LOOP
-            FETCH network_cursor INTO current_row;
-            EXIT WHEN NOT FOUND;
-            -- the new network is the smallest network in the network table. in this case, we assign hosts to this
-            -- network
-            IF (NOT EXISTS(SELECT * FROM network WHERE address << current_row.address AND workspace_id = current_row.workspace_id)) THEN
-              UPDATE host h
-              SET network_id = current_row.id
-              WHERE h.address <<= current_row.address and h.workspace_id = current_row.workspace_id;
-            END IF;
-          END LOOP;
-          CLOSE network_cursor;
-          RETURN NULL;
-        END;
-        $$ LANGUAGE PLPGSQL;""")
 
     def _drop_functions(self) -> None:
         """This method drops all functions"""
-        self._engine.execute("""DROP FUNCTION update_host_names_after_domain_name_scope_changes;""")
-        self._engine.execute("""DROP FUNCTION update_host_name_scope;""")
+        self._engine.execute("""DROP FUNCTION pre_update_domain_name_scope_changes;""")
+        self._engine.execute("""DROP FUNCTION post_update_host_names_after_domain_name_scope_changes;""")
+        self._engine.execute("""DROP FUNCTION pre_update_host_name_scope;""")
         self._engine.execute("""DROP FUNCTION pre_update_network_scopes_after_network_changes;""")
         self._engine.execute("""DROP FUNCTION post_update_network_scopes_after_network_changes;""")
         self._engine.execute("""DROP FUNCTION pre_update_hosts_after_host_changes;""")
         self._engine.execute("""DROP FUNCTION assign_services_to_host_name;""")
         self._engine.execute("""DROP FUNCTION add_services_to_host_name;""")
-        self._engine.execute("""DROP FUNCTION reassign_hosts_to_network;""")
 
     def _create_triggers(self) -> None:
         """This method creates all triggers."""
         # Triggers on host_name and domain_name tables
-        self._engine.execute("""CREATE TRIGGER update_domain_name_scope_trigger AFTER INSERT OR UPDATE ON domain_name
- FOR EACH ROW EXECUTE PROCEDURE update_host_names_after_domain_name_scope_changes();""")
-        self._engine.execute("""CREATE TRIGGER update_host_name_scope_trigger BEFORE INSERT OR UPDATE ON host_name
- FOR EACH ROW EXECUTE PROCEDURE update_host_name_scope();""")
+        self._engine.execute("""CREATE TRIGGER pre_update_domain_name_scope_trigger BEFORE INSERT OR UPDATE ON domain_name
+ FOR EACH ROW EXECUTE PROCEDURE pre_update_domain_name_scope_changes();""")
+        self._engine.execute("""CREATE TRIGGER post_update_domain_name_scope_trigger AFTER INSERT OR UPDATE ON domain_name
+ FOR EACH ROW EXECUTE PROCEDURE post_update_host_names_after_domain_name_scope_changes();""")
+        self._engine.execute("""CREATE TRIGGER pre_update_host_name_scope_trigger BEFORE INSERT OR UPDATE ON host_name
+ FOR EACH ROW EXECUTE PROCEDURE pre_update_host_name_scope();""")
         # Trigger to update host/host names scopes when A, AAAA records are updated
-        self._engine.execute("""CREATE TRIGGER update_host_host_name_mapping_trigger AFTER INSERT OR DELETE OR UPDATE ON host_host_name_mapping
- FOR EACH ROW EXECUTE PROCEDURE update_scopes_after_host_host_name_mapping_update();""")
+        self._engine.execute("""CREATE TRIGGER post_update_host_host_name_mapping_trigger AFTER INSERT OR DELETE OR UPDATE ON host_host_name_mapping
+ FOR EACH ROW EXECUTE PROCEDURE post_update_scopes_after_host_host_name_mapping_update();""")
         # Triggers on network tables
         self._engine.execute("""CREATE TRIGGER pre_update_network_scope_trigger BEFORE INSERT OR UPDATE OR DELETE ON network
  FOR EACH ROW EXECUTE PROCEDURE pre_update_network_scopes_after_network_changes();""")
         self._engine.execute("""CREATE TRIGGER post_update_network_scope_trigger AFTER INSERT OR UPDATE OR DELETE ON network
  FOR EACH ROW EXECUTE PROCEDURE post_update_network_scopes_after_network_changes();""")
         # Triggers on hosts
-        self._engine.execute("""CREATE TRIGGER update_host_scope_trigger BEFORE INSERT OR UPDATE ON host
+        self._engine.execute("""CREATE TRIGGER pre_update_host_scope_trigger BEFORE INSERT OR UPDATE ON host
  FOR EACH ROW EXECUTE PROCEDURE pre_update_hosts_after_host_changes();""")
         self._engine.execute("""CREATE TRIGGER host_host_name_mapping_insert AFTER INSERT OR UPDATE ON host_host_name_mapping
  FOR EACH ROW EXECUTE PROCEDURE assign_services_to_host_name();""")
@@ -753,12 +783,12 @@ class Engine:
 
     def _drop_trigger(self) -> None:
         """This method drops all triggers."""
-        self._engine.execute("""DROP TRIGGER update_domain_name_scope_trigger ON domain_name""")
-        self._engine.execute("""DROP TRIGGER update_host_name_scope_trigger ON host_name""")
-        self._engine.execute("""DROP TRIGGER update_scopes_after_host_host_name_mapping_update ON host_host_name_mapping""")
+        self._engine.execute("""DROP TRIGGER post_update_domain_name_scope_trigger ON domain_name""")
+        self._engine.execute("""DROP TRIGGER pre_update_host_name_scope_trigger ON host_name""")
+        self._engine.execute("""DROP TRIGGER post_update_host_host_name_mapping_trigger ON host_host_name_mapping""")
         self._engine.execute("""DROP TRIGGER pre_update_network_scope_trigger ON network""")
         self._engine.execute("""DROP TRIGGER post_update_network_scope_trigger ON network""")
-        self._engine.execute("""DROP TRIGGER update_host_scope_trigger ON host""")
+        self._engine.execute("""DROP TRIGGER pre_update_host_scope_trigger ON host""")
         self._engine.execute("""DROP TRIGGER host_name_mapping_insert ON host_name_mapping""")
         self._engine.execute("""DROP TRIGGER service_insert ON service""")
 
