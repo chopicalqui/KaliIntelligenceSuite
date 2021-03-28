@@ -677,6 +677,7 @@ class NetworkScopeTypeVhostTestCases(BaseScopeTypeVhostTestCases):
             self.assertFalse(result.in_scope)
             self.assertTrue(result.hosts[0].in_scope)
             result = self.query_hostname(session=session, workspace_str=self._workspace, host_name="ipv6-test1.local")
+            self.assertEqual(ScopeType.all, result.domain_name.scope)
             self.assertTrue(result._in_scope)
 
     def test_update_network_scopetype_from_exclude_to_vhost_single(self):
@@ -955,6 +956,65 @@ class NetworkScopeTypeVhostTestCases(BaseScopeTypeVhostTestCases):
             self.assertFalse(result.hosts[0].in_scope)
             result = self.query_hostname(session=session, workspace_str=self._workspace, host_name="ipv6-test4.local")
             self.assertFalse(result._in_scope)
+
+    def test_delete_aaaa_host_host_name_mapping(self):
+        self.test_insert_domain_scopetype_all_single()
+        # Update database
+        with self._engine.session_scope() as session:
+            mapping = session.query(HostHostNameMapping).one()
+            session.delete(mapping)
+        # Check the database
+        with self._engine.session_scope() as session:
+            # IPv6
+            result = session.query(Network).filter_by(network="::1/128").one()
+            self.assertFalse(result.in_scope)
+            self.assertFalse(result.hosts[0].in_scope)
+            result = self.query_hostname(session=session, workspace_str=self._workspace, host_name="ipv6-test1.local")
+            self.assertEqual(ScopeType.all, result.domain_name.scope)
+            self.assertTrue(result._in_scope)
+
+    def test_insert_aaaa_host_host_name_mapping(self):
+        # set up database
+        self.init_db()
+        with self._engine.session_scope() as session:
+            workspace = IpUtils.add_workspace(session=session, name=self._workspace)
+            self._domain_utils.add_domain_name(session=session,
+                                               workspace=workspace,
+                                               item="www.test.local",
+                                               scope=ScopeType.all)
+            self._ip_utils.add_network(session=session,
+                                       workspace=workspace,
+                                       network="192.168.0.0/24",
+                                       scope=ScopeType.vhost)
+            self._ip_utils.add_host(session=session,
+                                    workspace=workspace,
+                                    address="192.168.0.1")
+        with self._engine.session_scope() as session:
+            result = session.query(Network).one()
+            self.assertEqual(ScopeType.vhost, result.scope)
+            result = session.query(Host).one()
+            self.assertFalse(result.in_scope)
+            result = session.query(HostName).filter_by(name="www").one()
+            self.assertTrue(result._in_scope)
+            self.assertEqual(ScopeType.all, result.domain_name.scope)
+            self.assertTrue(result.domain_name.in_scope)
+        with self._engine.session_scope() as session:
+            host = session.query(Host).one()
+            host_name = session.query(HostName).filter_by(name="www").one()
+            self._domain_utils.add_host_host_name_mapping(session=session,
+                                                          host=host,
+                                                          host_name=host_name,
+                                                          mapping_type=DnsResourceRecordType.aaaa)
+        with self._engine.session_scope() as session:
+            result = session.query(Network).one()
+            self.assertEqual(ScopeType.vhost, result.scope)
+            result = session.query(Host).one()
+            self.assertTrue(result.in_scope)
+            result = session.query(HostName).filter_by(name="www").one()
+            self.assertTrue(result._in_scope)
+            self.assertEqual(ScopeType.all, result.domain_name.scope)
+            self.assertTrue(result.domain_name.in_scope)
+
 
 
 class HostScopeTypeNoneTestCases(BaseKisTestCase):
@@ -1937,6 +1997,88 @@ class DomainNameScopeTypeVhostTestCases(BaseScopeTypeVhostTestCases):
 
     def __init__(self, test_name: str):
         super().__init__(test_name)
+
+    def test_insert_network_scopetype_all_single(self):
+        # set up database
+        self.init_db()
+        with self._engine.session_scope() as session:
+            workspace = IpUtils.add_workspace(session=session, name=self._workspace)
+            # IPv6
+            self._create_host_host_name_mapping(session=session,
+                                                workspace=workspace,
+                                                host_str="::1",
+                                                network_str="::1/128",
+                                                host_name_str="ipv6-test1.local",
+                                                network_scope=ScopeType.all,
+                                                domain_name_scope=ScopeType.vhost,
+                                                mapping_type=DnsResourceRecordType.aaaa)
+        # Check the database
+        with self._engine.session_scope() as session:
+            # IPv6
+            result = session.query(HostName).one()
+            self.assertTrue(result.domain_name.in_scope)
+            self.assertTrue(result.in_scope)
+            result = session.query(Network).one()
+            self.assertTrue(result.in_scope)
+            self.assertTrue(result.hosts[0].in_scope)
+
+    def test_delete_host_name_mapping(self):
+        self.test_insert_network_scopetype_all_single()
+        # Update database
+        with self._engine.session_scope() as session:
+            mapping = session.query(HostHostNameMapping).one()
+            session.delete(mapping)
+        # Check the database
+        with self._engine.session_scope() as session:
+            # IPv6
+            result = session.query(HostName).one()
+            self.assertTrue(result.domain_name.in_scope)
+            self.assertFalse(result._in_scope)
+            result = session.query(Network).one()
+            self.assertTrue(result.in_scope)
+            self.assertTrue(result.hosts[0].in_scope)
+
+    def test_insert_aaaa_host_host_name_mapping(self):
+        # set up database
+        self.init_db()
+        with self._engine.session_scope() as session:
+            workspace = IpUtils.add_workspace(session=session, name=self._workspace)
+            self._domain_utils.add_domain_name(session=session,
+                                               workspace=workspace,
+                                               item="www.test.local",
+                                               scope=ScopeType.vhost)
+            self._ip_utils.add_network(session=session,
+                                       workspace=workspace,
+                                       network="192.168.0.0/24",
+                                       scope=ScopeType.all)
+            self._ip_utils.add_host(session=session,
+                                    workspace=workspace,
+                                    address="192.168.0.1")
+        with self._engine.session_scope() as session:
+            result = session.query(Network).one()
+            self.assertEqual(ScopeType.all, result.scope)
+            result = session.query(Host).one()
+            self.assertTrue(result.in_scope)
+            result = session.query(HostName).filter_by(name="www").one()
+            self.assertFalse(result._in_scope)
+            self.assertEqual(ScopeType.vhost, result.domain_name.scope)
+            self.assertTrue(result.domain_name.in_scope)
+        with self._engine.session_scope() as session:
+            host = session.query(Host).one()
+            host_name = session.query(HostName).filter_by(name="www").one()
+            self._domain_utils.add_host_host_name_mapping(session=session,
+                                                          host=host,
+                                                          host_name=host_name,
+                                                          mapping_type=DnsResourceRecordType.aaaa)
+        with self._engine.session_scope() as session:
+            result = session.query(Network).one()
+            self.assertEqual(ScopeType.all, result.scope)
+            result = session.query(Host).one()
+            self.assertTrue(result.in_scope)
+            result = session.query(HostName).filter_by(name="www").one()
+            self.assertTrue(result._in_scope)
+            self.assertEqual(ScopeType.vhost, result.domain_name.scope)
+            self.assertTrue(result.domain_name.in_scope)
 
     def test_insert_network_scopetype_all(self):
         """

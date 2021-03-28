@@ -313,31 +313,43 @@ class Engine:
         self._engine.execute("""CREATE OR REPLACE FUNCTION post_update_scopes_after_host_host_name_mapping_update()
         RETURNS TRIGGER AS $$
         DECLARE
+            current_host_name_id INTEGER;
+            current_host_id INTEGER;
+            current_type INTEGER;
             domain_scope scopetype;
             network_scope scopetype;
             host_name_record_count INTEGER;
             host_record_count INTEGER;
         BEGIN
-            -- RAISE NOTICE 'BEGIN POST HOST_HOST_NAME_MAPPING: TG_OP = %%, host_id = %%, host_name_id = %%', TG_OP, NEW.host_id, NEW.host_name_id;
-            IF ((TG_OP = 'INSERT' OR TG_OP = 'UPDATE') AND COALESCE(NEW.type, 4) < 3) THEN
+            IF TG_OP = 'DELETE' THEN
+                current_host_id = OLD.host_id;
+                current_host_name_id = OLD.host_name_id;
+                current_type = OLD.type;
+            ELSE
+                current_host_id = NEW.host_id;
+                current_host_name_id = NEW.host_name_id;
+                current_type = NEW.type;
+            END IF;
+            -- RAISE NOTICE 'BEGIN POST HOST_HOST_NAME_MAPPING: TG_OP = %%, host_id = %%, host_name_id = %%', TG_OP, current_host_id, current_host_name_id;
+            IF COALESCE(current_type, 4) < 3 THEN
                 -- Determine the domain scope settings
                 SELECT d.scope INTO domain_scope FROM domain_name d
-                    INNER JOIN host_name h ON d.id = h.domain_name_id AND h.id = NEW.host_name_id;
+                    INNER JOIN host_name h ON d.id = h.domain_name_id AND h.id = current_host_name_id;
                 -- Determine the host scope settings
                 SELECT n.scope INTO network_scope FROM host h
-                    INNER JOIN network n ON n.id = h.network_id AND h.id = NEW.host_id;
+                    INNER JOIN network n ON n.id = h.network_id AND h.id = current_host_id;
                    
                 -- Determine if the current host name still has an A or AAAA relationship to a in scope host.
                 host_name_record_count := (SELECT COUNT(*) FROM host_name hn
                     INNER JOIN host_host_name_mapping m ON hn.id = m.host_name_id AND
-                                                           hn.id = NEW.host_name_id AND
+                                                           hn.id = current_host_name_id AND
                                                            COALESCE(m.type, 4) < 3
                     INNER JOIN domain_name dn ON dn.scope = 'vhost' AND dn.id = hn.domain_name_id
                     INNER JOIN host h ON h.id = m.host_id AND h.in_scope IS NOT NULL AND h.in_scope);
                 -- Determine if the current host still has an A or AAAA relationship to a in scope host.
                 host_record_count := (SELECT COUNT(*) FROM host h
                     INNER JOIN host_host_name_mapping m ON h.id = m.host_id AND
-                                                           h.id = NEW.host_id AND
+                                                           h.id = current_host_id AND
                                                            COALESCE(m.type, 4) < 3
                     INNER JOIN network n ON n.scope = 'vhost' AND n.id = h.network_id
                     INNER JOIN host_name hn ON hn.id = m.host_name_id AND COALESCE(hn.in_scope, False));
@@ -346,13 +358,13 @@ class Engine:
                 -- If we have a domain scope of type vhost and an in scope host, then we have to put the host_name in scope
                 IF COALESCE(domain_scope, 'exclude') = 'vhost' THEN
                     UPDATE host_name SET in_scope = COALESCE(host_name_record_count, 0) > 0
-                        WHERE id = NEW.host_name_id;
+                        WHERE id = current_host_name_id;
                 END IF;
                 IF COALESCE(network_scope, 'exclude') = 'vhost' THEN
                     UPDATE host SET in_scope = COALESCE(host_record_count, 0) > 0
-                        WHERE id = NEW.host_id;
+                        WHERE id = current_host_id;
                 END IF;
-                -- RAISE NOTICE 'END POST HOST_HOST_NAME_MAPPING: TG_OP = %%, host_id = %%, host_name_id = %%', TG_OP, NEW.host_id, NEW.host_name_id;
+                -- RAISE NOTICE 'END POST HOST_HOST_NAME_MAPPING: TG_OP = %%, host_id = %%, host_name_id = %%', TG_OP, current_host_id, current_host_name_id;
             END IF;
             RETURN NULL;
         END;
