@@ -172,6 +172,7 @@ class ManageDatabase:
                     with open(item, "r") as file:
                         results.extend([line.strip() for line in file.readlines()])
             elif ("Add" in self._arguments and getattr(self._arguments, "Add")) or \
+                    ("Scope" in self._arguments and getattr(self._arguments, "Scope")) or \
                     ("Delete" in self._arguments and getattr(self._arguments, "Delete")):
                 for item in items:
                     with open(item, "r") as file:
@@ -182,7 +183,7 @@ class ManageDatabase:
 
     def _manage_network(self, session: Session, workspace: Workspace, source: Source):
         if self._arguments.module == "network":
-            scope = ScopeType[self._arguments.scope] if self._arguments.scope != "vhost" else ScopeType.strict
+            scope = ScopeType[self._arguments.Scope] if self._arguments.Scope else self._arguments.scope
             for network in self._get_items("NETWORK"):
                 if self._arguments.add or self._arguments.Add:
                     ipv4_network = self._ip_utils.add_network(session=session,
@@ -196,18 +197,14 @@ class ManageDatabase:
                     self._ip_utils.delete_network(session=session,
                                                   workspace=workspace,
                                                   network=network)
-                elif self._arguments.scope:
+                elif self._arguments.scope or self._arguments.Scope:
                     result = self._ip_utils.get_network(session=session,
                                                         workspace=workspace,
                                                         network=network)
                     if not result:
                         raise ValueError("cannot set scope as network '{}' does not exist".format(network))
-                    else:
+                    elif result.scope != scope:
                         result.scope = scope
-                        if self._arguments.scope == "vhost":
-                            for host in result.hosts:
-                                if host.in_scope_host_name:
-                                    host.in_scope = True
                 if self._arguments.create_hosts:
                     ipv4_network = self._ip_utils.add_network(session=session,
                                                               workspace=workspace,
@@ -272,7 +269,7 @@ class ManageDatabase:
 
     def _manage_domain(self, session: Session, workspace: Workspace, source: Source):
         if self._arguments.module == "domain":
-            scope = ScopeType[self._arguments.scope]
+            scope = ScopeType[self._arguments.Scope] if self._arguments.Scope else self._arguments.scope
             for domain in self._get_items("DOMAIN"):
                 if self._arguments.add or self._arguments.Add:
                     domain_object = self._domain_utils.add_sld(session=session,
@@ -286,7 +283,7 @@ class ManageDatabase:
                     self._domain_utils.delete_domain_name(session=session,
                                                           workspace=workspace,
                                                           domain_name=domain)
-                elif self._arguments.scope:
+                elif self._arguments.scope or self._arguments.Scope:
                     result = session.query(DomainName) \
                         .join(Workspace) \
                         .filter(Workspace.id == workspace.id, DomainName.name == domain).one_or_none()
@@ -569,9 +566,7 @@ $ kismanage workspace --add $workspace
                                       help="read the given networks (one per line) from file NETWORK and delete them "
                                            "from workspace WORKSPACE. Note that only the given NETWORK but no "
                                            "associated host information is deleted")
-    options = [item.name for item in ScopeType]
-    options.append("vhost")
-    parser_network.add_argument('-s', '--scope', choices=options,
+    parser_network.add_argument('-s', '--scope', choices=[item.name for item in ScopeType],
                                 type=str,
                                 help="set only the given networks in scope and exclude all IP addresses (option "
                                      "explicit). set the given networks including all IP addresses in scope (option "
@@ -580,6 +575,10 @@ $ kismanage workspace --add $workspace
                                      "name resolves to. note that KIS only actively collects information from "
                                      "in-scope hosts and networks",
                                 default=ScopeType.all.name)
+    parser_network.add_argument('-S', '--Scope', choices=[item.name for item in ScopeType],
+                                type=str,
+                                help="like argument --scope but read the networks (one per line) from file "
+                                     "NETWORK")
     parser_network.add_argument('-c', '--create-hosts',
                                 action="store_true",
                                 help="add the given networks NETWORK to workspace WORKSPACE and add all IP "
@@ -648,6 +647,10 @@ $ kismanage workspace --add $workspace
                                     "including all other sub-domains from scope. note that KIS only actively "
                                     "collects information from in-scope second-level domain/host name",
                                default=ScopeType.all.name)
+    parser_domain.add_argument('-S', '--Scope', choices=[item.name for item in ScopeType],
+                               type=str,
+                               help="like argument --scope but read the second-level domains (one per line) from file "
+                                    "DOMAIN")
     parser_domain.add_argument("--source", metavar="SOURCE", type=str,
                                help="specify the source of the second-level-domains to be added")
     # setup host name parser

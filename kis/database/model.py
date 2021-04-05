@@ -1143,7 +1143,7 @@ class Network(DeclarativeBase):
 
     @property
     def scope_str(self) -> str:
-        return self.scope.name.lower() if self.scope else None
+        return self.scope.name.lower() if self.scope else ScopeType.exclude.name
 
     @property
     def sources_str(self) -> str:
@@ -1714,7 +1714,7 @@ class DomainName(DeclarativeBase):
 
     @property
     def scope_str(self) -> str:
-        return self.scope.name.lower() if self.scope else None
+        return self.scope.name.lower() if self.scope else ScopeType.exclude.name
 
     @property
     def companies_str(self) -> str:
@@ -2173,7 +2173,7 @@ class Service(DeclarativeBase):
     @property
     def nmap_product_version(self) -> str:
         if self.nmap_extra_info:
-            result = "{} {} ({})".format(self.nmap_product if self.nmap_product else "",
+            result = "{} {} {}".format(self.nmap_product if self.nmap_product else "",
                                          self.nmap_version if self.nmap_version else "",
                                          self.nmap_extra_info).strip()
         else:
@@ -3669,7 +3669,7 @@ class CertInfo(DeclarativeBase):
                      (self.cert_type == CertType.root and years <= 10)
         return result
 
-    def matches_host_name(self, host_name: str) -> bool:
+    def matches_host_name(self, host_name: HostName) -> bool:
         """
         Checks whether the given host name is covered by this certificate info object.
         :param host_name: The host name that shall be covered.
@@ -3677,13 +3677,13 @@ class CertInfo(DeclarativeBase):
         """
         result = False
         for item in self.all_names_re:
-            match = item.match(host_name)
+            match = item.match(host_name.full_name)
             if match:
                 result = True
                 break
         return result
 
-    def matches_host_names(self, host_names: List[str]) -> bool:
+    def matches_host_names(self, host_names: List[HostName]) -> bool:
         """
         Checks whether the given host names are covered by this certificate info object.
         :param host_names: The host names that shall be covered.
@@ -3840,7 +3840,6 @@ class TlsInfoCipherSuiteMapping(DeclarativeBase):
 
     @property
     def kex_algorithm_bits(self) -> int:
-        result = None
         if self.kex_bits:
             result = self.kex_bits
         elif self.kex_algorithm_details in [KeyExchangeAlgorithm.dh1024, KeyExchangeAlgorithm.rsa1024]:
@@ -3855,6 +3854,8 @@ class TlsInfoCipherSuiteMapping(DeclarativeBase):
             result = 3072
         elif self.kex_algorithm_details in [KeyExchangeAlgorithm.dh4096, KeyExchangeAlgorithm.rsa4096]:
             result = 4096
+        else:
+            raise NotImplementedError("case not implemented")
         return result
 
     @property
@@ -3913,12 +3914,7 @@ class TlsInfoCipherSuiteMapping(DeclarativeBase):
         elif text in ['p-521']:
             result = KeyExchangeAlgorithm.p_521
         else:
-            result = None
-            error_source = "{} = ".format(source.name) if source else ""
-            logger.error("{}key exchange algorithm '{}' not found. update KeyExchangeAlgorithm class as well as "
-                         "TlsInfoCipherSuiteMapping.get_kex_algorithm, CipherSuite.pfs, and "
-                         "TlsInfoCipherSuiteMapping.kex_algorithm_bits in database.model.py".format(error_source,
-                                                                                                    text))
+            raise NotImplementedError("case not implemented")
         return result
 
 

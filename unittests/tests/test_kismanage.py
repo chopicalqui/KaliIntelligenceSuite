@@ -62,8 +62,10 @@ class BaseKismanageTestCase(BaseKisTestCase):
         parser_network = sub_parser.add_parser('network', help='allows managing networks')
         parser_host = sub_parser.add_parser('host', help='allows managing hosts')
         parser_service = sub_parser.add_parser('service', help='allows managing services')
-        parser_domain = sub_parser.add_parser('domain', help='allows managing second-level-domains and host names')
-        parser_host_name = sub_parser.add_parser('hostname', help='allows managing host names')
+        parser_domain = sub_parser.add_parser('domain', help='allows managing second-level domains')
+        parser_host_name = sub_parser.add_parser('hostname',
+                                                 help='allows managing host names (sub-domains of second-level'
+                                                      'domains')
         parser_email = sub_parser.add_parser('email', help='allows managing emails')
         parser_company = sub_parser.add_parser('company', help='allows managing companies')
         # setup workspace parser
@@ -130,6 +132,10 @@ class BaseKismanageTestCase(BaseKisTestCase):
                                          "name resolves to. note that KIS only actively collects information from "
                                          "in-scope hosts and networks",
                                     default=ScopeType.all.name)
+        parser_network.add_argument('-S', '--Scope', choices=[item.name for item in ScopeType],
+                                    type=str,
+                                    help="like argument --scope but read the networks (one per line) from file"
+                                         "NETWORK")
         parser_network.add_argument('-c', '--create-hosts',
                                     action="store_true",
                                     help="add the given networks NETWORK to workspace WORKSPACE and add all IP "
@@ -160,7 +166,7 @@ class BaseKismanageTestCase(BaseKisTestCase):
                                        help="read the given IP addresses (one per line) from file IP and delete them "
                                             "together with all associated host information from workspace WORKSPACE")
         parser_host.add_argument('-s', '--scope', choices=[item.name for item in ReportScopeType],
-                                 help="set the given hosts HOST in or out of scope. note that KIS only "
+                                 help="set the given hosts IP in or out of scope. note that KIS only "
                                       "actively collects information from in-scope hosts and networks ",
                                  default=ReportScopeType.within.name)
         parser_host_group.add_argument("--source", metavar="SOURCE", type=str,
@@ -175,36 +181,35 @@ class BaseKismanageTestCase(BaseKisTestCase):
         parser_domain_group = parser_domain.add_mutually_exclusive_group()
         parser_domain_group.add_argument('-a', '--add',
                                          action="store_true",
-                                         help="create the given second-level-domain/host name DOMAIN in workspace "
-                                              "WORKSPACE")
+                                         help="create the given second-level domain DOMAIN in workspace WORKSPACE")
         parser_domain_group.add_argument('-A', '--Add',
                                          action="store_true",
-                                         help="read the given second-level-domain/host name (one per line) from file "
-                                              "DOMAIN and add them to workspace WORKSPACE")
+                                         help="read the given second-level domain (one per line) from file DOMAIN and "
+                                              "add them to workspace WORKSPACE")
         parser_domain_group.add_argument('-d', '--delete',
                                          action="store_true",
-                                         help="delete the given second-level-domain/host name DOMAIN together with all "
-                                              "associated emails from workspace WORKSPACE (use with caution)")
+                                         help="delete the given second-level domain DOMAIN together with all associated "
+                                              "host names and email addresses from workspace WORKSPACE (use with caution)")
         parser_domain_group.add_argument('-D', '--Delete',
                                          action="store_true",
-                                         help="read the given second-level-domain/host name (one per line) from file "
-                                              "DOMAIN and delete them together with all associated emails from "
+                                         help="read the given second-level domain (one per line) from file DOMAIN and "
+                                              "delete them together with all associated host names and emails from "
                                               "workspace WORKSPACE")
-        parser_domain_group.add_argument('--sharphound',
-                                         action="store_true",
-                                         help="read the given computer.json file created by sharphound and import all "
-                                              "computer names into KIS for further intel collection")
         parser_domain.add_argument('-s', '--scope', choices=[item.name for item in ScopeType],
                                    type=str,
                                    help="set only the given domains in scope and exclude all other sub-domains (option "
                                         "explicit). set the given domains including all other sub-domains in scope "
                                         "(option all). set only those sub-domains (option vhost) in scope that resolve "
-                                        "to an in-scope IP address. exclude the given domains (option exclude) "
+                                        "to an in-scope IP address. exclude the given domains (option exclude). "
                                         "including all other sub-domains from scope. note that KIS only actively "
-                                        "collects information from in-scope second-level-domain/host name",
+                                        "collects information from in-scope second-level domain/host name",
                                    default=ScopeType.all.name)
+        parser_domain.add_argument('-S', '--Scope', choices=[item.name for item in ScopeType],
+                                   type=str,
+                                   help="like argument --scope but read the second-level domains (one per line) from file"
+                                        "DOMAIN")
         parser_domain.add_argument("--source", metavar="SOURCE", type=str,
-                                   help="specify the source of the second-level-domains/host names to be added")
+                                   help="specify the source of the second-level-domains to be added")
         # setup host name parser
         parser_host_name.add_argument('HOSTNAME', type=str, nargs="+")
         parser_host_name.add_argument("-w", "--workspace",
@@ -340,8 +345,7 @@ class BaseKismanageTestCase(BaseKisTestCase):
                                                "the company COMPANY")
         parser_company_group.add_argument('-s', '--scope', choices=[item.name for item in ReportScopeType],
                                           help="set the given company COMPANY in or out of scope. note that KIS only "
-                                               "actively collects information from in-scope hosts and networks ",
-                                          default=ReportScopeType.within.name)
+                                               "actively collects information from in-scope hosts and networks ")
         parser_company.add_argument("--source", metavar="SOURCE", type=str,
                                     help="specify the source of the company to be added")
         self._parser = parser
@@ -577,6 +581,29 @@ class TestNetworkModule(BaseKismanageTestCase):
                            networks=[network],
                            scope=ScopeType.exclude)
 
+    def test_Scope(self):
+        # setup database
+        self.init_db()
+        network = "192.168.0.0/24"
+        workspace = self._workspaces[0]
+        with self._engine.session_scope() as session:
+            self.create_workspace(session=session, workspace=workspace)
+            self.create_network(session=session,
+                                workspace_str=workspace,
+                                network=network,
+                                scope=ScopeType.all)
+        # run command
+        with tempfile.NamedTemporaryFile(mode="w") as file:
+            file.write(network)
+            file.flush()
+            # run command
+            args = self.arg_parse(["network", "-w", workspace, "--Scope", "exclude", file.name])
+            ManageDatabase(engine=self._engine, arguments=args, parser=self._parser).run()
+        # check database
+        self.check_results(workspace_str=workspace,
+                           networks=[network],
+                           scope=ScopeType.exclude)
+
     def test_create_hosts(self):
         # setup database
         self.init_db()
@@ -717,6 +744,29 @@ class TestDomainModule(BaseKismanageTestCase):
         # run command
         args = self.arg_parse(["domain", "-w", workspace, "--scope", "exclude", domain])
         ManageDatabase(engine=self._engine, arguments=args, parser=self._parser).run()
+        # check database
+        self.check_results(workspace_str=workspace,
+                           domains=[domain],
+                           scope=ScopeType.exclude)
+
+    def test_Scope(self):
+        # setup database
+        self.init_db()
+        domain = "test.com"
+        workspace = self._workspaces[0]
+        with self._engine.session_scope() as session:
+            self.create_workspace(session=session, workspace=workspace)
+            self.create_hostname(session=session,
+                                 workspace_str=workspace,
+                                 host_name=domain,
+                                 scope=ScopeType.all)
+        # run command
+        with tempfile.NamedTemporaryFile(mode="w") as file:
+            file.write(domain)
+            file.flush()
+            # run command
+            args = self.arg_parse(["domain", "-w", workspace, "--Scope", "exclude", file.name])
+            ManageDatabase(engine=self._engine, arguments=args, parser=self._parser).run()
         # check database
         self.check_results(workspace_str=workspace,
                            domains=[domain],

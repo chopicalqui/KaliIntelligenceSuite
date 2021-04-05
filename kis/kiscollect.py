@@ -306,6 +306,11 @@ Finally, you might want to re-run the entire process to collect further informat
                             help="maximum number of seconds between each operating system command executions. if "
                                  "specified together with option -D, then KIS randomly computes a delay between MIN "
                                  "and MAX per execution else, the delay is always MAX")
+        ogroup.add_argument("-T", "--timeout",
+                            dest="force-timeout",
+                            type=int,
+                            help="the maximum execution time for each collector command. use this argument to ensure "
+                                 "that each command is not executed longer than timeout seconds")
         ogroup.add_argument("--dns-server", metavar='SERVER',
                             type=str,
                             help="DNS server (e.g., 8.8.8.8) that shall be used by collectors to query DNS "

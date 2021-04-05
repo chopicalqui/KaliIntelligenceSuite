@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 __version__ = 0.1
 
 import os
+import re
 import json
 import configparser
 import pwd
@@ -300,3 +301,29 @@ class ScannerConfig(BaseConfig):
     @property
     def masscan_general_settings(self) -> List[str]:
         return self.get_config_str("MasscanSettings", "default_options").split(" ")
+
+
+class DomainConfig(BaseConfig):
+    """This class contains the config parser object for domains"""
+
+    def __init__(self):
+        super().__init__("domain.config")
+        self.environments = {}
+        raw_config = json.loads(self.config.get("general", "environment_wordlist"))
+        for key, values in raw_config.items():
+            self.environments[key] = []
+            for item in values:
+                self.environments[key].append(re.compile(item, re.IGNORECASE))
+
+    def get_environment(self, host_name) -> str:
+        """
+        This method takes the given host name object and determines the environment.
+        """
+        result = "Production"
+        full_name = host_name.full_name
+        for key, values in self.environments.items():
+            for item in values:
+                if item.match(full_name):
+                    result = key
+                    break
+        return result

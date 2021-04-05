@@ -155,6 +155,5 @@ class CollectorClass(BaseKisImportHost, HostCollector):
                                                    command=command,
                                                    host_name=item,
                                                    source=source,
-                                                   host=command.host,
                                                    verify=True,
                                                    report_item=report_item)

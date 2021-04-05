@@ -39,6 +39,7 @@ from database.model import Source
 from database.model import HostName
 from database.model import Command
 from database.model import CollectorName
+from database.model import DnsResourceRecordType
 from view.core import ReportItem
 from sqlalchemy.orm.session import Session
 
@@ -56,10 +57,28 @@ class CollectorClass(BaseCollector, DomainCollector):
                          delay_max=5,
                          **kwargs)
         self._re_organizations = [
-            re.compile("^Registrant Name:\s+(?P<name>.+?{}).*$".format(self._re_legal_entities), re.IGNORECASE),
-            re.compile("^Registrant:\s+(?P<name>.+?{}).*$".format(self._re_legal_entities), re.IGNORECASE),
-            re.compile("^Registrant Organization:\s+(?P<name>.+?{}).*$".format(self._re_legal_entities), re.IGNORECASE),
-            re.compile("^organization:\s+(?P<name>.+?{}).*$".format(self._re_legal_entities), re.IGNORECASE)]
+            re.compile("^\s*Registrant Name\s*:\s*(?P<name>.+?{}).*$".format(self._re_legal_entities),
+                       re.IGNORECASE),
+            re.compile("^\s*Registrant\s*:\s*(?P<name>.+?{}).*$".format(self._re_legal_entities),
+                       re.IGNORECASE),
+            re.compile("^\s*Registrant Organization\s*:\s*(?P<name>.+?{}).*$".format(self._re_legal_entities),
+                       re.IGNORECASE),
+            re.compile("^\s*Registrant Contact Organisation\s*:\s*(?P<name>.+?{}).*$".format(self._re_legal_entities),
+                       re.IGNORECASE),
+            re.compile("^\s*name\s*:\s*(?P<name>.+?{}).*$".format(self._re_legal_entities),
+                       re.IGNORECASE),
+            re.compile("^\s*address\s*:\s*(?P<name>.+?{}).*$".format(self._re_legal_entities),
+                       re.IGNORECASE),
+            re.compile("^\s*org\s*:\s*(?P<name>.+?{}).*$".format(self._re_legal_entities),
+                       re.IGNORECASE),
+            re.compile("^\s*contact\s*:\s*(?P<name>.+?{}).*$".format(self._re_legal_entities),
+                       re.IGNORECASE),
+            re.compile("^\s*nom\s*:\s*(?P<name>.+?{}).*$".format(self._re_legal_entities),
+                       re.IGNORECASE),
+            re.compile("^\s*International Organisation\s*:\s*(?P<name>.+?{}).*$".format(self._re_legal_entities),
+                       re.IGNORECASE),
+            re.compile("^\s*organization\s*:\s*(?P<name>.+?{}).*$".format(self._re_legal_entities),
+                       re.IGNORECASE)]
         self._re_name_server_info = re.compile("^{}\s+\[(?P<ipv4>{})\]\s*$".format(DomainUtils.RE_DOMAIN,
                                                                                    IpUtils.RE_IPV4))
 
@@ -73,6 +92,8 @@ class CollectorClass(BaseCollector, DomainCollector):
         This method returns regular expressions that allows KIS to identify failed command executions
         """
         return [CommandFailureRule(regex=re.compile("^.*getaddrinfo\(.+?\): Name or service not known.*$"),
+                                   output_type=OutputType.stderr),
+                CommandFailureRule(regex=re.compile("^.*Your connection limit exceeded. Please slow down and try again later..*$"),
                                    output_type=OutputType.stderr)]
 
     def _get_commands(self,
@@ -129,6 +150,8 @@ class CollectorClass(BaseCollector, DomainCollector):
         code etc.
         """
         command.hide = True
+        if command.return_code > 0:
+            self._set_execution_failed(session, command)
         for line in command.stdout_output:
             for regex in self._re_organizations:
                 match = regex.match(line)
@@ -158,10 +181,17 @@ class CollectorClass(BaseCollector, DomainCollector):
                                                command=command,
                                                host_name=host_name,
                                                source=source,
-                                               host=host,
                                                report_item=report_item)
                 if not host_name:
                     logger.debug("ignoring host name due to invalid domain in line: {}".format(line))
+                elif host:
+                    self.add_host_host_name_mapping(session=session,
+                                                    command=command,
+                                                    host=host,
+                                                    host_name=host_name,
+                                                    source=source,
+                                                    mapping_type=DnsResourceRecordType.ns,
+                                                    report_item=report_item)
             for item in emails:
                 email = self.add_email(session=session,
                                        command=command,

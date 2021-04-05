@@ -345,6 +345,7 @@ class BaseCollector(config.Collector):
                  delay_max: int = 0,
                  force_delay_min: int = 0,
                  force_delay_max: int = 0,
+                 force_timeout: int = 0,
                  max_threads: int = 0,
                  analyze: bool = False,
                  ignore: bool = True,
@@ -380,6 +381,8 @@ class BaseCollector(config.Collector):
         overwritten
         :param force_delay_max: The maximum delay specified by the user. If specified, then the collectors delay is
         overwritten
+        :param force_timeout: The maximum execution time specified by the user. If specified, then the collector is
+        automatically terminated after force_timeout seconds
         :param exec_user: The user name in whose context all operating system commands that were created by the
         collector are executed
         :max_threads: The maximum number of threads that are allowed to execute commands created by this collector
@@ -394,7 +397,7 @@ class BaseCollector(config.Collector):
         self._ip_utils = IpUtils()
         self._json_utils = JsonUtils()
         self._priority = priority
-        self._timeout = timeout
+        self._timeout = force_timeout if force_timeout else timeout
         self._active_collector = active_collector
         self._name = name
         self._output_dir = output_dir
@@ -914,7 +917,6 @@ class BaseCollector(config.Collector):
                       command: Command,
                       host_name: str,
                       source: Source = None,
-                      host: Host = None,
                       verify: bool = True,
                       report_item: ReportItem = None) -> HostName:
         """
@@ -933,7 +935,6 @@ class BaseCollector(config.Collector):
         host_name = self._domain_utils.add_domain_name(session=session,
                                                        workspace=command.workspace,
                                                        item=host_name,
-                                                       host=host,
                                                        source=source,
                                                        verify=verify,
                                                        report_item=report_item)

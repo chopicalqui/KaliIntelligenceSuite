@@ -221,9 +221,10 @@ class BaseUtils:
             mapping.sources.append(source)
         if report_item:
             source_info = " (source: {})".format(source.name) if source else ""
-            report_item.details = "add potentially new link between {} and {}{}".format(host.address,
-                                                                                        host_name.full_name,
-                                                                                        source_info)
+            report_item.details = "add potentially new link ({}) between {} and {}{}".format(mapping_type.name.upper(),
+                                                                                             host.address,
+                                                                                             host_name.full_name,
+                                                                                             source_info)
             report_item.report_type = "GENERIC"
             report_item.notify()
         session.flush()
@@ -1474,6 +1475,7 @@ class BaseUtils:
         """
         result = None
         item = item.lower()
+        item = item.rstrip(".")
         host_name_items = self.split_host_name(item)
         if host_name_items is None:
             return result
@@ -1755,12 +1757,10 @@ class BaseUtils:
                         session: Session,
                         workspace: Workspace,
                         item: str,
-                        host: Host = None,
                         source: Source = None,
                         scope: ScopeType = None,
                         verify: bool = False,
-                        report_item: ReportItem = None,
-                        mapping_type: DnsResourceRecordType = None) -> HostName:
+                        report_item: ReportItem = None) -> HostName:
         """
         This method inserts the given DNS name (e.g., www.mozilla.com) into the database.
         :param session:
@@ -1782,10 +1782,8 @@ class BaseUtils:
             result = self.add_dns_name(session=session,
                                        workspace=workspace,
                                        item=item,
-                                       host=host,
                                        source=source,
-                                       scope=scope,
-                                       mapping_type=mapping_type)
+                                       scope=scope)
             if result and report_item:
                 report_item.details = "potentially new host name {}".format(result.full_name)
                 report_item.report_type = "DOMAIN"

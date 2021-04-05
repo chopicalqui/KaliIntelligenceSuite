@@ -26,6 +26,7 @@ import sys
 import json
 import re
 import enum
+from configs.config import DomainConfig
 from database.model import FileType
 from database.model import CommandFileMapping
 from openpyxl import Workbook
@@ -59,6 +60,7 @@ from database.model import PathType
 from database.model import ServiceState
 from database.model import CipherSuiteSecurity
 from collectors.core import BaseUtils
+from collectors.os.modules.http.core import HttpServiceDescriptor
 from collectors.apis.haveibeenpwned import HaveIBeenPwnedPasteAcccount
 from collectors.apis.haveibeenpwned import HaveIBeenPwnedBreachedAcccount
 from sqlalchemy.orm.session import Session
@@ -97,6 +99,7 @@ class _BaseReportGenerator:
                  description: str,
                  title: str,
                  **kwargs) -> None:
+        self._domain_config = DomainConfig()
         self._name = name
         self._args = args
         self._scope = ReportScopeType[args.scope] if "scope" in args and getattr(args, "scope") else None
@@ -359,108 +362,175 @@ class _HostReportGenerator(_BaseReportGenerator):
         """
         Method determines whether the given item shall be included into the report
         """
-        rvalue = [["DB ID",
-                   "Workspace",
-                   "Network",
-                   "Network Scope",
-                   "Companies",
-                   "Host In Scope",
-                   "Address",
-                   "Address Summary",
-                   "Version",
-                   "Host Names",
-                   "Host Names In Scope",
-                   "OS Family",
-                   "Host Up",
-                   "Reason",
-                   "Service Summary",
-                   "TCP/UDP",
-                   "Port",
-                   "Service",
-                   "Service State",
-                   "Service Sources",
-                   "TLS",
-                   "Reason",
-                   "Service Name",
-                   "Service Confidence",
-                   "NMap Service Name Original",
-                   "Nmap Product",
-                   "Version",
-                   "Product Summary",
-                   "SMB Message Signing",
-                   "RDP NLA",
+        descriptor = HttpServiceDescriptor()
+        result = [["Workspace",
+                   "Type",
+                   "Network (NW)",
+                   "Scope (NW)",
+                   "Company (NW)",
+                   "IP Address (IP)",
+                   "Version (IP)",
+                   "Private IP",
+                   "In Scope (IP)",
                    "OS Family",
                    "OS Details",
-                   "Sources (Host Name)",
-                   "Sources (Service)",
-                   "No. Commands (Service)",
-                   "No. Vulnerabilities (Service)"]]
+                   "Second-Level Domain (SLD)",
+                   "Scope (SLD)",
+                   "Host Name (HN)",
+                   "In Scope (HN)",
+                   "Name (HN)",
+                   "Company (HN)",
+                   "Environment",
+                   "UDP/TCP",
+                   "Port",
+                   "Service (SRV)",
+                   "Nmap Name (SRV)",
+                   "Confidence (SRV)",
+                   "State (SRV)",
+                   "Reason State",
+                   "Banner Information",
+                   "TLS",
+                   "Is HTTP",
+                   "URL",
+                   "SMB Message Signing",
+                   "RD NLA",
+                   "DB ID (NW)",
+                   "DB ID (IP)",
+                   "DB ID (HN)",
+                   "DB ID (SRV)",
+                   "Source (NW)",
+                   "Source (IP)",
+                   "Source (HN)",
+                   "Source (SRV)",
+                   "No. Commands",
+                   "No. Vulnerabilities"]]
         for workspace in self._workspaces:
             for host in workspace.hosts:
-                host_names = host.get_host_host_name_mappings_str([DnsResourceRecordType.a,
-                                                                   DnsResourceRecordType.aaaa])
-                host_sources = host.sources_str
-                ipv4_network = None
-                companies = None
-                ipv4_network_scope = None
-                if host.ipv4_network:
-                    ipv4_network = host.ipv4_network.network
-                    companies = host.ipv4_network.companies_str
-                    ipv4_network_scope = host.ipv4_network.scope_str
                 if self._filter(host):
-                    if host.services:
-                        for service in host.services:
-                            rvalue.append([host.id,
-                                           workspace.name,
-                                           ipv4_network,
-                                           ipv4_network_scope,
-                                           companies,
-                                           host.in_scope,
-                                           host.ip,
-                                           host.summary,
+                    host_names = [mapping.host_name
+                                  for mapping in host.get_host_host_name_mappings([DnsResourceRecordType.a,
+                                                                                   DnsResourceRecordType.aaaa])]
+                    network_str = host.ipv4_network.network if host.ipv4_network else None
+                    network_id = host.ipv4_network.id if host.ipv4_network else None
+                    network_companies = host.ipv4_network.companies_str if host.ipv4_network else None
+                    network_sources = host.ipv4_network.sources_str if host.ipv4_network else None
+                    network_scope = host.ipv4_network.scope_str if host.ipv4_network else None
+                    host_is_private = host.ip_address.is_private
+                    host_sources = host.sources_str
+                    services_exist = False
+                    for service in host.services:
+                        if service.state in [ServiceState.Open, ServiceState.Closed]:
+                            services_exist = True
+                            is_http = descriptor.match_nmap_service_name(service)
+                            url_str = [path.get_urlparse().geturl() for path in service.paths if path.name == "/"] \
+                                if is_http else []
+                            result.append([workspace.name,
+                                           "Host",
+                                           network_str,
+                                           network_scope,
+                                           network_companies,
+                                           host.address,
                                            host.version_str,
-                                           host_names,
-                                           host.in_scope_host_name,
+                                           host_is_private,
+                                           host.in_scope,
                                            host.os_family,
-                                           host.is_up,
-                                           host.reason_up,
-                                           service.summary,
+                                           host.os_details,
+                                           None,
+                                           None,
+                                           host.address,
+                                           host.in_scope,
+                                           None,
+                                           None,
+                                           None,
                                            service.protocol_str,
                                            service.port,
                                            service.protocol_port_str,
-                                           service.state_str,
-                                           service.sources_str,
-                                           service.nmap_tunnel,
-                                           service.nmap_service_state_reason,
                                            service.service_name_with_confidence,
                                            service.service_confidence,
-                                           service.nmap_service_name_original_with_confidence,
-                                           service.nmap_product,
-                                           service.nmap_version,
+                                           service.state_str,
+                                           service.nmap_service_state_reason,
                                            service.nmap_product_version,
+                                           service.tls,
+                                           is_http,
+                                           url_str[0] if url_str else None,
                                            service.smb_message_signing,
                                            service.rdp_nla,
-                                           host.os_family,
-                                           host.os_details,
+                                           network_id,
+                                           host.id,
+                                           None,
+                                           service.id,
+                                           network_sources,
                                            host_sources,
+                                           None,
                                            service.sources_str,
                                            len(service.get_completed_commands()),
                                            len(service.vulnerabilities)])
-                    else:
-                        rvalue.append([host.id,
-                                       workspace.name,
-                                       ipv4_network,
-                                       ipv4_network_scope,
-                                       companies,
-                                       host.in_scope,
-                                       host.ip,
-                                       host.summary,
+                    for host_name in host_names:
+                        environment = self._domain_config.get_environment(host_name)
+                        host_name_sources = host_name.sources_str
+                        network_str = host.ipv4_network.network if host.ipv4_network else None
+                        for service in host_name.services:
+                            if service.state in [ServiceState.Open, ServiceState.Closed] and \
+                                    descriptor.match_nmap_service_name(service):
+                                services_exist = True
+                                url_str = [path.get_urlparse().geturl() for path in service.paths if path.name == "/"]
+                                result.append([workspace.name,
+                                               "VHost",
+                                               network_str,
+                                               network_scope,
+                                               network_companies,
+                                               host.address,
+                                               host.version_str,
+                                               host_is_private,
+                                               host.in_scope,
+                                               host.os_family,
+                                               host.os_details,
+                                               host_name.domain_name.name,
+                                               host_name.domain_name.scope_str,
+                                               host_name.full_name,
+                                               host_name._in_scope,
+                                               host_name.name,
+                                               host_name.companies_str,
+                                               environment,
+                                               service.protocol_str,
+                                               service.port,
+                                               service.protocol_port_str,
+                                               service.service_name_with_confidence,
+                                               service.service_confidence,
+                                               service.state_str,
+                                               service.nmap_service_state_reason,
+                                               service.nmap_product_version,
+                                               service.tls,
+                                               True,
+                                               url_str[0] if url_str else None,
+                                               service.smb_message_signing,
+                                               service.rdp_nla,
+                                               network_id,
+                                               host.id,
+                                               host_name.id,
+                                               service.id,
+                                               network_sources,
+                                               host_sources,
+                                               host_name_sources,
+                                               service.sources_str,
+                                               len(service.get_completed_commands()),
+                                               len(service.vulnerabilities)])
+                    if not services_exist:
+                        result.append([workspace.name,
+                                       "Host",
+                                       network_str,
+                                       network_scope,
+                                       network_companies,
+                                       host.address,
                                        host.version_str,
-                                       host_names,
-                                       host.in_scope_host_name,
+                                       host_is_private,
+                                       host.in_scope,
                                        host.os_family,
-                                       host.is_up,
-                                       host.reason_up,
+                                       host.os_details,
+                                       None,
+                                       None,
+                                       host.address,
+                                       host.in_scope,
                                        None,
                                        None,
                                        None,
@@ -469,6 +539,7 @@ class _HostReportGenerator(_BaseReportGenerator):
                                        None,
                                        None,
                                        None,
+                                       "not scanned",
                                        None,
                                        None,
                                        None,
@@ -476,43 +547,118 @@ class _HostReportGenerator(_BaseReportGenerator):
                                        None,
                                        None,
                                        None,
+                                       network_id,
+                                       host.id,
                                        None,
                                        None,
-                                       None,
+                                       network_sources,
                                        host_sources,
                                        None,
                                        None,
-                                       None])
-        return rvalue
+                                       0,
+                                       0])
+                        for host_name in host_names:
+                            environment = self._domain_config.get_environment(host_name)
+                            host_name_sources = host_name.sources_str
+                            result.append([workspace.name,
+                                           "VHost",
+                                           network_str,
+                                           network_scope,
+                                           network_companies,
+                                           host.address,
+                                           host.version_str,
+                                           host_is_private,
+                                           host.in_scope,
+                                           host.os_family,
+                                           host.os_details,
+                                           host_name.domain_name.name,
+                                           host_name.domain_name.scope_str,
+                                           host_name.full_name,
+                                           host_name._in_scope,
+                                           host_name.name,
+                                           host_name.companies_str,
+                                           environment,
+                                           None,
+                                           None,
+                                           None,
+                                           None,
+                                           None,
+                                           "not scanned",
+                                           None,
+                                           None,
+                                           None,
+                                           None,
+                                           None,
+                                           None,
+                                           None,
+                                           network_id,
+                                           host.id,
+                                           host_name.id,
+                                           None,
+                                           network_sources,
+                                           host_sources,
+                                           host_name_sources,
+                                           None,
+                                           0,
+                                           0])
+        return result
 
     def final_report(self, workbook: Workbook):
         """
         This method creates all tables that are relevant to the final report.
         """
-        result = [["IP Address",
+        descriptor = HttpServiceDescriptor()
+        result = [["Type",
+                   "IP Address (IP)",
+                   "Host Name (HN)",
                    "Service",
                    "Service\nName",
                    "State",
+                   "Is\nHTTP",
                    "TLS",
                    "Banner Information"]]
         if self._args.language == ReportLanguage.de:
-            result = [["IP-Adresse",
-                       "Dienst",
-                       "Dienst-\nname",
+            result = [["Typ",
+                       "IP-Addresse (IP)",
+                       "Hostname (HN)",
+                       "Service",
+                       "Service\nName",
                        "Status",
+                       "Ist\nHTTP",
                        "TLS",
-                       "Bannerinformation"]]
+                       "Banner-Information"]]
         for workspace in self._workspaces:
             for host in workspace.hosts:
                 if host.in_scope:
+                    host_names = [mapping.host_name
+                                  for mapping in host.get_host_host_name_mappings([DnsResourceRecordType.a,
+                                                                                   DnsResourceRecordType.aaaa])]
                     for service in host.services:
                         if service.state in [ServiceState.Open, ServiceState.Closed]:
-                            result.append([host.summary,
+                            is_http = descriptor.match_nmap_service_name(service)
+                            result.append(["Host",
+                                           host.address,
+                                           host.address,
                                            service.protocol_port_str,
                                            service.service_name_with_confidence,
                                            service.state_str,
-                                           self.TRUE if service.nmap_tunnel == "ssl" else None,
+                                           self.TRUE if is_http else None,
+                                           self.TRUE if service.tls else None,
                                            service.nmap_product_version])
+                    for host_name in host_names:
+                        for service in host_name.services:
+                            if service.state in [ServiceState.Open, ServiceState.Closed] and \
+                                    descriptor.match_nmap_service_name(service):
+                                is_http = descriptor.match_nmap_service_name(service)
+                                result.append(["VHost",
+                                               host.address,
+                                               host_name.full_name,
+                                               service.protocol_port_str,
+                                               service.service_name_with_confidence,
+                                               service.state_str,
+                                               self.TRUE if is_http else None,
+                                               self.TRUE if service.tls else None,
+                                               service.nmap_product_version])
         if len(result) > 1:
             self.fill_excel_sheet(worksheet=workbook.create_sheet(),
                                   csv_list=result,
@@ -725,20 +871,6 @@ class _DomainNameReportGenerator(_BaseReportGenerator):
                                      "'Host Name In-Scope' and it resolves to an in-scope IP address (see column "
                                      "'Resolves To In-Scope IP').",
                          **kwargs)
-        self._environment_keywords = ["staging",
-                                      "stage",
-                                      "s-",
-                                      "-s",
-                                      "test",
-                                      "t-",
-                                      "-t",
-                                      "dev",
-                                      "d-"
-                                      "-d",
-                                      "qual",
-                                      "q-",
-                                      "-q",
-                                      "old"]
 
     def _filter(self, domain_name: DomainName) -> bool:
         """
@@ -816,7 +948,7 @@ class _DomainNameReportGenerator(_BaseReportGenerator):
                  "Vhost In-Scope",
                  "Companies",
                  "Host Name Sources",
-                 "Prod. Env.",
+                 "Environment",
                  "Record Type",
                  "Resolves To",
                  "Resolves To In Scope",
@@ -829,12 +961,7 @@ class _DomainNameReportGenerator(_BaseReportGenerator):
                 if self._filter(domain):
                     for host_name in domain.host_names:
                         sources = host_name.sources_str
-                        full_name = host_name.full_name
-                        production = True
-                        for environment in self._environment_keywords:
-                            if environment in full_name:
-                                production = False
-                                break
+                        environment = self._domain_config.get_environment(host_name)
                         printed = False
                         for mapping in host_name.resolved_host_name_mappings:
                             printed = True
@@ -848,7 +975,7 @@ class _DomainNameReportGenerator(_BaseReportGenerator):
                                          host_name.in_scope(CollectorType.host_name_service),
                                          domain.companies_str,
                                          sources,
-                                         production,
+                                         environment,
                                          mapping.type_str,
                                          mapping.resolved_host_name.full_name,
                                          mapping.resolved_host_name.in_scope(CollectorType.host_name_service),
@@ -873,7 +1000,7 @@ class _DomainNameReportGenerator(_BaseReportGenerator):
                                          host_name.in_scope(CollectorType.host_name_service),
                                          domain.companies_str,
                                          sources,
-                                         production,
+                                         environment,
                                          mapping.type_str,
                                          mapping.host.address,
                                          mapping.host.in_scope,
@@ -893,7 +1020,7 @@ class _DomainNameReportGenerator(_BaseReportGenerator):
                                          host_name.in_scope(CollectorType.host_name_service),
                                          domain.companies_str,
                                          sources,
-                                         production,
+                                         environment,
                                          None,
                                          None,
                                          None,
@@ -1200,138 +1327,208 @@ class _TlsInfoReportGenerator(_BaseReportGenerator):
         This method returns TLS information
         :return: List of strings containing TLS properties
         """
-        rvalue = [["DB ID",
-                   "Workspace",
+        descriptor = HttpServiceDescriptor()
+        result = [["Workspace",
                    "Type",
-                   "Network",
-                   "Address",
-                   "Address Summary",
-                   "Resolves To",
-                   "In Scope",
-                   "Service Summary",
-                   "Protocol",
+                   "Network (NW)",
+                   "Scope (NW)",
+                   "Company (NW)",
+                   "IP Address (IP)",
+                   "Version (IP)",
+                   "Private IP",
+                   "In Scope (IP)",
+                   "OS Family",
+                   "OS Details",
+                   "Second-Level Domain (SLD)",
+                   "Scope (SLD)",
+                   "Host Name (HN)",
+                   "In Scope (HN)",
+                   "Name (HN)",
+                   "Company (HN)",
+                   "Environment",
+                   "UDP/TCP",
                    "Port",
-                   "Service",
-                   "Nmap Service Name",
+                   "Service (SRV)",
+                   "Nmap Name (SRV)",
+                   "Confidence (SRV)",
+                   "State (SRV)",
+                   "Reason State",
+                   "Banner Information",
+                   "Is HTTP",
+                   "URL",
                    "TLS Version",
                    "Preference",
-                   "TLS Version Summary",
-                   "Sources",
                    "Heartbleed",
                    "Compressors",
                    "Order",
-                   "Protocol Version",
                    "Cipher Suite (IANA)",
                    "Prefered",
                    "KEX Algorithm",
-                   "KEX Key Length",
-                   "KEX Algorithm Summary",
-                   "KEX Algorithm Details",
-                   "Auth Algorithm",
-                   "Enc Algorithm",
-                   "Hash Algorithm",
                    "AEAD",
                    "PFS",
-                   "Security"]]
+                   "Security",
+                   "DB ID (NW)",
+                   "DB ID (IP)",
+                   "DB ID (HN)",
+                   "DB ID (SRV)",
+                   "DB ID (TLS)",
+                   "Source (NW)",
+                   "Source (IP)",
+                   "Source (HN)",
+                   "Source (SRV)",
+                   "Source (TLS)"]]
         for workspace in self._workspaces:
             for host in workspace.hosts:
-                host_names = host.get_host_host_name_mappings_str([DnsResourceRecordType.a,
-                                                                   DnsResourceRecordType.aaaa,
-                                                                   DnsResourceRecordType.ptr])
-                if host.ipv4_network:
-                    ipv4_network = host.ipv4_network.network
-                else:
-                    ipv4_network = None
+                host_names = [mapping.host_name
+                              for mapping in host.get_host_host_name_mappings([DnsResourceRecordType.a,
+                                                                               DnsResourceRecordType.aaaa])]
+                network_str = host.ipv4_network.network if host.ipv4_network else None
+                network_id = host.ipv4_network.id if host.ipv4_network else None
+                network_companies = host.ipv4_network.companies_str if host.ipv4_network else None
+                network_sources = host.ipv4_network.sources_str if host.ipv4_network else None
+                network_scope = host.ipv4_network.scope_str if host.ipv4_network else None
+                host_is_private = host.ip_address.is_private
+                host_sources = host.sources_str
                 for service in host.services:
-                    for tls_info in service.tls_info:
-                        if self._filter(tls_info):
-                            for mapping in tls_info.cipher_suite_mappings:
-                                cipher_suite = mapping.cipher_suite
-                                kex_algorithm_str = cipher_suite.kex_algorithm_str
-                                kex_algorithm_bits = mapping.kex_algorithm_bits
-                                rvalue.append([tls_info.id,
-                                               workspace.name,
-                                               "host",
-                                               ipv4_network,
-                                               host.ipv4_address,
-                                               host.summary,
-                                               host_names,
-                                               host.in_scope,
-                                               service.summary,
-                                               service.protocol_str,
-                                               service.port,
-                                               service.protocol_port_str,
-                                               service.nmap_service_name,
-                                               tls_info.version_str,
-                                               tls_info.preference_str,
-                                               "{} {} preferred".format(tls_info.version_str, tls_info.preference_str),
-                                               mapping.sources_str,
-                                               tls_info.heartbleed,
-                                               tls_info.compressors_str,
-                                               mapping.order,
-                                               cipher_suite.protocol_version_str,
-                                               cipher_suite.iana_name,
-                                               mapping.prefered,
-                                               kex_algorithm_str,
-                                               kex_algorithm_bits,
-                                               self._kex_summary(kex_algorithm_str, kex_algorithm_bits),
-                                               mapping.kex_algorithm_details_str,
-                                               cipher_suite.auth_algorithm_str,
-                                               cipher_suite.enc_algorithm_str,
-                                               cipher_suite.hash_algorithm_str,
-                                               cipher_suite.aead,
-                                               cipher_suite.pfs,
-                                               cipher_suite.security_str])
-            for domain_name in workspace.domain_names:
-                for host_name in domain_name.host_names:
-                    hosts = host_name.get_host_host_name_mappings_str([DnsResourceRecordType.a,
-                                                                       DnsResourceRecordType.aaaa,
-                                                                       DnsResourceRecordType.ptr])
-                    for service in host_name.services:
+                    if service.state in [ServiceState.Open, ServiceState.Closed]:
+                        is_http = descriptor.match_nmap_service_name(service)
+                        url_str = [path.get_urlparse().geturl() for path in service.paths if path.name == "/"] \
+                            if is_http else []
+                        patch_missing_kex = {}
                         for tls_info in service.tls_info:
                             if self._filter(tls_info):
-                                sources = []
-                                for mapping in tls_info.cipher_suite_mappings:
-                                    sources.extend([item.name for item in mapping.sources])
                                 for mapping in tls_info.cipher_suite_mappings:
                                     cipher_suite = mapping.cipher_suite
-                                    kex_algorithm_str = cipher_suite.kex_algorithm_str
-                                    kex_algorithm_bits = mapping.kex_algorithm_bits
-                                    rvalue.append([tls_info.id,
-                                                   workspace.name,
-                                                   "vhost",
+                                    key = "{}{}{}{}".format(host.address,
+                                                            service.protocol_port_str,
+                                                            tls_info.version_str,
+                                                            cipher_suite.iana_name)
+                                    kex_algorithm = mapping.kex_algorithm_details_str
+                                    if kex_algorithm:
+                                        patch_missing_kex[key] = kex_algorithm
+                                    elif key in patch_missing_kex:
+                                        kex_algorithm = patch_missing_kex[key]
+                                    result.append([workspace.name,
+                                                   "Host",
+                                                   network_str,
+                                                   network_scope,
+                                                   network_companies,
+                                                   host.address,
+                                                   host.version_str,
+                                                   host_is_private,
+                                                   host.in_scope,
+                                                   host.os_family,
+                                                   host.os_details,
                                                    None,
-                                                   host_name.full_name,
-                                                   host_name.summary,
-                                                   hosts,
-                                                   host_name.in_scope(CollectorType.host_name_service),
-                                                   service.summary,
+                                                   None,
+                                                   host.address,
+                                                   host.in_scope,
+                                                   None,
+                                                   None,
+                                                   None,
                                                    service.protocol_str,
                                                    service.port,
                                                    service.protocol_port_str,
-                                                   service.nmap_service_name,
+                                                   service.service_name_with_confidence,
+                                                   service.service_confidence,
+                                                   service.state_str,
+                                                   service.nmap_service_state_reason,
+                                                   service.nmap_product_version,
+                                                   is_http,
+                                                   url_str[0] if url_str else None,
                                                    tls_info.version_str,
                                                    tls_info.preference_str,
-                                                   "{} {} preferred".format(tls_info.version_str,
-                                                                            tls_info.preference_str),
-                                                   mapping.sources_str,
                                                    tls_info.heartbleed,
                                                    tls_info.compressors_str,
                                                    mapping.order,
-                                                   cipher_suite.protocol_version_str,
                                                    cipher_suite.iana_name,
                                                    mapping.prefered,
-                                                   kex_algorithm_str,
-                                                   kex_algorithm_bits,
-                                                   self._kex_summary(kex_algorithm_str, kex_algorithm_bits),
-                                                   mapping.kex_algorithm_details_str,
-                                                   cipher_suite.auth_algorithm_str,
-                                                   cipher_suite.enc_algorithm_str,
-                                                   cipher_suite.hash_algorithm_str,
+                                                   kex_algorithm,
                                                    cipher_suite.aead,
                                                    cipher_suite.pfs,
-                                                   cipher_suite.security_str])
-        return rvalue
+                                                   cipher_suite.security_str,
+                                                   network_id,
+                                                   host.id,
+                                                   None,
+                                                   service.id,
+                                                   mapping.id,
+                                                   network_sources,
+                                                   host_sources,
+                                                   None,
+                                                   service.sources_str,
+                                                   mapping.sources_str])
+                for host_name in host_names:
+                    environment = self._domain_config.get_environment(host_name)
+                    host_name_sources = host_name.sources_str
+                    network_str = host.ipv4_network.network if host.ipv4_network else None
+                    for service in host_name.services:
+                        if service.state in [ServiceState.Open, ServiceState.Closed] and \
+                                descriptor.match_nmap_service_name(service):
+                            url_str = [path.get_urlparse().geturl() for path in service.paths if path.name == "/"]
+                            patch_missing_kex = {}
+                            for tls_info in service.tls_info:
+                                if self._filter(tls_info):
+                                    for mapping in tls_info.cipher_suite_mappings:
+                                        cipher_suite = mapping.cipher_suite
+                                        key = "{}{}{}{}".format(host_name.full_name,
+                                                                service.protocol_port_str,
+                                                                tls_info.version_str,
+                                                                cipher_suite.iana_name)
+                                        kex_algorithm = mapping.kex_algorithm_details_str
+                                        if kex_algorithm:
+                                            patch_missing_kex[key] = kex_algorithm
+                                        elif key in patch_missing_kex:
+                                            kex_algorithm = patch_missing_kex[key]
+                                        result.append([workspace.name,
+                                                       "VHost",
+                                                       network_str,
+                                                       network_scope,
+                                                       network_companies,
+                                                       host.address,
+                                                       host.version_str,
+                                                       host_is_private,
+                                                       host.in_scope,
+                                                       host.os_family,
+                                                       host.os_details,
+                                                       host_name.domain_name.name,
+                                                       host_name.domain_name.scope_str,
+                                                       host_name.full_name,
+                                                       host_name._in_scope,
+                                                       host_name.name,
+                                                       host_name.companies_str,
+                                                       environment,
+                                                       service.protocol_str,
+                                                       service.port,
+                                                       service.protocol_port_str,
+                                                       service.service_name_with_confidence,
+                                                       service.service_confidence,
+                                                       service.state_str,
+                                                       service.nmap_service_state_reason,
+                                                       service.nmap_product_version,
+                                                       True,
+                                                       url_str[0] if url_str else None,
+                                                       tls_info.version_str,
+                                                       tls_info.preference_str,
+                                                       tls_info.heartbleed,
+                                                       tls_info.compressors_str,
+                                                       mapping.order,
+                                                       cipher_suite.iana_name,
+                                                       mapping.prefered,
+                                                       kex_algorithm,
+                                                       cipher_suite.aead,
+                                                       cipher_suite.pfs,
+                                                       cipher_suite.security_str,
+                                                       network_id,
+                                                       host.id,
+                                                       host_name.id,
+                                                       service.id,
+                                                       mapping.id,
+                                                       network_sources,
+                                                       host_sources,
+                                                       host_name_sources,
+                                                       service.sources_str,
+                                                       mapping.sources_str])
+        return result
 
     def _final_report_tls_versions(self, workbook: Workbook):
         # Obtain results
@@ -1433,19 +1630,36 @@ class _CertInfoReportGenerator(_BaseReportGenerator):
         This method returns all information as CSV.
         :return:
         """
-        rvalue = [["DB ID",
-                   "Workspace",
+        descriptor = HttpServiceDescriptor()
+        result = [["Workspace",
                    "Type",
-                   "Network",
-                   "Address",
-                   "Address Summary",
-                   "Resolves To",
-                   "In Scope",
-                   "Service Summary",
-                   "Protocol",
+                   "Network (NW)",
+                   "Scope (NW)",
+                   "Company (NW)",
+                   "IP Address (IP)",
+                   "Version (IP)",
+                   "Private IP",
+                   "In Scope (IP)",
+                   "OS Family",
+                   "OS Details",
+                   "Second-Level Domain (SLD)",
+                   "Scope (SLD)",
+                   "Host Name (HN)",
+                   "In Scope (HN)",
+                   "Name (HN)",
+                   "Company (HN)",
+                   "Environment",
+                   "UDP/TCP",
                    "Port",
-                   "Service",
-                   "Nmap Service Name",
+                   "Service (SRV)",
+                   "Nmap Name (SRV)",
+                   "Confidence (SRV)",
+                   "State (SRV)",
+                   "Reason State",
+                   "Banner Information",
+                   "Is HTTP",
+                   "URL",
+                   "HN Coverage",
                    "Common Name",
                    "Issuer",
                    "Invalid CA (Self-Signed)",
@@ -1455,92 +1669,75 @@ class _CertInfoReportGenerator(_BaseReportGenerator):
                    "Proper Key Length",
                    "Hash Algorithm",
                    "Weak Signature",
-                   "Type",
+                   "Cert. Type",
                    "Valid From",
                    "Valid Until",
                    "Valid Years",
                    "Is Valid",
                    "Within Recommended Validity",
-                   "Valid Address",
                    "Subject Alternative Names",
                    "Key Usage",
                    "Critical Extensions",
                    "Serial Number",
-                   "Sources"]]
+                   "DB ID (NW)",
+                   "DB ID (IP)",
+                   "DB ID (HN)",
+                   "DB ID (SRV)",
+                   "DB ID (CERT)",
+                   "Source (NW)",
+                   "Source (IP)",
+                   "Source (HN)",
+                   "Source (SRV)",
+                   "Source (CERT)"]]
         for workspace in self._workspaces:
             for host in workspace.hosts:
-                host_names_str = host.get_host_host_name_mappings_str([DnsResourceRecordType.a,
-                                                                       DnsResourceRecordType.aaaa])
-                host_names = [item.host_name.full_name
-                              for item in host.get_host_host_name_mappings([DnsResourceRecordType.a,
-                                                                            DnsResourceRecordType.aaaa])]
-                if host.ipv4_network:
-                    ipv4_network = host.ipv4_network.network
-                else:
-                    ipv4_network = None
+                host_names = [mapping.host_name
+                              for mapping in host.get_host_host_name_mappings([DnsResourceRecordType.a,
+                                                                               DnsResourceRecordType.aaaa])]
+                network_str = host.ipv4_network.network if host.ipv4_network else None
+                network_id = host.ipv4_network.id if host.ipv4_network else None
+                network_companies = host.ipv4_network.companies_str if host.ipv4_network else None
+                network_sources = host.ipv4_network.sources_str if host.ipv4_network else None
+                network_scope = host.ipv4_network.scope_str if host.ipv4_network else None
+                host_is_private = host.ip_address.is_private
+                host_sources = host.sources_str
                 for service in host.services:
-                    for cert_info in service.cert_info:
-
-                        if self._filter(cert_info):
-                            matching_host = cert_info.matches_host_names(host_names) \
-                                if cert_info.cert_type == CertType.identity else None
-                            rvalue.append([cert_info.id,
-                                           workspace.name,
-                                           "host",
-                                           ipv4_network,
-                                           host.ipv4_address,
-                                           host.summary,
-                                           host_names_str,
-                                           host.in_scope,
-                                           service.summary,
-                                           service.protocol_str,
-                                           service.port,
-                                           service.protocol_port_str,
-                                           service.nmap_service_name,
-                                           cert_info.common_name.lower(),
-                                           cert_info.issuer_name.lower(),
-                                           cert_info.is_self_signed(),
-                                           cert_info.signature_asym_algorithm_str,
-                                           cert_info.signature_bits,
-                                           cert_info.signature_asym_algorithm_summary,
-                                           None,
-                                           cert_info.hash_algorithm_str,
-                                           cert_info.has_weak_signature(),
-                                           cert_info.cert_type_str,
-                                           cert_info.valid_from_str,
-                                           cert_info.valid_until_str,
-                                           cert_info.validity_period_days/365,
-                                           cert_info.is_valid(),
-                                           cert_info.has_recommended_duration(),
-                                           matching_host,
-                                           cert_info.subject_alt_names_str.lower(),
-                                           cert_info.key_usage_str,
-                                           ", ".join(cert_info.critical_extension_names),
-                                           cert_info.serial_number,
-                                           cert_info.sources_str])
-            for domain_name in workspace.domain_names:
-                for host_name in domain_name.host_names:
-                    host_names = host_name.get_host_host_name_mappings_str([DnsResourceRecordType.a,
-                                                                            DnsResourceRecordType.aaaa,
-                                                                            DnsResourceRecordType.ptr])
-                    for service in host_name.services:
+                    if service.state in [ServiceState.Open, ServiceState.Closed]:
+                        is_http = descriptor.match_nmap_service_name(service)
+                        url_str = [path.get_urlparse().geturl() for path in service.paths if path.name == "/"] \
+                            if is_http else []
                         for cert_info in service.cert_info:
                             if self._filter(cert_info):
-                                matching_host_name = host_name.full_name in cert_info.all_names \
-                                    if cert_info.cert_type == CertType.identity else None
-                                rvalue.append([cert_info.id,
-                                               workspace.name,
-                                               "vhost",
+                                matching_host = "n/a"
+                                result.append([workspace.name,
+                                               "Host",
+                                               network_str,
+                                               network_scope,
+                                               network_companies,
+                                               host.address,
+                                               host.version_str,
+                                               host_is_private,
+                                               host.in_scope,
+                                               host.os_family,
+                                               host.os_details,
                                                None,
-                                               host_name.full_name,
-                                               host_name.summary,
-                                               host_names,
-                                               host_name.in_scope(CollectorType.host_name_service),
-                                               service.summary,
+                                               None,
+                                               host.address,
+                                               host.in_scope,
+                                               None,
+                                               None,
+                                               None,
                                                service.protocol_str,
                                                service.port,
                                                service.protocol_port_str,
-                                               service.nmap_service_name,
+                                               service.service_name_with_confidence,
+                                               service.service_confidence,
+                                               service.state_str,
+                                               service.nmap_service_state_reason,
+                                               service.nmap_product_version,
+                                               is_http,
+                                               url_str[0] if url_str else None,
+                                               matching_host,
                                                cert_info.common_name.lower(),
                                                cert_info.issuer_name.lower(),
                                                cert_info.is_self_signed(),
@@ -1553,91 +1750,96 @@ class _CertInfoReportGenerator(_BaseReportGenerator):
                                                cert_info.cert_type_str,
                                                cert_info.valid_from_str,
                                                cert_info.valid_until_str,
-                                               cert_info.validity_period_days/365,
+                                               cert_info.validity_period_days / 365,
                                                cert_info.is_valid(),
                                                cert_info.has_recommended_duration(),
-                                               matching_host_name,
                                                cert_info.subject_alt_names_str.lower(),
                                                cert_info.key_usage_str,
                                                ", ".join(cert_info.critical_extension_names),
                                                cert_info.serial_number,
+                                               network_id,
+                                               host.id,
+                                               None,
+                                               service.id,
+                                               cert_info.id,
+                                               network_sources,
+                                               host_sources,
+                                               None,
+                                               service.sources_str,
                                                cert_info.sources_str])
-                    for cert_info in host_name.cert_info:
-                        if self._filter(cert_info):
-                            matching_host_name = host_name.full_name in cert_info.all_names \
-                                if cert_info.cert_type == CertType.identity else None
-                            rvalue.append([cert_info.id,
-                                           workspace.name,
-                                           "host name",
-                                           None,
-                                           host_name.full_name,
-                                           host_name.summary,
-                                           host_names,
-                                           host_name.in_scope(CollectorType.host_name_service),
-                                           None,
-                                           None,
-                                           None,
-                                           None,
-                                           None,
-                                           cert_info.common_name.lower(),
-                                           cert_info.issuer_name.lower(),
-                                           cert_info.is_self_signed(),
-                                           cert_info.signature_asym_algorithm_str,
-                                           cert_info.signature_bits,
-                                           cert_info.signature_asym_algorithm_summary,
-                                           None,
-                                           cert_info.hash_algorithm_str,
-                                           cert_info.has_weak_signature(),
-                                           cert_info.cert_type_str,
-                                           cert_info.valid_from_str,
-                                           cert_info.valid_until_str,
-                                           cert_info.validity_period_days / 365,
-                                           cert_info.is_valid(),
-                                           cert_info.has_recommended_duration(),
-                                           matching_host_name,
-                                           cert_info.subject_alt_names_str.lower(),
-                                           cert_info.key_usage_str,
-                                           ", ".join(cert_info.critical_extension_names),
-                                           cert_info.serial_number,
-                                           cert_info.sources_str])
-            for company in workspace.companies:
-                for cert_info in company.cert_info:
-                    if self._filter(cert_info):
-                        rvalue.append([cert_info.id,
-                                       workspace.name,
-                                       "company",
-                                       None,
-                                       company.name,
-                                       None,
-                                       None,
-                                       company.in_scope,
-                                       None,
-                                       None,
-                                       None,
-                                       None,
-                                       None,
-                                       cert_info.common_name.lower(),
-                                       cert_info.issuer_name.lower(),
-                                       cert_info.is_self_signed(),
-                                       cert_info.signature_asym_algorithm_str,
-                                       cert_info.signature_bits,
-                                       cert_info.signature_asym_algorithm_summary,
-                                       None,
-                                       cert_info.hash_algorithm_str,
-                                       cert_info.has_weak_signature(),
-                                       cert_info.cert_type_str,
-                                       cert_info.valid_from_str,
-                                       cert_info.valid_until_str,
-                                       "{:.2f}".format(cert_info.validity_period_days / 365),
-                                       cert_info.is_valid(),
-                                       cert_info.has_recommended_duration(),
-                                       None,
-                                       cert_info.subject_alt_names_str.lower(),
-                                       cert_info.key_usage_str,
-                                       ", ".join(cert_info.critical_extension_names),
-                                       cert_info.serial_number,
-                                       cert_info.sources_str])
-        return rvalue
+                for host_name in host_names:
+                    environment = self._domain_config.get_environment(host_name)
+                    host_name_sources = host_name.sources_str
+                    network_str = host.ipv4_network.network if host.ipv4_network else None
+                    for service in host_name.services:
+                        if service.state in [ServiceState.Open, ServiceState.Closed] and \
+                                descriptor.match_nmap_service_name(service):
+                            is_http = descriptor.match_nmap_service_name(service)
+                            url_str = [path.get_urlparse().geturl() for path in service.paths if path.name == "/"] \
+                                if is_http else []
+                            for cert_info in service.cert_info:
+                                if self._filter(cert_info):
+                                    matching_host = cert_info.matches_host_name(host_name) \
+                                        if cert_info.cert_type == CertType.identity else None
+                                    result.append([workspace.name,
+                                                   "VHost",
+                                                   network_str,
+                                                   network_scope,
+                                                   network_companies,
+                                                   host.address,
+                                                   host.version_str,
+                                                   host_is_private,
+                                                   host.in_scope,
+                                                   host.os_family,
+                                                   host.os_details,
+                                                   host_name.domain_name.name,
+                                                   host_name.domain_name.scope_str,
+                                                   host_name.full_name,
+                                                   host_name._in_scope,
+                                                   host_name.name,
+                                                   host_name.companies_str,
+                                                   environment,
+                                                   service.protocol_str,
+                                                   service.port,
+                                                   service.protocol_port_str,
+                                                   service.service_name_with_confidence,
+                                                   service.service_confidence,
+                                                   service.state_str,
+                                                   service.nmap_service_state_reason,
+                                                   service.nmap_product_version,
+                                                   True,
+                                                   url_str[0] if url_str else None,
+                                                   matching_host,
+                                                   cert_info.common_name.lower(),
+                                                   cert_info.issuer_name.lower(),
+                                                   cert_info.is_self_signed(),
+                                                   cert_info.signature_asym_algorithm_str,
+                                                   cert_info.signature_bits,
+                                                   cert_info.signature_asym_algorithm_summary,
+                                                   None,
+                                                   cert_info.hash_algorithm_str,
+                                                   cert_info.has_weak_signature(),
+                                                   cert_info.cert_type_str,
+                                                   cert_info.valid_from_str,
+                                                   cert_info.valid_until_str,
+                                                   cert_info.validity_period_days / 365,
+                                                   cert_info.is_valid(),
+                                                   cert_info.has_recommended_duration(),
+                                                   cert_info.subject_alt_names_str.lower(),
+                                                   cert_info.key_usage_str,
+                                                   ", ".join(cert_info.critical_extension_names),
+                                                   cert_info.serial_number,
+                                                   network_id,
+                                                   host.id,
+                                                   host_name.id,
+                                                   service.id,
+                                                   cert_info.id,
+                                                   network_sources,
+                                                   host_sources,
+                                                   host_name_sources,
+                                                   service.sources_str,
+                                                   cert_info.sources_str])
+        return result
 
     def _final_report_host_name_coverage(self, workbook: Workbook):
         result = [["IP Address", "Service", "Host Names", "Common Name", "Subject Alternative\nNames", "Full\nCoverage"]]

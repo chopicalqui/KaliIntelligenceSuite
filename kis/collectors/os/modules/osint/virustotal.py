@@ -46,6 +46,7 @@ class CollectorClass(BaseKisImportDomain, DomainCollector):
                          argument_name="--virustotal",
                          source=Virustotal.SOURCE_NAME,
                          delay_min=3,
+                         delay_max=5,
                          **kwargs)
 
     @staticmethod

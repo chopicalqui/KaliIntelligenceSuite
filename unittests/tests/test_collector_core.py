@@ -2381,7 +2381,7 @@ class TestAddDomainName(BaseKisTestCase):
                                 Workspace.name == item).count()
                     self.assertEqual(1, results)
                 if report_item and host_name_str and address:
-                    self.assertIn("add potentially new link between {} and {}".format(address, host_name_str),
+                    self.assertIn("add potentially new link (A) between {} and {}".format(address, host_name_str),
                                   report_item.get_report())
                 elif report_item:
                     self.assertIn("potentially new host name {}".format(host_name_str), report_item.get_report())
@@ -3862,8 +3862,8 @@ class TestAddHostHostNameMapping(BaseKisTestCase):
         else:
             self.assertEqual(0, len(result.sources))
         if report_item:
-            self.assertIn("add potentially new link between {} and {}".format(host.address,
-                                                                              host_name.full_name),
+            self.assertIn("add potentially new link (A) between {} and {}".format(host.address,
+                                                                                  host_name.full_name),
                           report_item.get_report())
 
     def _unittest_add_host_host_name_mapping(self,
@@ -4049,9 +4049,11 @@ class TestAddHostHostNameMapping(BaseKisTestCase):
             host_name = self._domain_utils.add_domain_name(session=session,
                                                            workspace=workspace,
                                                            item="www.unittest.com",
-                                                           host=host,
-                                                           scope=ScopeType.all,
-                                                           mapping_type=(DnsResourceRecordType.a |
+                                                           scope=ScopeType.all)
+            self._domain_utils.add_host_host_name_mapping(session=session,
+                                                          host=host,
+                                                          host_name=host_name,
+                                                          mapping_type=(DnsResourceRecordType.a |
                                                                          DnsResourceRecordType.ptr))
         # check database
         with self._engine.session_scope() as session:

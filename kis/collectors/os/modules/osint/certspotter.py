@@ -48,7 +48,8 @@ class CollectorClass(BaseKisImportDomain, DomainCollector):
                          timeout=0,
                          argument_name="--certspotter",
                          source=Certspotter.SOURCE_NAME,
-                         delay_min=1,
+                         delay_min=2,
+                         delay_max=5,
                          **kwargs)
 
     @staticmethod

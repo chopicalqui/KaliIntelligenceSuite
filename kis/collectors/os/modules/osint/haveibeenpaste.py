@@ -47,6 +47,7 @@ class CollectorClass(BaseKisImportEmail, EmailCollector):
                          argument_name="--haveibeenpaste",
                          source=HaveIBeenPwnedPasteAcccount.SOURCE,
                          delay_min=2,
+                         delay_max=5,
                          **kwargs)
 
     @staticmethod

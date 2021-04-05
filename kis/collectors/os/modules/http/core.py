@@ -55,7 +55,7 @@ class HttpServiceDescriptor(ServiceDescriptorBase):
                          # If you update this list, then you also have to update the last part of database function: assign_services_to_host_name
                          nmap_tcp_service_names=["^ssl\|http$",
                                                  "^http$",
-                                                 "^http-alt$",
+                                                 "^http\-alt$",
                                                  "^https$",
                                                  "^http\-proxy$",
                                                  "^sgi-soap$",
@@ -65,10 +65,10 @@ class HttpServiceDescriptor(ServiceDescriptorBase):
                                                    "^http\-alt$",
                                                    "^http$",
                                                    "^https$",
-                                                   "^pcsync-https$",
+                                                   "^pcsync\-https$",
                                                    "^homepage$",
-                                                   "^greenbone-administrator$",
-                                                   "^openvas-administrator$"])
+                                                   "^greenbone\-administrator$",
+                                                   "^openvas\-administrator$"])
 
 
 class BaseHttpCollector(BaseCollector):

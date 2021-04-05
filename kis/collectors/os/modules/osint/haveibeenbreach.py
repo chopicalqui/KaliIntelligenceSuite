@@ -47,6 +47,7 @@ class CollectorClass(BaseKisImportEmail, EmailCollector):
                          argument_name="--haveibeenbreach",
                          source=HaveIBeenPwnedBreachedAcccount.SOURCE,
                          delay_min=2,
+                         delay_max=5,
                          **kwargs)
 
     @staticmethod

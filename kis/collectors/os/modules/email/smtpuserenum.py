@@ -35,6 +35,7 @@ from database.model import CollectorName
 from database.model import Email
 from database.model import HostName
 from database.model import DomainName
+from database.model import ExecutionInfoType
 from database.model import Workspace
 from database.model import Service
 from database.model import Source
@@ -76,7 +77,9 @@ class CollectorClass(BaseSmtpCollector, ServiceCollector):
         command = self._path_smtpusername
         if self._wordlist_files:
             wordlists = self._wordlist_files
+            auto_wordlist = False
         else:
+            auto_wordlist = True
             emails = []
             dedup = {}
             for item in session.query(Email) \
@@ -105,9 +108,17 @@ class CollectorClass(BaseSmtpCollector, ServiceCollector):
                 for item in ["VRFY", "EXPN", "RCPT", "EXPN"]:
                     os_command = [command,
                                   "-M", item,
-                                  "-U", wordlist,
                                   "-t", ipv4_address]
-                    collector = self._get_or_create_command(session, os_command, collector_name, service=service)
+                    if auto_wordlist:
+                        os_command.extend(["-U", ExecutionInfoType.input_file.argument])
+                        collector = self._get_or_create_command(session,
+                                                                os_command,
+                                                                collector_name,
+                                                                service=service,
+                                                                input_file=wordlist)
+                    else:
+                        os_command.extend(["-U", wordlist])
+                        collector = self._get_or_create_command(session, os_command, collector_name, service=service)
                     collectors.append(collector)
         return collectors
 

@@ -161,7 +161,6 @@ class CollectorClass(BaseCollector, HostCollector):
                                                    command=command,
                                                    host_name=domain,
                                                    source=source,
-                                                   host=host,
                                                    report_item=report_item)
                     if not host_name:
                         logger.debug("ignoring host name due to invalid domain in line: {}".format(line))

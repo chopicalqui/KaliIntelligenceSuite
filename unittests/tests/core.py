@@ -724,14 +724,16 @@ class BaseKisTestCase(unittest.TestCase):
         host_name = self._domain_utils.add_domain_name(session=session,
                                                        workspace=workspace,
                                                        item="www.unittest.com",
-                                                       host=host,
-                                                       source=source,
-                                                       mapping_type=DnsResourceRecordType.a)
+                                                       source=source)
+        self._domain_utils.add_host_host_name_mapping(session=session,
+                                                      host=host,
+                                                      host_name=host_name,
+                                                      mapping_type=DnsResourceRecordType.a,
+                                                      source=source)
         resolved_host_name = self._domain_utils.add_domain_name(session=session,
                                                                 workspace=workspace,
                                                                 item="resolved.unittest.com",
-                                                                source=source,
-                                                                mapping_type=DnsResourceRecordType.a)
+                                                                source=source)
         self._domain_utils.add_host_name_host_name_mapping(session=session,
                                                            source_host_name=host_name,
                                                            resolved_host_name=resolved_host_name,

@@ -521,7 +521,7 @@ class BaseTlsNmapCollectorTestCase(BaseNmapCollectorTestCase):
             self.assertListEqual(expected_results, results)
             self.assertEqual("Apache httpd", tls_info[0].service.nmap_product)
             self.assertEqual("2.4.39", tls_info[0].service.nmap_version)
-            self.assertEqual("Apache httpd 2.4.39 ((Win64) OpenSSL/1.1.1b PHP/7.3.4)",
+            self.assertEqual("Apache httpd 2.4.39 (Win64) OpenSSL/1.1.1b PHP/7.3.4",
                              tls_info[0].service.nmap_product_version)
             # TlsInfoCipherSuiteMapping
             results = session.query(TlsInfoCipherSuiteMapping).count()
