@@ -47,6 +47,7 @@ class CollectorClass(BaseNfsCollector, ServiceCollector):
         super().__init__(priority=13000,
                          timeout=300,
                          **kwargs)
+        self._export_re = re.compile("^\s*(?P<export>((\"/.+?\")|('/.+?')|(/[/\w\.\-]+)))\s.*$")
 
     @staticmethod
     def get_argparse_arguments():
@@ -103,15 +104,13 @@ class CollectorClass(BaseNfsCollector, ServiceCollector):
         """
         command.hint = []
         for line in command.stdout_output:
-            if line and line.find("Export list for") == -1:
+            match = self._export_re.match(line)
+            if match:
+                export = match.group("export").strip().strip('"').strip("'")
                 self.add_path(session=session,
                               command=command,
                               service=command.service,
-                              path=line,
+                              path=export,
                               path_type=PathType.Nfs_Share,
                               source=source,
                               report_item=report_item)
-                self.add_hint(command=command,
-                              hint="$ mount {}:{} $mountpoint".format(command.service.host.ipv4_address, line),
-                              report_item=report_item)
-
