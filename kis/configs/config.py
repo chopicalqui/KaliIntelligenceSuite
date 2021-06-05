@@ -220,7 +220,7 @@ class Collector(BaseConfig):
         self._http_default_passwords = \
             self.get_config_str("default_wordlists", "http_default_passwords")
         self._legal_entities = json.loads(self.get_config_str("company", "entities"))
-        self._re_legal_entities = "(({}))".format(")|(".join(self._legal_entities))
+        self._re_legal_entities = "\s(({}))(([\s\.])|($))".format(")|(".join(self._legal_entities))
         self._irrelevant_http_files = json.loads(self.get_config_str("http", "irrelevant_files"))
 
     @property
@@ -238,6 +238,18 @@ class Collector(BaseConfig):
     @property
     def irrelevant_http_files(self) -> str:
         return self._irrelevant_http_files
+
+    def get_organization_re(self, whois_attributes: list = None) -> re.Pattern:
+        """
+        This method compiles the regular expression to extract company information from whois entries
+        """
+        if whois_attributes:
+            result = re.compile("^\\s*(({}))\\s*:\\s*(?P<name>.+?{}).*$".format(")|(".join(whois_attributes),
+                                                                                self._re_legal_entities),
+                                re.IGNORECASE)
+        else:
+            result = re.compile("^\\s*(?P<name>.+?{}).*$".format(self._re_legal_entities), re.IGNORECASE)
+        return result
 
 
 class ApiConfig(BaseConfig):

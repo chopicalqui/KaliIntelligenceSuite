@@ -267,18 +267,18 @@ class TestDatabaseVerificationMethods(BaseKisTestCase):
         Unittests for BaseUtils.is_verified_company_name
         :return:
         """
-        self.assertTrue(self._domain_utils.is_verified_company_name("test ag"))
-        self.assertTrue(self._domain_utils.is_verified_company_name("Test AG"))
-        self.assertTrue(self._domain_utils.is_verified_company_name("Test GmbH"))
-        self.assertTrue(self._domain_utils.is_verified_company_name("Test gmbH"))
-        self.assertTrue(self._domain_utils.is_verified_company_name("Test INC"))
-        self.assertTrue(self._domain_utils.is_verified_company_name("Test LP"))
-        self.assertFalse(self._domain_utils.is_verified_company_name("Test LP."))
-        self.assertTrue(self._domain_utils.is_verified_company_name("Test Corporation"))
-        self.assertTrue(self._domain_utils.is_verified_company_name(" Test GmbH"))
-        self.assertFalse(self._domain_utils.is_verified_company_name("Test GmbH "))
-        self.assertFalse(self._domain_utils.is_verified_company_name(" Test GmbH "))
-        self.assertFalse(self._domain_utils.is_verified_company_name("Test INC.."))
+        self.assertEqual("test ag", self._domain_utils.is_verified_company_name("test ag"))
+        self.assertEqual("Test AG", self._domain_utils.is_verified_company_name("Test AG"))
+        self.assertEqual("Test AG", self._domain_utils.is_verified_company_name("Test AG    "))
+        self.assertEqual("Test AG", self._domain_utils.is_verified_company_name("   Test AG"))
+        self.assertEqual("Test AG", self._domain_utils.is_verified_company_name("   Test AG    "))
+        self.assertEqual("Test GmbH", self._domain_utils.is_verified_company_name("Test GmbH"))
+        self.assertEqual("test gmbH", self._domain_utils.is_verified_company_name("test gmbH"))
+        self.assertEqual("Test LP", self._domain_utils.is_verified_company_name("Test LP"))
+        self.assertEqual("Test LP.", self._domain_utils.is_verified_company_name("Test LP."))
+        self.assertEqual("Test LP.", self._domain_utils.is_verified_company_name("Test LP.."))
+        self.assertEqual("Test Corporation", self._domain_utils.is_verified_company_name("Test Corporation"))
+        self.assertEqual("Test Corporation", self._domain_utils.is_verified_company_name("Test Corporation (random)"))
 
 
 class TestAddHost(BaseKisTestCase):

@@ -365,12 +365,15 @@ class PopenCommand(BaseCommand):
                                           stderr=self._stderr,
                                           shell=False,
                                           cwd=self._cwd,
-                                          env={'PATH': os.environ["PATH"], 'HOME': os.environ["HOME"]},
+                                          env={'PATH': os.environ["PATH"], 'HOME': self._cwd},
                                           preexec_fn=self._demote)
 
     def close(self) -> None:
-        self._proc.stdout.close()
-        self._proc.stderr.close()
+        if self._proc:
+            if self._proc.stdout:
+                self._proc.stdout.close()
+            if self._proc.stderr:
+                self._proc.stderr.close()
 
 
 class PopenCommandWithoutStderr(PopenCommand):

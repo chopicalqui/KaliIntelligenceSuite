@@ -72,6 +72,8 @@ from database.model import ScopeType
 from database.model import ReportVisibility
 from database.model import ExecutionInfoType
 from database.utils import Engine
+from database.report import ExcelReport
+from database.report import ReportLanguage
 from view.core import ReportItem
 from collectors.core import XmlUtils
 from collectors.core import DomainUtils
@@ -979,7 +981,7 @@ class BaseKisTestCase(unittest.TestCase):
         self.assertEqual(0, session.query(CertInfo).count())
         self.assertEqual(0, session.query(TlsInfo).count())
         self.assertEqual(0, session.query(TlsInfoCipherSuiteMapping).count())
-        self.assertEqual(337, session.query(CipherSuite).count())
+        self.assertEqual(344, session.query(CipherSuite).count())
 
 
 class BaseDataModelTestCase(BaseKisTestCase):
@@ -1061,10 +1063,15 @@ class BaseReportTestCase(BaseKisTestCase):
         parser_domain = sub_parser.add_parser('domain',
                                               help='allows querying information about second-level domains and '
                                                    'host names')
+        parser_cname = sub_parser.add_parser('cname',
+                                             help='allows querying DNS canonical names (CNAMES). this report can '
+                                                  'be used to identify potential subdomain takeovers')
         parser_email = sub_parser.add_parser('email', help='allows querying information about emails')
         parser_company = sub_parser.add_parser('company', help='allows querying information about companies')
         parser_excel = sub_parser.add_parser('excel', help='allows writing all identified information into a '
                                                            'microsoft excel file')
+        parser_final = sub_parser.add_parser('final',
+                                             help='allows writing final report tables into microsoft excel file')
         parser_file = sub_parser.add_parser('file', help='allows querying information about collected files (e.g., raw '
                                                          'scan results, certificates, etc.)')
         parser_host = sub_parser.add_parser('host', help='allows querying information about hosts')
@@ -1076,6 +1083,9 @@ class BaseReportTestCase(BaseKisTestCase):
                                                      help='allows querying information about identified '
                                                           'vulnerabilities (e.g., via shodan.io or '
                                                           'nessus)')
+        parser_tls = sub_parser.add_parser('tls',
+                                           help='allows querying information about identified tls configurations')
+        parser_cert = sub_parser.add_parser('cert', help='allows querying information about identified certificates')
         # setup host parser
         parser_host.add_argument("-w", "--workspaces",
                                  metavar="WORKSPACE",
@@ -1083,21 +1093,22 @@ class BaseReportTestCase(BaseKisTestCase):
                                  nargs="+",
                                  required=True,
                                  type=str)
-        parser_host.add_argument('--color', action='store_true',
-                                 help='highlight matched strings in color in terminal')
         parser_host_group = parser_host.add_mutually_exclusive_group(required=True)
         parser_host_group.add_argument('--text', action='store_true',
                                        help='returns gathered information including all collector outputs as text')
         parser_host_group.add_argument('--csv', action='store_true',
                                        help='returns gathered information in csv format')
         parser_host_group.add_argument('--igrep', type=str, nargs='+', metavar="REGEX",
-                                       help="print command outputs that match the given string or Python3 regular " \
-                                            "expressions REGEX. matching is case insensitive. use named group 'output' " \
+                                       help="print command outputs that match the given string or Python3 regular "
+                                            "expressions REGEX. matching is case insensitive. use named group 'output' "
                                             "to just capture the content of this named group")
         parser_host_group.add_argument('--grep', type=str, nargs='+', metavar="REGEX",
-                                       help="print command outputs that match the given string or Python3 regular " \
-                                            "expressions REGEX. matching is case sensitive. use named group 'output' " \
+                                       help="print command outputs that match the given string or Python3 regular "
+                                            "expressions REGEX. matching is case sensitive. use named group 'output' "
                                             "to just capture the content of this named group")
+        parser_host.add_argument('--not', dest="grep_not", action='store_true',
+                                 help='negate the filter logic and only show those IP addresses that do not match the '
+                                      '--igrep or --grep argument.')
         parser_host.add_argument('--filter', metavar='IP|NETWORK|DOMAIN|HOSTNAME', type=str, nargs='*',
                                  help='list of IP addresses, IP networks, second-level domains (e.g., megacorpone.com), or '
                                       'host names (e.g., www.megacorpone.com) whose information shall be returned.'
@@ -1125,21 +1136,22 @@ class BaseReportTestCase(BaseKisTestCase):
                                    nargs="+",
                                    required=True,
                                    type=str)
-        parser_domain.add_argument('--color', action='store_true',
-                                   help='highlight matched strings in color in terminal')
         parser_domain_group = parser_domain.add_mutually_exclusive_group(required=True)
         parser_domain_group.add_argument('--text', action='store_true',
                                          help='returns gathered information including all collector outputs as text')
         parser_domain_group.add_argument('--csv', action='store_true',
                                          help='returns gathered information in csv format')
         parser_domain_group.add_argument('--igrep', type=str, nargs='+', metavar="REGEX",
-                                         help="print command outputs that match the given string or Python3 regular " \
-                                              "expressions REGEX. matching is case insensitive. use named group 'output' " \
+                                         help="print command outputs that match the given string or Python3 regular "
+                                              "expressions REGEX. matching is case insensitive. use named group 'output' "
                                               "to just capture the content of this named group")
         parser_domain_group.add_argument('--grep', type=str, nargs='+', metavar="REGEX",
-                                         help="print command outputs that match the given string or Python3 regular " \
-                                              "expressions REGEX. matching is case sensitive. use named group 'output' " \
+                                         help="print command outputs that match the given string or Python3 regular "
+                                              "expressions REGEX. matching is case sensitive. use named group 'output' "
                                               "to just capture the content of this named group")
+        parser_domain.add_argument('--not', dest="grep_not", action='store_true',
+                                   help='negate the filter logic and only show those domain names that do not match the '
+                                        '--igrep or --grep argument.')
         parser_domain.add_argument('--filter', metavar='IP|DOMAIN', type=str, nargs='*',
                                    help='list of IP addresses or second-level domains (e.g., megacorpone.com) whose '
                                         'information shall be returned. per default, mentioned items are excluded. '
@@ -1158,6 +1170,24 @@ class BaseReportTestCase(BaseKisTestCase):
         parser_domain.add_argument('-I', '--include', metavar='COLLECTOR', type=str, nargs='+', default=[],
                                    help='list of collector names whose outputs should be returned in text mode (see '
                                         'argument --text). per default, all collector information is returned')
+        # setup cname parser
+        parser_cname.add_argument("-w", "--workspaces",
+                                  metavar="WORKSPACE",
+                                  help="query the given workspaces",
+                                  nargs="+",
+                                  required=True,
+                                  type=str)
+        parser_cname.add_argument('--csv',
+                                  required=True,
+                                  action='store_true',
+                                  help='returns gathered information in csv format')
+        parser_cname.add_argument('--filter', metavar='IP|DOMAIN', type=str, nargs='*',
+                                  help='list of IP addresses or second-level domains (e.g., megacorpone.com) whose '
+                                       'information shall be returned. per default, mentioned items are excluded. '
+                                       'add + in front of each item (e.g., +megacorpone.com) to return only these items')
+        parser_cname.add_argument('--scope', choices=[item.name for item in ReportScopeType],
+                                  help='return only second-level domains that are in scope (within) or out of scope '
+                                       '(outside). per default, all information is returned')
         # setup network parser
         parser_network.add_argument("-w", "--workspaces",
                                     metavar="WORKSPACE",
@@ -1165,21 +1195,22 @@ class BaseReportTestCase(BaseKisTestCase):
                                     nargs="+",
                                     required=True,
                                     type=str)
-        parser_network.add_argument('--color', action='store_true',
-                                    help='highlight matched strings in color in terminal')
         parser_network_group = parser_network.add_mutually_exclusive_group(required=True)
         parser_network_group.add_argument('--text', action='store_true',
                                           help='returns gathered information including all collector outputs as text')
         parser_network_group.add_argument('--csv', action='store_true',
                                           help='returns gathered information in csv format')
         parser_network_group.add_argument('--igrep', type=str, nargs='+', metavar="REGEX",
-                                          help="print command outputs that match the given string or Python3 regular " \
-                                               "expressions REGEX. matching is case insensitive. use named group 'output' " \
+                                          help="print command outputs that match the given string or Python3 regular "
+                                               "expressions REGEX. matching is case insensitive. use named group 'output' "
                                                "to just capture the content of this named group")
         parser_network_group.add_argument('--grep', type=str, nargs='+', metavar="REGEX",
-                                          help="print command outputs that match the given string or Python3 regular " \
-                                               "expressions REGEX. matching is case sensitive. use named group 'output' " \
+                                          help="print command outputs that match the given string or Python3 regular "
+                                               "expressions REGEX. matching is case sensitive. use named group 'output' "
                                                "to just capture the content of this named group")
+        parser_network.add_argument('--not', dest="grep_not", action='store_true',
+                                    help='negate the filter logic and only show those IP networks that do not match the '
+                                         '--igrep or --grep argument.')
         parser_network.add_argument('--filter', metavar='NETWORK', type=str, nargs='*',
                                     help='list of IPv4 networks (e.g., 192.168.0.0/24) whose information shall be '
                                          'returned. per default, mentioned items are excluded. add + in front of each '
@@ -1296,7 +1327,7 @@ class BaseReportTestCase(BaseKisTestCase):
                                          'information (e.g., executed commands that did not return any information) in '
                                          'text output (argument --text). per default, all information is returned')
         parser_company.add_argument('-X', '--exclude', metavar='COLLECTOR', type=str, nargs='+', default=[],
-                                    help='list of collector names (e.g., viewdnsreversewhois) whose outputs should not be '
+                                    help='list of collector names (e.g., reversewhois) whose outputs should not be '
                                          'returned in text mode (see argument --text). use argument value "all" to '
                                          'exclude all collectors. per default, no collectors are excluded')
         parser_company.add_argument('-I', '--include', metavar='COLLECTOR', type=str, nargs='+', default=[],
@@ -1331,21 +1362,22 @@ class BaseReportTestCase(BaseKisTestCase):
                                   nargs="+",
                                   required=True,
                                   type=str)
-        parser_vhost.add_argument('--color', action='store_true',
-                                  help='highlight matched strings in color in terminal')
         parser_vhost_group = parser_vhost.add_mutually_exclusive_group(required=True)
         parser_vhost_group.add_argument('--text', action='store_true',
                                         help='returns gathered information including all collector outputs as text')
         parser_vhost_group.add_argument('--csv', action='store_true',
                                         help='returns gathered information in csv format')
         parser_vhost_group.add_argument('--igrep', type=str, nargs='+', metavar="REGEX",
-                                        help="print command outputs that match the given string or Python3 regular " \
-                                             "expressions REGEX. matching is case insensitive. use named group 'output' " \
+                                        help="print command outputs that match the given string or Python3 regular "
+                                             "expressions REGEX. matching is case insensitive. use named group 'output' "
                                              "to just capture the content of this named group")
         parser_vhost_group.add_argument('--grep', type=str, nargs='+', metavar="REGEX",
-                                        help="print command outputs that match the given string or Python3 regular " \
-                                             "expressions REGEX. matching is case sensitive. use named group 'output' " \
+                                        help="print command outputs that match the given string or Python3 regular "
+                                             "expressions REGEX. matching is case sensitive. use named group 'output' "
                                              "to just capture the content of this named group")
+        parser_vhost.add_argument('--not', dest="grep_not", action='store_true',
+                                  help='negate the filter logic and only show those vhost information that do not match '
+                                       'the --igrep or --grep argument.')
         parser_vhost.add_argument('--filter', metavar='DOMAIN|HOSTNAME|IP', type=str, nargs='*',
                                   help='list of second-level domains (e.g., megacorpone.com), host names '
                                        '(e.g., www.megacorpone.com), or IP addresses whose information shall be returned.'
@@ -1450,7 +1482,7 @@ class BaseReportTestCase(BaseKisTestCase):
         parser_file_group.add_argument('--csv',
                                        action='store_true',
                                        help='returns gathered information in csv format')
-        parser_file_group.add_argument('-O', '--export-path',
+        parser_file_group.add_argument('-o', '--export-path',
                                        type=str,
                                        metavar="DIR",
                                        help='exports files to output directory DIR')
@@ -1472,11 +1504,11 @@ class BaseReportTestCase(BaseKisTestCase):
                                       'all information is returned')
         parser_file.add_argument('-X', '--exclude', metavar='COLLECTOR', type=str, nargs='+', default=[],
                                  help='list of collector names (e.g., httpnikto) whose outputs should not be returned in '
-                                      'CSV (see argument --csv) or export (see argument -O) mode. use argument value "all" '
+                                      'CSV (see argument --csv) or export (see argument -o) mode. use argument value "all" '
                                       'to exclude all collectors. per default, no collectors are excluded')
         parser_file.add_argument('-I', '--include', metavar='COLLECTOR', type=str, nargs='+', default=[],
                                  help='list of collector names whose outputs should be returned in CSV (see argument '
-                                      '--csv) or export (see argument -O) mode. per default, all collector information is '
+                                      '--csv) or export (see argument -o) mode. per default, all collector information is '
                                       'returned')
         # setup excel parser
         parser_excel.add_argument('FILE', type=str,
@@ -1496,6 +1528,62 @@ class BaseReportTestCase(BaseKisTestCase):
         parser_excel.add_argument('--scope', choices=[item.name for item in ReportScopeType],
                                   help='return only in scope (within) or out of scope (outside) items. per default, '
                                        'all information is returned')
+        parser_excel.add_argument('--reports', choices=[item.name for item in ExcelReport],
+                                  nargs="+",
+                                  default=[item.name for item in ExcelReport],
+                                  help='import only the following reports into Microsoft Excel')
+        # setup final parser
+        parser_final.add_argument('FILE', type=str,
+                                  help="the path to the microsoft excel file")
+        parser_final.add_argument("-w", "--workspaces",
+                                  metavar="WORKSPACE",
+                                  help="query the given workspaces",
+                                  nargs="+",
+                                  required=True,
+                                  type=str)
+        parser_final.add_argument('-l', '--language',
+                                  type=ReportLanguage.argparse,
+                                  choices=list(ReportLanguage),
+                                  default=ReportLanguage.en,
+                                  help="the final report's language")
+        # setup tls parser
+        parser_tls.add_argument("-w", "--workspaces",
+                                metavar="WORKSPACE",
+                                help="query the given workspaces",
+                                nargs="+",
+                                required=True,
+                                type=str)
+        parser_tls.add_argument('--csv',
+                                required=True,
+                                action='store_true',
+                                help='returns gathered information in csv format')
+        parser_tls.add_argument('--filter', metavar='IP|NETWORK|DOMAIN|HOSTNAME', type=str, nargs='*',
+                                help='list of IP addresses, IP networks, second-level domains (e.g., megacorpone.com), or '
+                                     'host names (e.g., www.megacorpone.com) whose information shall be returned.'
+                                     'per default, mentioned items are excluded. add + in front of each item '
+                                     '(e.g., +192.168.0.1) to return only these items')
+        parser_tls.add_argument('--scope', choices=[item.name for item in ScopeType],
+                                help='return only information about in scope (within) or out of scope (outside) items. '
+                                     'per default, all information is returned')
+        # setup cert parser
+        parser_cert.add_argument("-w", "--workspaces",
+                                 metavar="WORKSPACE",
+                                 help="query the given workspaces",
+                                 nargs="+",
+                                 required=True,
+                                 type=str)
+        parser_cert.add_argument('--csv',
+                                 required=True,
+                                 action='store_true',
+                                 help='returns gathered information in csv format')
+        parser_cert.add_argument('--filter', metavar='IP|NETWORK|DOMAIN|HOSTNAME', type=str, nargs='*',
+                                 help='list of IP addresses, IP networks, second-level domains (e.g., megacorpone.com), or '
+                                      'host names (e.g., www.megacorpone.com) whose information shall be returned.'
+                                      'per default, mentioned items are excluded. add + in front of each item '
+                                      '(e.g., +192.168.0.1) to return only these items')
+        parser_cert.add_argument('--scope', choices=[item.name for item in ScopeType],
+                                 help='return only information about in scope (within) or out of scope (outside) items. '
+                                      'per default, all information is returned')
         self._parser = parser
 
     def arg_parse(self, argument_list: List[str]):

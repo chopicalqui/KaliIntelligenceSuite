@@ -37,6 +37,7 @@ from configs.config import SortingHelpFormatter
 from database.utils import Engine
 from database.report import ReportGenerator
 from database.report import ReportLanguage
+from database.report import ExcelReport
 from database.utils import DeclarativeBase
 
 
@@ -175,13 +176,16 @@ $ kisreport file -w $ws --type xml -I tcpnmap -o $outdir
     parser_host_group.add_argument('--csv', action='store_true',
                                    help='returns gathered information in csv format')
     parser_host_group.add_argument('--igrep', type=str, nargs='+', metavar="REGEX",
-                                   help="print command outputs that match the given string or Python3 regular " \
-                                        "expressions REGEX. matching is case insensitive. use named group 'output' " \
+                                   help="print command outputs that match the given string or Python3 regular "
+                                        "expressions REGEX. matching is case insensitive. use named group 'output' "
                                         "to just capture the content of this named group")
     parser_host_group.add_argument('--grep', type=str, nargs='+', metavar="REGEX",
-                                   help="print command outputs that match the given string or Python3 regular " \
-                                        "expressions REGEX. matching is case sensitive. use named group 'output' " \
+                                   help="print command outputs that match the given string or Python3 regular "
+                                        "expressions REGEX. matching is case sensitive. use named group 'output' "
                                         "to just capture the content of this named group")
+    parser_host.add_argument('--not', dest="grep_not", action='store_true',
+                             help='negate the filter logic and only show those IP addresses that do not match the '
+                                  '--igrep or --grep argument.')
     parser_host.add_argument('--filter', metavar='IP|NETWORK|DOMAIN|HOSTNAME', type=str, nargs='*',
                              help='list of IP addresses, IP networks, second-level domains (e.g., megacorpone.com), or '
                                   'host names (e.g., www.megacorpone.com) whose information shall be returned.'
@@ -215,13 +219,16 @@ $ kisreport file -w $ws --type xml -I tcpnmap -o $outdir
     parser_domain_group.add_argument('--csv', action='store_true',
                                      help='returns gathered information in csv format')
     parser_domain_group.add_argument('--igrep', type=str, nargs='+', metavar="REGEX",
-                                     help="print command outputs that match the given string or Python3 regular " \
-                                          "expressions REGEX. matching is case insensitive. use named group 'output' " \
+                                     help="print command outputs that match the given string or Python3 regular "
+                                          "expressions REGEX. matching is case insensitive. use named group 'output' "
                                           "to just capture the content of this named group")
     parser_domain_group.add_argument('--grep', type=str, nargs='+', metavar="REGEX",
-                                     help="print command outputs that match the given string or Python3 regular " \
-                                          "expressions REGEX. matching is case sensitive. use named group 'output' " \
+                                     help="print command outputs that match the given string or Python3 regular "
+                                          "expressions REGEX. matching is case sensitive. use named group 'output' "
                                           "to just capture the content of this named group")
+    parser_domain.add_argument('--not', dest="grep_not", action='store_true',
+                               help='negate the filter logic and only show those domain names that do not match the '
+                                    '--igrep or --grep argument.')
     parser_domain.add_argument('--filter', metavar='IP|DOMAIN', type=str, nargs='*',
                                help='list of IP addresses or second-level domains (e.g., megacorpone.com) whose '
                                     'information shall be returned. per default, mentioned items are excluded. '
@@ -271,13 +278,16 @@ $ kisreport file -w $ws --type xml -I tcpnmap -o $outdir
     parser_network_group.add_argument('--csv', action='store_true',
                                       help='returns gathered information in csv format')
     parser_network_group.add_argument('--igrep', type=str, nargs='+', metavar="REGEX",
-                                      help="print command outputs that match the given string or Python3 regular " \
-                                           "expressions REGEX. matching is case insensitive. use named group 'output' " \
+                                      help="print command outputs that match the given string or Python3 regular "
+                                           "expressions REGEX. matching is case insensitive. use named group 'output' "
                                            "to just capture the content of this named group")
     parser_network_group.add_argument('--grep', type=str, nargs='+', metavar="REGEX",
-                                      help="print command outputs that match the given string or Python3 regular " \
-                                           "expressions REGEX. matching is case sensitive. use named group 'output' " \
+                                      help="print command outputs that match the given string or Python3 regular "
+                                           "expressions REGEX. matching is case sensitive. use named group 'output' "
                                            "to just capture the content of this named group")
+    parser_network.add_argument('--not', dest="grep_not", action='store_true',
+                                help='negate the filter logic and only show those IP networks that do not match the '
+                                     '--igrep or --grep argument.')
     parser_network.add_argument('--filter', metavar='NETWORK', type=str, nargs='*',
                                 help='list of IPv4 networks (e.g., 192.168.0.0/24) whose information shall be '
                                      'returned. per default, mentioned items are excluded. add + in front of each '
@@ -435,13 +445,16 @@ $ kisreport file -w $ws --type xml -I tcpnmap -o $outdir
     parser_vhost_group.add_argument('--csv', action='store_true',
                                     help='returns gathered information in csv format')
     parser_vhost_group.add_argument('--igrep', type=str, nargs='+', metavar="REGEX",
-                                    help="print command outputs that match the given string or Python3 regular " \
-                                         "expressions REGEX. matching is case insensitive. use named group 'output' " \
+                                    help="print command outputs that match the given string or Python3 regular "
+                                         "expressions REGEX. matching is case insensitive. use named group 'output' "
                                          "to just capture the content of this named group")
     parser_vhost_group.add_argument('--grep', type=str, nargs='+', metavar="REGEX",
-                                    help="print command outputs that match the given string or Python3 regular " \
-                                         "expressions REGEX. matching is case sensitive. use named group 'output' " \
+                                    help="print command outputs that match the given string or Python3 regular "
+                                         "expressions REGEX. matching is case sensitive. use named group 'output' "
                                          "to just capture the content of this named group")
+    parser_vhost.add_argument('--not', dest="grep_not", action='store_true',
+                              help='negate the filter logic and only show those vhost information that do not match '
+                                   'the --igrep or --grep argument.')
     parser_vhost.add_argument('--filter', metavar='DOMAIN|HOSTNAME|IP', type=str, nargs='*',
                               help='list of second-level domains (e.g., megacorpone.com), host names '
                                    '(e.g., www.megacorpone.com), or IP addresses whose information shall be returned.'
@@ -592,6 +605,10 @@ $ kisreport file -w $ws --type xml -I tcpnmap -o $outdir
     parser_excel.add_argument('--scope', choices=[item.name for item in ReportScopeType],
                               help='return only in scope (within) or out of scope (outside) items. per default, '
                                    'all information is returned')
+    parser_excel.add_argument('--reports', choices=[item.name for item in ExcelReport],
+                              nargs="+",
+                              default=[item.name for item in ExcelReport],
+                              help='import only the following reports into Microsoft Excel')
     # setup final parser
     parser_final.add_argument('FILE', type=str,
                               help="the path to the microsoft excel file")

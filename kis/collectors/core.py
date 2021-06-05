@@ -108,7 +108,7 @@ class BaseUtils:
         self._irrelevant_http_files = config.irrelevant_http_files
         self._utils_dir = os.path.join(os.path.dirname(__file__), '..', 'configs')
         self._args = args
-        self._re_company_name = re.compile("^.+?({})$".format(config.re_legal_entities), re.IGNORECASE)
+        self._re_company_name = config.get_organization_re()
         self._re_robots_txt = [re.compile("^allow: *(?P<path>/.*)$", re.IGNORECASE),
                                re.compile("^disallow: *(?P<path>/.*)$", re.IGNORECASE),
                                re.compile("^(?P<path>/.*)", re.IGNORECASE)]
@@ -145,13 +145,17 @@ class BaseUtils:
         """
         return list(csv.reader(values, dialect="excel"))
 
-    def is_verified_company_name(self, name) -> bool:
+    def is_verified_company_name(self, name) -> str:
         """
-        This method returns true if the company name ends with a legal entity type
+        This method returns the extracted company name or None if no company name matched.
         :param name: The name of the company
         :return:
         """
-        return self._re_company_name.match(name) is not None
+        result = None
+        match = self._re_company_name.match(name)
+        if match:
+            result = match.group("name").strip()
+        return result
 
     @staticmethod
     def add_workspace(session: Session, name: str) -> Workspace:
@@ -718,6 +722,8 @@ class BaseUtils:
                     report_item.details = "potentially new password {}".format(password)
                 elif username is not None and password is None:
                     report_item.details = "potentially new user {}".format(username)
+                else:
+                    report_item.details = "potentially new item"
                 report_item.report_type = "CREDS"
                 report_item.notify()
         elif email:
@@ -1007,11 +1013,21 @@ class BaseUtils:
         signature_algorithm = certificate.signature_asym_algorithm
         hash_algorithm = certificate.signature_hash_algorithm
         for host_name in host_names:
-            self.add_domain_name(session=session,
-                                 workspace=command.workspace,
-                                 item=host_name,
-                                 source=source,
-                                 report_item=report_item)
+            host_name_object = self.add_domain_name(session=session,
+                                                    workspace=command.workspace,
+                                                    item=host_name,
+                                                    source=source,
+                                                    report_item=report_item)
+            if host_name_object:
+                for company in certificate.organizations:
+                    self.add_company(session=session,
+                                     workspace=command.workspace,
+                                     name=company,
+                                     domain_name=host_name_object.domain_name,
+                                     source=source,
+                                     report_item=report_item)
+            else:
+                logger.debug("ignoring host name due to invalid domain: {}".format(host_name))
         if command.service or command.host_name or command.company:
             if signature_algorithm and hash_algorithm:
                 self.add_cert_info(session=session,
@@ -1033,12 +1049,13 @@ class BaseUtils:
                                    report_item=report_item)
             else:
                 logger.error("certificate does not contain signature or hash algorithm and therefore was not added.")
-        for company in certificate.organizations:
-            self.add_company(session=session,
-                             workspace=command.workspace,
-                             name=company,
-                             source=source,
-                             report_item=report_item)
+        if not host_names:
+            for company in certificate.organizations:
+                self.add_company(session=session,
+                                 workspace=command.workspace,
+                                 name=company,
+                                 source=source,
+                                 report_item=report_item)
         for email_address in certificate.email_addresses:
             self.add_email(session=session,
                            workspace=command.workspace,

@@ -191,34 +191,58 @@ class BaseExtraServiceInfoExtraction:
                 host_name = self._domain_utils.add_domain_name(session=self._session,
                                                                workspace=self._workspace,
                                                                item=info,
-                                                               host=self._service.host,
                                                                source=self._source,
                                                                verify=True,
                                                                report_item=self._report_item)
                 if not host_name:
                     logger.debug("ignoring computer name '{}' due to invalid format".format(info))
+                else:
+                    resource_type = DnsResourceRecordType.a if self._service.host.version == 4 \
+                        else DnsResourceRecordType.aaaa
+                    self._domain_utils.add_host_host_name_mapping(self._session,
+                                                                  host=self._service.host,
+                                                                  host_name=host_name,
+                                                                  source=self._source,
+                                                                  mapping_type=resource_type,
+                                                                  report_item=self._report_item)
             info = XmlUtils.get_element_text(script_tag, "./elem[@key='DNS_Domain_Name']")
             if info is not None:
                 host_name = self._domain_utils.add_domain_name(session=self._session,
                                                                workspace=self._workspace,
                                                                item=info,
-                                                               host=self._service.host,
                                                                source=self._source,
                                                                verify=True,
                                                                report_item=self._report_item)
                 if not host_name:
                     logger.debug("ignoring domain name '{}' due to invalid format".format(info))
+                else:
+                    resource_type = DnsResourceRecordType.a if self._service.host.version == 4 \
+                        else DnsResourceRecordType.aaaa
+                    self._domain_utils.add_host_host_name_mapping(self._session,
+                                                                  host=self._service.host,
+                                                                  host_name=host_name,
+                                                                  source=self._source,
+                                                                  mapping_type=resource_type,
+                                                                  report_item=self._report_item)
             info = XmlUtils.get_element_text(script_tag, "./elem[@key='DNS_Tree_Name']")
             if info is not None:
                 host_name = self._domain_utils.add_domain_name(session=self._session,
                                                                workspace=self._workspace,
                                                                item=info,
-                                                               host=self._service.host,
                                                                source=self._source,
                                                                verify=True,
                                                                report_item=self._report_item)
                 if not host_name:
                     logger.debug("ignoring tree name '{}' due to invalid format".format(info))
+                else:
+                    resource_type = DnsResourceRecordType.a if self._service.host.version == 4 \
+                        else DnsResourceRecordType.aaaa
+                    self._domain_utils.add_host_host_name_mapping(self._session,
+                                                                  host=self._service.host,
+                                                                  host_name=host_name,
+                                                                  source=self._source,
+                                                                  mapping_type=resource_type,
+                                                                  report_item=self._report_item)
 
     def extract(self, extra_info_tag):
         """This method extracts the required information."""

@@ -320,6 +320,8 @@ class CollectorClass(BaseTlsCollector, ServiceCollector, HostNameServiceCollecto
                                                             raise NotImplementedError(
                                                                 "unexpected JSON format (missing attribute "
                                                                 "'cipher_suite' and 'name')")
+                                                else:
+                                                    raise ValueError("no TLS information found")
                                         else:
                                             raise NotImplementedError(
                                                 "unexpected JSON format (missing attribute "

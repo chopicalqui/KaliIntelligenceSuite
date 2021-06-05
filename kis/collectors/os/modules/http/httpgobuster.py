@@ -53,7 +53,7 @@ class CollectorClass(BaseHttpGoBuster, ServiceCollector, HostNameServiceCollecto
                          timeout=0,
                          mode="dir",
                          **kwargs)
-        self._re_path = re.compile("^(.*?) \(Status:(.*)\) \[Size:(.*)\]")
+        self._re_path = re.compile("^(.*?) \(Status:(.*?)\) \[Size:(.*?)\]")
         self._re_wildcard_response = re.compile("^$\[\-\] Wildcard response found: (?P<value>.+?) => (?P<status>[0-9])+$")
 
     @staticmethod
@@ -107,7 +107,7 @@ class CollectorClass(BaseHttpGoBuster, ServiceCollector, HostNameServiceCollecto
                                          wordlists,
                                          self._user,
                                          self._password,
-                                         additional_arguments=["-l"])
+                                         additional_arguments=["-d"])
                 collectors.extend(tmp)
             else:
                 for credential in service.credentials:
@@ -119,7 +119,7 @@ class CollectorClass(BaseHttpGoBuster, ServiceCollector, HostNameServiceCollecto
                                                  wordlists,
                                                  credential.username,
                                                  credential.password,
-                                                 additional_arguments=["-l"])
+                                                 additional_arguments=["-d"])
                         collectors.extend(tmp)
         return collectors
 

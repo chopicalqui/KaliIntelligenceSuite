@@ -102,7 +102,8 @@ class CollectorClass(BaseDnsCollector, DomainCollector, ServiceCollector):
         collectors = []
         if self.match_nmap_service_name(service) and not self._dns_server:
             domain_name = session.query(DomainName).filter(or_(DomainName.scope == ScopeType.all,
-                                                               DomainName.scope == ScopeType.strict)).all()
+                                                               DomainName.scope == ScopeType.strict,
+                                                               DomainName.scope == ScopeType.vhost)).all()
             for item in domain_name:
                 os_command = [self._path_host,
                               "-{}".format(service.host.version),

@@ -2798,14 +2798,73 @@ class Engine:
                             kex_algorithm=KeyExchangeAlgorithm.ecdhe, auth_algorithm=AuthenticationAlgorithm.rsa,
                             enc_algorithm=SymmetricAlgorithm.camellia256_gcm, enc_algorithm_bits=256, aead=False,
                             hash_algorithm=HashAlgorithm.sha384, security=CipherSuiteSecurity.recommended))
-            session.add(CipherSuite(iana_name='TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256',
-                                    gnutls_name='ECDHE-RSA-CHACHA20-POLY1305', byte_1=0xCC, byte_2=0xA8,
-                                    protocol_version=CipherSuiteProtocolVersion.tls,
-                                    kex_algorithm=KeyExchangeAlgorithm.ecdhe,
+
+            # Manually added
+            # https://testssl.sh/openssl-iana.mapping.html
+            session.add(CipherSuite(iana_name='TLS_RSA_EXPORT1024_WITH_DES_CBC_SHA',
+                                    openssl_name='EXP1024-DES-CBC-SHA', byte_1=0x00, byte_2=0x62,
+                                    protocol_version=CipherSuiteProtocolVersion.tls_export,
+                                    kex_algorithm=KeyExchangeAlgorithm.rsa1024,
                                     auth_algorithm=AuthenticationAlgorithm.rsa,
-                                    enc_algorithm=SymmetricAlgorithm.chacha20_poly1305, enc_algorithm_bits=256,
-                                    aead=True, hash_algorithm=HashAlgorithm.sha256,
-                                    security=CipherSuiteSecurity.recommended))
+                                    enc_algorithm=SymmetricAlgorithm.des_cbc, enc_algorithm_bits=56,
+                                    aead=False, hash_algorithm=HashAlgorithm.sha1,
+                                    security=CipherSuiteSecurity.weak))
+            session.add(CipherSuite(iana_name='TLS_RSA_EXPORT1024_WITH_RC4_56_SHA',
+                                    openssl_name='EXP1024-RC4-SHA', byte_1=0x00, byte_2=0x61,
+                                    protocol_version=CipherSuiteProtocolVersion.tls_export,
+                                    kex_algorithm=KeyExchangeAlgorithm.rsa1024,
+                                    auth_algorithm=AuthenticationAlgorithm.rsa,
+                                    enc_algorithm=SymmetricAlgorithm.rc4_56, enc_algorithm_bits=56,
+                                    aead=False, hash_algorithm=HashAlgorithm.sha1,
+                                    security=CipherSuiteSecurity.weak))
+            session.add(CipherSuite(iana_name='SSL_CK_DES_192_EDE3_CBC_WITH_MD5',
+                                    openssl_name='DES-CBC3-MD5', byte_1=0x0700, byte_2=0xc0,
+                                    protocol_version=CipherSuiteProtocolVersion.ssl,
+                                    kex_algorithm=None,
+                                    auth_algorithm=None,
+                                    enc_algorithm=SymmetricAlgorithm.des_cbc, enc_algorithm_bits=168,
+                                    aead=False, hash_algorithm=HashAlgorithm.md5,
+                                    security=CipherSuiteSecurity.weak))
+            session.add(CipherSuite(iana_name='SSL_CK_DES_64_CBC_WITH_MD5',
+                                    openssl_name='DES-CBC-MD5', byte_1=0x0600, byte_2=0xc40,
+                                    protocol_version=CipherSuiteProtocolVersion.ssl,
+                                    kex_algorithm=None,
+                                    auth_algorithm=None,
+                                    enc_algorithm=SymmetricAlgorithm.des_cbc, enc_algorithm_bits=168,
+                                    aead=False, hash_algorithm=HashAlgorithm.md5,
+                                    security=CipherSuiteSecurity.weak))
+            session.add(CipherSuite(iana_name='SSL_CK_RC2_128_CBC_EXPORT40_WITH_MD5',
+                                    openssl_name='EXP-RC2-CBC-MD5', byte_1=0x0400, byte_2=0x80,
+                                    protocol_version=CipherSuiteProtocolVersion.ssl,
+                                    kex_algorithm=KeyExchangeAlgorithm.rsa512,
+                                    auth_algorithm=None,
+                                    enc_algorithm=SymmetricAlgorithm.rc2_cbc_128, enc_algorithm_bits=128,
+                                    aead=False, hash_algorithm=HashAlgorithm.md5,
+                                    security=CipherSuiteSecurity.weak))
+            session.add(CipherSuite(iana_name='SSL_CK_RC2_128_CBC_WITH_MD5',
+                                    openssl_name='RC2-CBC-MD5', byte_1=0x0300, byte_2=0x80,
+                                    protocol_version=CipherSuiteProtocolVersion.ssl,
+                                    kex_algorithm=KeyExchangeAlgorithm.rsa,
+                                    auth_algorithm=None,
+                                    enc_algorithm=SymmetricAlgorithm.rc2_cbc_128, enc_algorithm_bits=40,
+                                    aead=False, hash_algorithm=HashAlgorithm.md5,
+                                    security=CipherSuiteSecurity.weak))
+            session.add(CipherSuite(iana_name='SSL_CK_RC4_128_EXPORT40_WITH_MD5',
+                                    openssl_name='EXP-RC4-MD5', byte_1=0x0200, byte_2=0x80,
+                                    protocol_version=CipherSuiteProtocolVersion.ssl,
+                                    kex_algorithm=KeyExchangeAlgorithm.rsa512,
+                                    auth_algorithm=None,
+                                    enc_algorithm=SymmetricAlgorithm.rc4_128, enc_algorithm_bits=128,
+                                    aead=False, hash_algorithm=HashAlgorithm.md5,
+                                    security=CipherSuiteSecurity.weak))
+            session.add(CipherSuite(iana_name='SSL_CK_RC4_128_WITH_MD5',
+                                    openssl_name='RC4-MD5', byte_1=0x0100, byte_2=0x80,
+                                    protocol_version=CipherSuiteProtocolVersion.ssl,
+                                    kex_algorithm=KeyExchangeAlgorithm.rsa,
+                                    auth_algorithm=None,
+                                    enc_algorithm=SymmetricAlgorithm.rc4_128, enc_algorithm_bits=128,
+                                    aead=False, hash_algorithm=HashAlgorithm.md5,
+                                    security=CipherSuiteSecurity.weak))
 
 
 class Setup:

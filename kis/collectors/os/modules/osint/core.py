@@ -508,21 +508,29 @@ class BaseKisImportCompany(BaseKisImport):
         return collectors
 
 
-class BaseWhoisHostNetwork(BaseCollector):
+class BaseWhois(BaseCollector):
     """
-    This class implements core functionality whois-based collectors that collect information based on hosts and networks
+    This class implements core functionality for whois-based collectors
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, whois_attributes: list, **kwargs):
         super().__init__(active_collector=False,
                          timeout=10,
                          delay_min=2,
                          delay_max=5,
                          **kwargs)
-        self._relevant_attributes = ["descr", "address", "role", "orgname", "organization", "org-name"]
-        self._re_organizations = re.compile("^(({})):\s+(?P<name>.+?{}).*$".format(")|(".join(self._relevant_attributes),
-                                                                                 self._re_legal_entities),
-                                            re.IGNORECASE)
+        self._re_organizations = self.get_organization_re(whois_attributes)
+
+
+class BaseWhoisHostNetwork(BaseWhois):
+    """
+    This class implements core functionality for whois-based collectors that collect information based on hosts
+    and networks
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(whois_attributes=["descr", "address", "role", "orgname", "organization", "org-name"],
+                         **kwargs)
         self._re_ip_network_range = re.compile("^((inetnum)|(netrange)):\s*(?P<range>.+)\s*$", re.IGNORECASE)
         self._re_ipv4_network_cidr = re.compile("^cidr:\s*(?P<range>.+)\s*$", re.IGNORECASE)
         self._re_ipv6_network_cidr = re.compile("^inet6num:\s*(?P<range>.+)\s*$", re.IGNORECASE)

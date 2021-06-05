@@ -84,6 +84,25 @@ class ReportLanguage(enum.Enum):
             return s
 
 
+class ExcelReport(enum.Enum):
+    host = enum.auto()
+    vhost = enum.auto()
+    domain = enum.auto()
+    cname = enum.auto()
+    network = enum.auto()
+    email = enum.auto()
+    company = enum.auto()
+    path = enum.auto()
+    credential = enum.auto()
+    additionalinfo = enum.auto()
+    file = enum.auto()
+    breach = enum.auto()
+    vulnerability = enum.auto()
+    command = enum.auto()
+    tls = enum.auto()
+    cert = enum.auto()
+
+
 class _BaseReportGenerator:
     """
     This class implements all base functionality for generating reports
@@ -108,6 +127,7 @@ class _BaseReportGenerator:
         self._session = session
         self._workspaces = workspaces
         self._kwargs = kwargs
+        self._not_grep = args.grep_not if "grep_not" in args else False
         self.description = description
         self.title = title
         self._color = "nocolor" in args and not getattr(args, "nocolor")
@@ -283,8 +303,18 @@ class _HostReportGenerator(_BaseReportGenerator):
                          session,
                          workspaces,
                          name="host info",
-                         title="Overview Service Details Per IP Address",
-                         description="The table provides an overview of all identified services per IP address.",
+                         title="IP address details",
+                         description="This table provides a consolidated view about all IP addresses (see column "
+                                     "'IP Address (IP)'), their virtual hosts (see column 'Host Name (HN)') as well as "
+                                     "their identified TCP/UDP services (see columns 'UDP/TCP' and 'Port'). "
+                                     ""
+                                     "If you are just interested in service information on the IP address level, then "
+                                     "filter for value 'Host' in column 'Type'. If you are interested in service "
+                                     "information on the virtual host level, filter for value 'VHost' in column "
+                                     "'Type'. "
+                                     ""
+                                     "Note that host ames, which do not resolve to an IP address, are not listed in "
+                                     "this sheet; use sheet 'host name info' to analyse them.",
                          **kwargs)
 
     def _filter(self, host: Host) -> bool:
@@ -344,18 +374,27 @@ class _HostReportGenerator(_BaseReportGenerator):
                 if self._filter(host):
                     ipv4_network = None
                     companies = None
-                    scope = None
                     if host.ipv4_network:
                         ipv4_network = host.ipv4_network.network
                         companies = host.ipv4_network.companies_str
-                    for result in self._egrep_text(host):
+                    results = self._egrep_text(host)
+                    if self._not_grep and not results:
                         rows.append([host.id,
                                      workspace.name,
                                      ipv4_network,
                                      companies,
                                      host.in_scope,
                                      host.ip,
-                                     result])
+                                     None])
+                    elif not self._not_grep:
+                        for result in results:
+                            rows.append([host.id,
+                                         workspace.name,
+                                         ipv4_network,
+                                         companies,
+                                         host.in_scope,
+                                         host.ip,
+                                         result])
         return rows
 
     def get_csv(self) -> List[List[str]]:
@@ -374,13 +413,15 @@ class _HostReportGenerator(_BaseReportGenerator):
                    "In Scope (IP)",
                    "OS Family",
                    "OS Details",
+                   "Host Names/IP Addresses",
                    "Second-Level Domain (SLD)",
                    "Scope (SLD)",
                    "Host Name (HN)",
                    "In Scope (HN)",
-                   "Name (HN)",
+                   "In Scope (IP or HN)",
+                   "Name Only (HN)",
                    "Company (HN)",
-                   "Environment",
+                   "Environment (HN)",
                    "UDP/TCP",
                    "Port",
                    "Service (SRV)",
@@ -410,6 +451,7 @@ class _HostReportGenerator(_BaseReportGenerator):
                     host_names = [mapping.host_name
                                   for mapping in host.get_host_host_name_mappings([DnsResourceRecordType.a,
                                                                                    DnsResourceRecordType.aaaa])]
+                    host_names_str = ", ".join([item.full_name for item in host_names])
                     network_str = host.ipv4_network.network if host.ipv4_network else None
                     network_id = host.ipv4_network.id if host.ipv4_network else None
                     network_companies = host.ipv4_network.companies_str if host.ipv4_network else None
@@ -435,9 +477,11 @@ class _HostReportGenerator(_BaseReportGenerator):
                                            host.in_scope,
                                            host.os_family,
                                            host.os_details,
+                                           host_names_str,
                                            None,
                                            None,
                                            host.address,
+                                           host.in_scope,
                                            host.in_scope,
                                            None,
                                            None,
@@ -467,6 +511,10 @@ class _HostReportGenerator(_BaseReportGenerator):
                                            len(service.vulnerabilities)])
                     for host_name in host_names:
                         environment = self._domain_config.get_environment(host_name)
+                        hosts = [mapping.host
+                                 for mapping in host_name.get_host_host_name_mappings([DnsResourceRecordType.a,
+                                                                                       DnsResourceRecordType.aaaa])]
+                        hosts_str = ", ".join([item.address for item in hosts])
                         host_name_sources = host_name.sources_str
                         network_str = host.ipv4_network.network if host.ipv4_network else None
                         for service in host_name.services:
@@ -485,10 +533,12 @@ class _HostReportGenerator(_BaseReportGenerator):
                                                host.in_scope,
                                                host.os_family,
                                                host.os_details,
+                                               hosts_str,
                                                host_name.domain_name.name,
                                                host_name.domain_name.scope_str,
                                                host_name.full_name,
                                                host_name._in_scope,
+                                               host.in_scope or host_name._in_scope,
                                                host_name.name,
                                                host_name.companies_str,
                                                environment,
@@ -527,9 +577,11 @@ class _HostReportGenerator(_BaseReportGenerator):
                                        host.in_scope,
                                        host.os_family,
                                        host.os_details,
+                                       host_names_str,
                                        None,
                                        None,
                                        host.address,
+                                       host.in_scope,
                                        host.in_scope,
                                        None,
                                        None,
@@ -560,6 +612,10 @@ class _HostReportGenerator(_BaseReportGenerator):
                         for host_name in host_names:
                             environment = self._domain_config.get_environment(host_name)
                             host_name_sources = host_name.sources_str
+                            hosts = [mapping.host
+                                     for mapping in host_name.get_host_host_name_mappings([DnsResourceRecordType.a,
+                                                                                           DnsResourceRecordType.aaaa])]
+                            hosts_str = ", ".join([item.address for item in hosts])
                             result.append([workspace.name,
                                            "VHost",
                                            network_str,
@@ -571,10 +627,12 @@ class _HostReportGenerator(_BaseReportGenerator):
                                            host.in_scope,
                                            host.os_family,
                                            host.os_details,
+                                           hosts_str,
                                            host_name.domain_name.name,
                                            host_name.domain_name.scope_str,
                                            host_name.full_name,
                                            host_name._in_scope,
+                                           host.in_scope or host_name._in_scope,
                                            host_name.name,
                                            host_name.companies_str,
                                            environment,
@@ -676,12 +734,16 @@ class _HostNameReportGenerator(_BaseReportGenerator):
         super().__init__(args,
                          session,
                          workspaces,
-                         name="vhost info",
-                         title="Overview Service Details Per Host Name",
-                         description="The table provides an overview of all identified services per host name. Note "
-                                     "that column 'In Scope' contains TRUE, if the host name is in scope and the host "
-                                     "name resolves to an IP address, which is in scope as well. Otherwise, the column "
-                                     "is FALSE.",
+                         name="host name info",
+                         title="Host name details",
+                         description="The table provides details about all identified host names (see column "
+                                     "'Host Name (HN)') and their respective services (see columns 'UDP/TCP' and "
+                                     "'Port'). "
+                                     ""
+                                     "Note that column 'In Scope (HN)' is true, if the respective host name itself "
+                                     "is in scope of the engagement. Column 'In Scope (VHost)' is true, if column "
+                                     "'In Scope (HN)' is true and the respective host name resolves to at least one "
+                                     "IP address, which is in scope of the engagement as well.",
                          **kwargs)
 
     def _filter(self, host_name: HostName) -> bool:
@@ -750,7 +812,8 @@ class _HostNameReportGenerator(_BaseReportGenerator):
                 for host_name in domain.host_names:
                     if self._filter(host_name):
                         in_scope = host_name.in_scope(CollectorType.host_name_service)
-                        for row in self._egrep_text(host_name):
+                        results = self._egrep_text(host_name)
+                        if self._not_grep and not results:
                             rows.append([host_name.id,
                                          workspace.name,
                                          domain.name,
@@ -758,34 +821,44 @@ class _HostNameReportGenerator(_BaseReportGenerator):
                                          in_scope,
                                          host_name.full_name,
                                          host_name.summary,
-                                         row])
+                                         None])
+                        elif not self._not_grep:
+                            for row in results:
+                                rows.append([host_name.id,
+                                             workspace.name,
+                                             domain.name,
+                                             companies[host_name.domain_name.name],
+                                             in_scope,
+                                             host_name.full_name,
+                                             host_name.summary,
+                                             row])
         return rows
 
     def get_csv(self) -> List[List[str]]:
         """
         Method determines whether the given item shall be included into the report
         """
-        rvalue = [["DB ID (Domain)",
-                   "DB ID (Host Name)",
-                   "Workspace",
-                   "Second-Level Domain",
-                   "Second-Level Domain Scope",
-                   "Companies",
-                   "Host Name",
-                   "Host Name In Scope",
-                   "Vhost In Scope",
-                   "Host Name Summary",
+        rvalue = [["Workspace",
+                   "Second-Level Domain (SLD)",
+                   "Scope (SLD)",
+                   "Companies (SLD)",
+                   "Host Name (HN)",
+                   "In Scope (HN)",
+                   "In Scope (Vhost)",
+                   "Name Only (HN)",
+                   "Environment (HN)",
+                   "Summary (HN)",
                    "IP Addresses",
                    "Service Summary",
                    "TCP/UDP",
                    "Port",
-                   "Service",
-                   "Service State",
-                   "Service Sources",
+                   "Service (SRV)",
+                   "State (SRV)",
+                   "Sources (SRV)",
                    "TLS",
                    "Reason",
-                   "Service Name",
-                   "Service Confidence",
+                   "Name (SRV)",
+                   "Confidence (SRV)",
                    "NMap Service Name Original",
                    "Nmap Product",
                    "Version",
@@ -795,7 +868,9 @@ class _HostNameReportGenerator(_BaseReportGenerator):
                    "Sources (Host Name)",
                    "Sources (Service)",
                    "No. Commands (Service)",
-                   "No. Vulnerabilities (Service)"]]
+                   "No. Vulnerabilities (Service)",
+                   "DB ID (SLD)",
+                   "DB ID (HN)"]]
         for workspace in self._workspaces:
             for domain in workspace.domain_names:
                 for host_name in domain.host_names:
@@ -804,17 +879,18 @@ class _HostNameReportGenerator(_BaseReportGenerator):
                                                                                           DnsResourceRecordType.aaaa])
                         host_name_sources = host_name.sources_str
                         in_scope = host_name.in_scope(CollectorType.host_name_service)
+                        environment = self._domain_config.get_environment(host_name)
                         if host_name.services:
                             for service in host_name.services:
-                                rvalue.append([domain.id,
-                                               host_name.id,
-                                               workspace.name,
+                                rvalue.append([workspace.name,
                                                domain.name,
                                                domain.scope_str,
                                                domain.companies_str,
                                                host_name.full_name,
                                                host_name._in_scope,
                                                in_scope,
+                                               host_name.name,
+                                               environment,
                                                host_name.summary,
                                                ipv4_addresses,
                                                service.summary,
@@ -836,20 +912,24 @@ class _HostNameReportGenerator(_BaseReportGenerator):
                                                host_name_sources,
                                                service.sources_str,
                                                len(service.get_completed_commands()),
-                                               len(service.vulnerabilities)])
+                                               len(service.vulnerabilities),
+                                               domain.id,
+                                               host_name.id])
                         else:
-                            rvalue.append([domain.id,
-                                           host_name.id,
-                                           workspace.name,
+                            rvalue.append([workspace.name,
                                            domain.name,
                                            domain.scope_str,
                                            domain.companies_str,
                                            host_name.full_name,
                                            host_name._in_scope,
                                            in_scope,
+                                           host_name.name,
+                                           environment,
                                            host_name.summary,
                                            ipv4_addresses, None, None, None, None, None, None, None, None, None, None,
-                                           None, None, None, None, None, None, host_name_sources, None, None, None])
+                                           None, None, None, None, None, None, host_name_sources, None, None, None,
+                                           domain.id,
+                                           host_name.id])
             return rvalue
 
 
@@ -863,13 +943,18 @@ class _DomainNameReportGenerator(_BaseReportGenerator):
                          session,
                          workspaces,
                          name="domain info",
-                         title="Overview Domain Names",
-                         description="The table provides an overview of all identified second-level domains and host "
-                                     "names. If column 'Host Name In-Scope' is true, then host name collectors like "
-                                     "dnshost are allowed to collect information based on this host name. Column "
-                                     "'Vhost In-Scope' is true, if the host name is in scope (see column "
-                                     "'Host Name In-Scope' and it resolves to an in-scope IP address (see column "
-                                     "'Resolves To In-Scope IP').",
+                         title="Domain name details",
+                         description="The table provides an overview about all identified second-level domains "
+                                     "(see column 'Second-Level Domain (SLD)') and their sub-domains (see "
+                                     "column 'Host Name (HN)'). In addition, it documents to which IP addresses the "
+                                     "respective sub-domains resolve. If no IP address is available, then either "
+                                     "collector dnshostpublic or dnshost have not been executed or the sub-domain "
+                                     "could not be resolved. "
+                                     ""
+                                     "Note that column 'In Scope (HN)' is true, if the respective host name itself "
+                                     "is in scope of the engagement. Column 'In Scope (VHost)' is true, if column "
+                                     "'In Scope (HN)' is true and the respective host name resolves to at least one "
+                                     "IP address, which is in scope of the engagement as well.",
                          **kwargs)
 
     def _filter(self, domain_name: DomainName) -> bool:
@@ -921,16 +1006,27 @@ class _DomainNameReportGenerator(_BaseReportGenerator):
                  "DB ID (Hostname)",
                  "Second-Level Domain",
                  "Second-Level Domain Scope",
+                 "Companies",
                  "Result"]]
         for workspace in self._workspaces:
             for domain in workspace.domain_names:
                 if self._filter(domain):
-                    for result in self._egrep_text(domain):
+                    results = self._egrep_text(domain)
+                    if self._not_grep and not results:
                         rows.append([domain.id,
                                      workspace.name,
                                      domain.name,
                                      domain.scope_str,
-                                     result])
+                                     domain.companies_str,
+                                     None])
+                    elif not self._not_grep:
+                        for result in results:
+                            rows.append([domain.id,
+                                         workspace.name,
+                                         domain.name,
+                                         domain.scope_str,
+                                         domain.companies_str,
+                                         result])
         return rows
 
     def get_csv(self) -> List[List[str]]:
@@ -938,24 +1034,25 @@ class _DomainNameReportGenerator(_BaseReportGenerator):
         This method returns all information as CSV.
         :return:
         """
-        rows = [["DB ID (Domain)",
-                 "DB ID (Host Name)",
-                 "Workspace",
-                 "Second-Level Domain",
-                 "Second-Level Domain Scope",
-                 "Host Name",
-                 "Host Name In Scope",
-                 "Vhost In-Scope",
-                 "Companies",
-                 "Host Name Sources",
-                 "Environment",
+        rows = [["Workspace",
+                 "Second-Level Domain (SLD)",
+                 "Scope (SLD)",
+                 "Host Name (HN)",
+                 "In Scope (HN)",
+                 "In Scope (Vhost)",
+                 "Companies (SLD)",
+                 "Sources (HN)",
+                 "Name Only (HN)",
+                 "Environment (HN)",
                  "Record Type",
                  "Resolves To",
                  "Resolves To In Scope",
                  "Resolves to Network",
                  "Resolves to Companies",
                  "Number of Open Services",
-                 "Number of Closed Services"]]
+                 "Number of Closed Services",
+                 "DB ID (SLD)",
+                 "DB ID (HN)"]]
         for workspace in self._workspaces:
             for domain in workspace.domain_names:
                 if self._filter(domain):
@@ -965,9 +1062,7 @@ class _DomainNameReportGenerator(_BaseReportGenerator):
                         printed = False
                         for mapping in host_name.resolved_host_name_mappings:
                             printed = True
-                            rows.append([domain.id,
-                                         host_name.id,
-                                         workspace.name,
+                            rows.append([workspace.name,
                                          domain.name,
                                          domain.scope_str,
                                          host_name.full_name,
@@ -975,6 +1070,7 @@ class _DomainNameReportGenerator(_BaseReportGenerator):
                                          host_name.in_scope(CollectorType.host_name_service),
                                          domain.companies_str,
                                          sources,
+                                         host_name.name,
                                          environment,
                                          mapping.type_str,
                                          mapping.resolved_host_name.full_name,
@@ -983,16 +1079,16 @@ class _DomainNameReportGenerator(_BaseReportGenerator):
                                          mapping.resolved_host_name.domain_name.companies_str
                                          if mapping.resolved_host_name.domain_name else None,
                                          None,
-                                         None])
+                                         None,
+                                         domain.id,
+                                         host_name.id])
                         for mapping in host_name.host_host_name_mappings:
                             printed = True
                             open_services = len([service for service in mapping.host.services
                                                  if service.state == ServiceState.Open])
                             closed_services = len([service for service in mapping.host.services
                                                    if service.state == ServiceState.Closed])
-                            rows.append([domain.id,
-                                         host_name.id,
-                                         workspace.name,
+                            rows.append([workspace.name,
                                          domain.name,
                                          domain.scope_str,
                                          host_name.full_name,
@@ -1000,6 +1096,7 @@ class _DomainNameReportGenerator(_BaseReportGenerator):
                                          host_name.in_scope(CollectorType.host_name_service),
                                          domain.companies_str,
                                          sources,
+                                         host_name.name,
                                          environment,
                                          mapping.type_str,
                                          mapping.host.address,
@@ -1008,11 +1105,11 @@ class _DomainNameReportGenerator(_BaseReportGenerator):
                                          mapping.host.ipv4_network.companies_str
                                          if mapping.host.ipv4_network else None,
                                          open_services,
-                                         closed_services])
+                                         closed_services,
+                                         domain.id,
+                                         host_name.id])
                         if not printed:
-                            rows.append([domain.id,
-                                         host_name.id,
-                                         workspace.name,
+                            rows.append([workspace.name,
                                          domain.name,
                                          domain.scope_str,
                                          host_name.full_name,
@@ -1020,6 +1117,7 @@ class _DomainNameReportGenerator(_BaseReportGenerator):
                                          host_name.in_scope(CollectorType.host_name_service),
                                          domain.companies_str,
                                          sources,
+                                         host_name.name,
                                          environment,
                                          None,
                                          None,
@@ -1027,7 +1125,9 @@ class _DomainNameReportGenerator(_BaseReportGenerator):
                                          None,
                                          None,
                                          None,
-                                         None])
+                                         None,
+                                         domain.id,
+                                         host_name.id])
         return rows
 
     def final_report(self, workbook: Workbook):
@@ -1180,114 +1280,139 @@ class _PathReportGenerator(_BaseReportGenerator):
         This method returns all information as CSV.
         :return:
         """
-        rows = [["DB ID",
-                 "Workspace",
+        rows = [["Workspace",
                  "Type",
-                 "In Scope",
-                 "Path Type",
+                 "Network/Second-Level-Domain (NSLD)",
+                 "Scope (NSLD)",
+                 "Company (NSLD)",
                  "Address",
-                 "Host Names",
-                 "Network",
-                 "Address Summary",
-                 "Service Summary",
+                 "In Scope (Address)",
+                 "In Scope (Vhost)",
+                 "Resolves To (RT)",
+                 "Summary (IP/Vhost)",
+                 "Summary (Service)",
                  "TCP/UDP",
                  "Port",
+                 "Type (Path)",
                  "Access Code",
                  "Size Bytes",
                  "Full Path",
+                 "Root Directory",
                  "Query",
-                 "Sources"]]
+                 "Sources (Path)",
+                 "DB ID (Path)"]]
         for workspace in self._workspaces:
             for domain in workspace.domain_names:
                 for host_name in domain.host_names:
+                    hosts_str = host_name.get_host_host_name_mappings_str([DnsResourceRecordType.a,
+                                                                           DnsResourceRecordType.aaaa])
                     for service in host_name.services:
                         for path in service.paths:
                             if self._filter(path):
                                 if path.queries:
                                     for query in path.queries:
-                                        rows.append([path.id,
-                                                     workspace.name,
+                                        rows.append([workspace.name,
                                                      "vhost",
+                                                     host_name.domain_name.name,
+                                                     host_name.domain_name.scope_str,
+                                                     host_name.domain_name.companies_str,
+                                                     host_name.full_name,
+                                                     host_name._in_scope,
                                                      host_name.in_scope(CollectorType.host_name_service),
-                                                     path.type_str,
-                                                     service.address,
-                                                     None,
-                                                     None,
+                                                     hosts_str,
                                                      host_name.summary,
                                                      service.summary,
                                                      service.protocol_str,
                                                      service.port,
+                                                     path.type_str,
                                                      path.return_code,
                                                      path.size_bytes,
                                                      path.get_path(),
+                                                     path.name == "/",
                                                      query.query,
-                                                     path.sources_str])
+                                                     path.sources_str,
+                                                     path.id])
                                 else:
-                                    rows.append([path.id,
-                                                 workspace.name,
+                                    rows.append([workspace.name,
                                                  "vhost",
+                                                 host_name.domain_name.name,
+                                                 host_name.domain_name.scope_str,
+                                                 host_name.domain_name.companies_str,
+                                                 host_name.full_name,
+                                                 host_name._in_scope,
                                                  host_name.in_scope(CollectorType.host_name_service),
-                                                 path.type_str,
-                                                 service.address,
-                                                 None,
-                                                 None,
+                                                 hosts_str,
                                                  host_name.summary,
                                                  service.summary,
                                                  service.protocol_str,
                                                  service.port,
+                                                 path.type_str,
                                                  path.return_code,
                                                  path.size_bytes,
                                                  path.get_path(),
+                                                 path.name == "/",
                                                  None,
-                                                 path.sources_str])
+                                                 path.sources_str,
+                                                 path.id])
             for host in workspace.hosts:
                 host_names = host.get_host_host_name_mappings_str([DnsResourceRecordType.a,
-                                                                   DnsResourceRecordType.aaaa,
-                                                                   DnsResourceRecordType.ptr])
+                                                                   DnsResourceRecordType.aaaa])
                 if host.ipv4_network:
                     ipv4_network = host.ipv4_network.network
+                    scope = host.ipv4_network.scope_str
+                    companies = host.ipv4_network.companies_str
                 else:
                     ipv4_network = None
+                    scope = None
+                    companies = None
                 for service in host.services:
                     for path in service.paths:
                         if self._filter(path):
                             if path.queries:
                                 for query in path.queries:
-                                    rows.append([path.id,
-                                                 workspace.name,
+                                    rows.append([workspace.name,
                                                  "host",
-                                                 host.in_scope,
-                                                 path.type_str,
-                                                 service.address,
-                                                 host_names,
                                                  ipv4_network,
+                                                 scope,
+                                                 companies,
+                                                 host.address,
+                                                 host.in_scope,
+                                                 None,
+                                                 host_names,
                                                  host.summary,
                                                  service.summary,
                                                  service.protocol_str,
                                                  service.port,
+                                                 path.type_str,
                                                  path.return_code,
                                                  path.size_bytes,
                                                  path.get_path(),
+                                                 path.name == "/",
                                                  query.query,
-                                                 path.sources_str])
+                                                 path.sources_str,
+                                                 path.id])
                             else:
-                                rows.append([path.id,
-                                             workspace.name,
+                                rows.append([workspace.name,
                                              "host",
-                                             host.in_scope,
-                                             path.type_str,
-                                             service.address,
-                                             host_names,
                                              ipv4_network,
+                                             scope,
+                                             companies,
+                                             host.address,
+                                             host.in_scope,
+                                             None,
+                                             host_names,
                                              host.summary,
                                              service.summary,
                                              service.protocol_str,
                                              service.port,
+                                             path.type_str,
                                              path.return_code,
                                              path.size_bytes,
                                              path.get_path(),
+                                             path.name == "/",
                                              None,
-                                             path.sources_str])
+                                             path.sources_str,
+                                             path.id])
         return rows
 
 
@@ -2385,14 +2510,22 @@ class _NetworkReportGenerator(_BaseReportGenerator):
         for workspace in self._workspaces:
             for ipv4_network in workspace.ipv4_networks:
                 if self._filter(ipv4_network):
-                    for row in self._egrep_text(ipv4_network):
+                    results = self._egrep_text(ipv4_network)
+                    if self._not_grep and not results:
                         rows.append([ipv4_network.id,
                                      workspace.name,
                                      ipv4_network.network,
                                      ipv4_network.companies_str,
                                      ipv4_network.in_scope,
-                                     row])
-
+                                     None])
+                    elif not self._not_grep:
+                        for row in results:
+                            rows.append([ipv4_network.id,
+                                         workspace.name,
+                                         ipv4_network.network,
+                                         ipv4_network.companies_str,
+                                         ipv4_network.in_scope,
+                                         row])
         return rows
 
 
@@ -2491,7 +2624,7 @@ class _CompanyReportGenerator(_BaseReportGenerator):
         This method returns all information as CSV.
         :return:
         """
-        rows = [["DB ID", "Workspace", "Company", "Owns", "Owns Type", "In Scope", "Sources"]]
+        rows = [["DB ID", "Workspace", "Company", "Owns", "Owns Type", "In Scope", "Owns Scope", "Sources"]]
         for workspace in self._workspaces:
             results = self._session.query(Company)\
                 .join(Workspace)\
@@ -2509,6 +2642,7 @@ class _CompanyReportGenerator(_BaseReportGenerator):
                                network.network,
                                "network",
                                in_scope,
+                               network.scope_str,
                                sources]
                         rows.append(row)
                     for domain in company.domain_names:
@@ -2519,6 +2653,7 @@ class _CompanyReportGenerator(_BaseReportGenerator):
                                domain.name,
                                "domain",
                                in_scope,
+                               domain.scope_str,
                                sources]
                         rows.append(row)
                     if not has_results:
@@ -2528,6 +2663,7 @@ class _CompanyReportGenerator(_BaseReportGenerator):
                                None,
                                None,
                                in_scope,
+                               None,
                                sources]
                         rows.append(row)
         return rows
@@ -2943,10 +3079,13 @@ class _VulnerabilityReportGenerator(_BaseReportGenerator):
         :return:
         """
         rows = [["Workspace",
-                 "Network",
-                 "Address",
-                 "Address Summary",
-                 "Host Names",
+                 "Network (NW)",
+                 "Scope (NW)",
+                 "Company (NW)",
+                 "IP Address (IP)",
+                 "IP Summary",
+                 "In Scope (IP)",
+                 "Host Names (HN)",
                  "Protocol",
                  "Port",
                  "Service",
@@ -2966,15 +3105,25 @@ class _VulnerabilityReportGenerator(_BaseReportGenerator):
                     AdditionalInfo.name == "CVEs").all()
         for item in additional_info:
             if self._filter(item):
+                network = None
+                companies = None
+                network_scope = None
                 host = item.service.host
                 host_names = host.get_host_host_name_mappings_str([DnsResourceRecordType.a,
                                                                    DnsResourceRecordType.aaaa,
                                                                    DnsResourceRecordType.ptr])
+                if host.ipv4_network:
+                    network = host.ipv4_network.network
+                    companies = host.ipv4_network.companies_str
+                    network_scope = host.ipv4_network.scope_str
                 for entry in BaseUtils.get_csv_as_list(item.values):
                     tmp = [host.workspace.name,
-                           host.ipv4_network.network if host.ipv4_network else None,
+                           network,
+                           network_scope,
+                           companies,
                            host.address,
                            host.summary,
+                           host.in_scope,
                            host_names,
                            item.service.protocol_str,
                            item.service.port,
@@ -2994,22 +3143,22 @@ class ReportGenerator:
                  args,
                  session: Session,
                  workspaces: List[Workspace], **kwargs):
-        self._generators = {"host": _HostReportGenerator,
-                            "vhost": _HostNameReportGenerator,
-                            "domain": _DomainNameReportGenerator,
-                            "cname": _CanonicalNameReportGenerator,
-                            "network": _NetworkReportGenerator,
-                            "path": _PathReportGenerator,
-                            "credential": _CredentialReportGenerator,
-                            "email": _EmailReportGenerator,
-                            "company": _CompanyReportGenerator,
-                            "additional-info": _AdditionalInfoReportGenerator,
-                            "file": _FileReportGenerator,
-                            "breach": _BreachReportGenerator,
-                            "vulnerability": _VulnerabilityReportGenerator,
-                            "command": _CollectorReportGenerator,
-                            "tls": _TlsInfoReportGenerator,
-                            "cert": _CertInfoReportGenerator}
+        self._generators = {ExcelReport.host.name: _HostReportGenerator,
+                            ExcelReport.vhost.name: _HostNameReportGenerator,
+                            ExcelReport.domain.name: _DomainNameReportGenerator,
+                            ExcelReport.cname.name: _CanonicalNameReportGenerator,
+                            ExcelReport.network.name: _NetworkReportGenerator,
+                            ExcelReport.path.name: _PathReportGenerator,
+                            ExcelReport.credential.name: _CredentialReportGenerator,
+                            ExcelReport.email.name: _EmailReportGenerator,
+                            ExcelReport.company.name: _CompanyReportGenerator,
+                            ExcelReport.additionalinfo.name: _AdditionalInfoReportGenerator,
+                            ExcelReport.file.name: _FileReportGenerator,
+                            ExcelReport.breach.name: _BreachReportGenerator,
+                            ExcelReport.vulnerability.name: _VulnerabilityReportGenerator,
+                            ExcelReport.command.name: _CollectorReportGenerator,
+                            ExcelReport.tls.name: _TlsInfoReportGenerator,
+                            ExcelReport.cert.name: _CertInfoReportGenerator}
         self._args = args
         self._workspaces = workspaces
         self._session = session
@@ -3026,7 +3175,9 @@ class ReportGenerator:
                 os.unlink(self._args.FILE)
             workbook = Workbook()
             first = True
-            for generator in self._generators.values():
+            for report_str in self._args.reports:
+                print("* creating report for: {}".format(report_str))
+                generator = self._generators[report_str]
                 instance = generator(self._args, self._session, self._workspaces)
                 csv_list = instance.get_csv()
                 if len(csv_list) > 1:

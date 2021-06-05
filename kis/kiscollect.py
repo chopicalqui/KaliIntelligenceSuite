@@ -110,6 +110,11 @@ $ kiscollect -w $ws --debug --whoisdomain --whoishost --dnsdumpster --securitytr
 --dnscrobattld --theharvester --hunter --builtwith --haveibeenbreach --haveibeenpaste --awsslurp --reversewhois \
 --crtshcompany --dnscrobatreversehost --dnscrobatreversenetwork --dnsreverselookup --shodanhost --shodannetwork
 
+run the following command to obtain a list of all in-scope company names. review the items in column "Owns" and
+"Owns Scope". if column "Owns Scope" is not "all", then you might want to add the respective item in "Owns" in scope
+as well as it belongs to the in-scope company
+$ kisreport company -w $ws --csv --scope within | csvlook
+
 obtain CSV list of identified host names
 $ kisreport domain -w $ws --csv | csvlook
 

@@ -118,11 +118,12 @@ class DatabaseImporter(BaseDatabaseXmlImporter):
             domain_name = self._domain_utils.add_domain_name(session=self._session,
                                                              workspace=self._workspace,
                                                              item=domain_name_str,
-                                                             host=host,
                                                              source=source,
                                                              verify=True,
                                                              report_item=self._report_item)
-            if domain_type == "user":
+            if not domain_name:
+                print("[I]   ignoring host name: {}".format(domain_name_str.lower()), file=self._stdout)
+            elif domain_type == "user":
                 self._domain_utils.add_host_host_name_mapping(self._session,
                                                               host=host,
                                                               host_name=domain_name,
@@ -164,8 +165,10 @@ class DatabaseImporter(BaseDatabaseXmlImporter):
                 type = DatabaseImporter.get_xml_attribute("addrtype", addr.attrib)
                 if type == "ipv4":
                     ipv4_address = DatabaseImporter.get_xml_attribute("addr", addr.attrib)
+                    resource_type = DnsResourceRecordType.a
                 if type == "ipv6":
                     ipv6_address = DatabaseImporter.get_xml_attribute("addr", addr.attrib)
+                    resource_type = DnsResourceRecordType.aaaa
                 if type == "mac":
                     mac_address = DatabaseImporter.get_xml_attribute("addr", addr.attrib)
             if not host_up:
@@ -233,12 +236,18 @@ class DatabaseImporter(BaseDatabaseXmlImporter):
                             host_name = self._domain_utils.add_domain_name(session=self._session,
                                                                            workspace=host.workspace,
                                                                            item=hostname,
-                                                                           host=host,
                                                                            source=source,
                                                                            verify=True,
                                                                            report_item=self._report_item)
                             if not host_name:
                                 print("[I]   ignoring host name: {}".format(hostname.lower()), file=self._stdout)
+                            else:
+                                self._domain_utils.add_host_host_name_mapping(self._session,
+                                                                              host=host,
+                                                                              host_name=host_name,
+                                                                              source=source,
+                                                                              mapping_type=resource_type,
+                                                                              report_item=self._report_item)
                         extra_info = DatabaseImporter.get_xml_attribute("extrainfo", service_tag.attrib)
                         if extra_info:
                             service.nmap_extra_info = extra_info
@@ -247,21 +256,26 @@ class DatabaseImporter(BaseDatabaseXmlImporter):
                                 domain = match_domain.group("domain")
                                 domain_level = len(domain)
                                 if hostname_levels == 1 and domain_level > 1:
-                                    self._domain_utils.add_domain_name(session=self._session,
-                                                                       workspace=self._workspace,
-                                                                       item="{}.{}".format(hostname, domain),
-                                                                       host=host,
-                                                                       source=source,
-                                                                       verify=True,
-                                                                       report_item=self._report_item)
+                                    host_name = self._domain_utils.add_domain_name(session=self._session,
+                                                                                   workspace=self._workspace,
+                                                                                   item="{}.{}".format(hostname, domain),
+                                                                                   source=source,
+                                                                                   verify=True,
+                                                                                   report_item=self._report_item)
                                 else:
-                                    self._domain_utils.add_domain_name(session=self._session,
-                                                                       workspace=self._workspace,
-                                                                       item=domain,
-                                                                       host=host,
-                                                                       source=source,
-                                                                       verify=True,
-                                                                       report_item=self._report_item)
+                                    host_name = self._domain_utils.add_domain_name(session=self._session,
+                                                                                   workspace=self._workspace,
+                                                                                   item=domain,
+                                                                                   source=source,
+                                                                                   verify=True,
+                                                                                   report_item=self._report_item)
+                                if host_name:
+                                    self._domain_utils.add_host_host_name_mapping(self._session,
+                                                                                  host=host,
+                                                                                  host_name=host_name,
+                                                                                  source=source,
+                                                                                  mapping_type=resource_type,
+                                                                                  report_item=self._report_item)
                         self._analyze_fingerprint(service, port)
                         # Extract additional information from XML
                         self.extractor.execute(session=self._session,

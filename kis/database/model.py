@@ -346,6 +346,8 @@ class CipherSuiteSecurity(enum.Enum):
 class CipherSuiteProtocolVersion(enum.Enum):
     tls_export = enum.auto()
     tls = enum.auto()
+    ssl = enum.auto()
+# sudo -u postgres psql kis -c "alter type public.ciphersuiteprotocolversion add value 'ssl';"
 
 
 class HashAlgorithm(enum.Enum):
@@ -447,10 +449,12 @@ class SymmetricAlgorithm(enum.Enum):
     idea_cbc = enum.auto()
     null = enum.auto()
     rc2_cbc_40 = enum.auto()
+    rc2_cbc_128 = enum.auto()
     rc4_128 = enum.auto()
+    rc4_56 = enum.auto()
     rc4_40 = enum.auto()
     seed_cbc = enum.auto()
-# alter type public.symmetricalgorithm add value 'RC4_56';
+# alter type public.symmetricalgorithm add value 'rc2_cbc_128';
 
 
 class TlsVersion(enum.Enum):
@@ -1156,7 +1160,7 @@ class Network(DeclarativeBase):
     def companies_str(self) -> str:
         result = None
         if self.companies:
-            result = ", ".join([item.name for item in self.companies])
+            result = ", ".join(["{} (in scope: {})".format(item.name, item.in_scope) for item in self.companies])
         return result
 
     def is_in_network(self, address: str) -> bool:
@@ -1315,7 +1319,7 @@ class HostName(DeclarativeBase):
     def companies_str(self) -> str:
         result = None
         if self.domain_name and self.domain_name.companies:
-            result = ", ".join([item.name for item in self.domain_name.companies])
+            result = ", ".join(["{} (in scope: {})".format(item.name, item.in_scope) for item in self.domain_name.companies])
         return result
 
     @property
@@ -1720,7 +1724,7 @@ class DomainName(DeclarativeBase):
     def companies_str(self) -> str:
         result = None
         if self.companies:
-            result = ", ".join([item.name for item in self.companies])
+            result = ", ".join(["{} (in scope: {})".format(item.name, item.in_scope) for item in self.companies])
         return result
 
     def has_hosts(self):
@@ -3914,7 +3918,7 @@ class TlsInfoCipherSuiteMapping(DeclarativeBase):
         elif text in ['p-521']:
             result = KeyExchangeAlgorithm.p_521
         else:
-            raise NotImplementedError("case not implemented")
+            result = None
         return result
 
 
@@ -4000,13 +4004,15 @@ class TlsInfo(DeclarativeBase):
 
     @staticmethod
     def get_tls_preference(text: str) -> TlsPreference:
-        text = text.lower()
-        if text in TlsPreference.__members__:
-            rvalue = TlsPreference[text]
-        else:
-            rvalue = None
-            logger.error("TLS version '{}' not found. update TlsPreference class and TlsInfo.get_tls_preference in "
-                         "database.model.py".format(text))
+        rvalue = None
+        if text:
+            text = text.lower()
+            if text in TlsPreference.__members__:
+                rvalue = TlsPreference[text]
+            else:
+                rvalue = None
+                logger.error("TLS version '{}' not found. update TlsPreference class and TlsInfo.get_tls_preference in "
+                             "database.model.py".format(text))
         return rvalue
 
     def is_processable(self,

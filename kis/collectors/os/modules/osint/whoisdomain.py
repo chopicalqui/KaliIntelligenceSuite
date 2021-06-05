@@ -31,10 +31,10 @@ from collectors.os.modules.core import DomainCollector
 from collectors.os.modules.core import BaseCollector
 from collectors.os.modules.core import CommandFailureRule
 from collectors.os.modules.core import OutputType
+from collectors.os.modules.osint.core import BaseWhois
 from collectors.os.core import PopenCommand
 from collectors.core import DomainUtils
 from collectors.core import IpUtils
-from collectors.core import BaseUtils
 from database.model import Source
 from database.model import HostName
 from database.model import Command
@@ -46,39 +46,23 @@ from sqlalchemy.orm.session import Session
 logger = logging.getLogger('whoisdomain')
 
 
-class CollectorClass(BaseCollector, DomainCollector):
+class CollectorClass(BaseWhois, DomainCollector):
     """This class implements a collector module that is automatically incorporated into the application."""
 
     def __init__(self, **kwargs):
         super().__init__(priority=210,
-                         timeout=10,
-                         active_collector=False,
-                         delay_min=2,
-                         delay_max=5,
+                         whois_attributes=["Registrant Name",
+                                           "Registrant",
+                                           "Registrant Organization",
+                                           "Registrant Contact Organisation",
+                                           "name",
+                                           "address",
+                                           "org",
+                                           "contact",
+                                           "nom",
+                                           "International Organisation",
+                                           "organization"],
                          **kwargs)
-        self._re_organizations = [
-            re.compile("^\s*Registrant Name\s*:\s*(?P<name>.+?{}).*$".format(self._re_legal_entities),
-                       re.IGNORECASE),
-            re.compile("^\s*Registrant\s*:\s*(?P<name>.+?{}).*$".format(self._re_legal_entities),
-                       re.IGNORECASE),
-            re.compile("^\s*Registrant Organization\s*:\s*(?P<name>.+?{}).*$".format(self._re_legal_entities),
-                       re.IGNORECASE),
-            re.compile("^\s*Registrant Contact Organisation\s*:\s*(?P<name>.+?{}).*$".format(self._re_legal_entities),
-                       re.IGNORECASE),
-            re.compile("^\s*name\s*:\s*(?P<name>.+?{}).*$".format(self._re_legal_entities),
-                       re.IGNORECASE),
-            re.compile("^\s*address\s*:\s*(?P<name>.+?{}).*$".format(self._re_legal_entities),
-                       re.IGNORECASE),
-            re.compile("^\s*org\s*:\s*(?P<name>.+?{}).*$".format(self._re_legal_entities),
-                       re.IGNORECASE),
-            re.compile("^\s*contact\s*:\s*(?P<name>.+?{}).*$".format(self._re_legal_entities),
-                       re.IGNORECASE),
-            re.compile("^\s*nom\s*:\s*(?P<name>.+?{}).*$".format(self._re_legal_entities),
-                       re.IGNORECASE),
-            re.compile("^\s*International Organisation\s*:\s*(?P<name>.+?{}).*$".format(self._re_legal_entities),
-                       re.IGNORECASE),
-            re.compile("^\s*organization\s*:\s*(?P<name>.+?{}).*$".format(self._re_legal_entities),
-                       re.IGNORECASE)]
         self._re_name_server_info = re.compile("^{}\s+\[(?P<ipv4>{})\]\s*$".format(DomainUtils.RE_DOMAIN,
                                                                                    IpUtils.RE_IPV4))
 
@@ -153,18 +137,17 @@ class CollectorClass(BaseCollector, DomainCollector):
         if command.return_code > 0:
             self._set_execution_failed(session, command)
         for line in command.stdout_output:
-            for regex in self._re_organizations:
-                match = regex.match(line)
-                if match:
-                    name = match.group("name").strip().lower()
-                    company = self.add_company(session=session,
-                                               workspace=command.workspace,
-                                               name=name,
-                                               domain_name=command.host_name.domain_name,
-                                               source=source,
-                                               report_item=report_item)
-                    if not company:
-                        logger.debug("ignoring company: {}".format(name))
+            match = self._re_organizations.match(line)
+            if match:
+                name = match.group("name").strip().lower()
+                company = self.add_company(session=session,
+                                           workspace=command.workspace,
+                                           name=name,
+                                           domain_name=command.host_name.domain_name,
+                                           source=source,
+                                           report_item=report_item)
+                if not company:
+                    logger.debug("ignoring company: {}".format(name))
             emails = self._email_utils.extract_emails(line)
             match = self._re_name_server_info.match(line)
             if match:

@@ -31,6 +31,7 @@ from collectors.os.modules.core import BaseCollector
 from collectors.os.modules.core import BaseHydra
 from collectors.os.modules.core import BaseMedusa
 from collectors.os.modules.core import BaseNmap
+from collectors.os.modules.core import BaseMsfConsole
 from collectors.os.modules.core import ServiceDescriptorBase
 from collectors.os.modules.core import BaseExtraServiceInfoExtraction
 from collectors.core import XmlUtils
@@ -76,6 +77,19 @@ class BaseSmbMedusa(BaseMedusa):
     This class implements basic functionality for SMB collectors that use Medusa.
     """
     def __init__(self, priority, timeout, **kwargs):
+        super().__init__(priority=priority,
+                         timeout=timeout,
+                         service_descriptors=SmbServiceDescriptor(),
+                         **kwargs)
+
+
+class BaseSmbMsfConsole(BaseMsfConsole):
+    """
+    This class implements basic functionality for HTTP collectors that use changeme.
+    """
+    def __init__(self, priority,
+                 timeout,
+                 **kwargs):
         super().__init__(priority=priority,
                          timeout=timeout,
                          service_descriptors=SmbServiceDescriptor(),
