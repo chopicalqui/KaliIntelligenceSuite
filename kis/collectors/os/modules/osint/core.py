@@ -515,7 +515,7 @@ class BaseWhois(BaseCollector):
 
     def __init__(self, whois_attributes: list, **kwargs):
         super().__init__(active_collector=False,
-                         timeout=10,
+                         timeout=30,
                          delay_min=2,
                          delay_max=5,
                          **kwargs)
@@ -529,7 +529,13 @@ class BaseWhoisHostNetwork(BaseWhois):
     """
 
     def __init__(self, **kwargs):
-        super().__init__(whois_attributes=["descr", "address", "role", "orgname", "organization", "org-name"],
+        super().__init__(whois_attributes=["address",
+                                           "descr",
+                                           "address",
+                                           "role",
+                                           "orgname",
+                                           "organization",
+                                           "org-name"],
                          **kwargs)
         self._re_ip_network_range = re.compile("^((inetnum)|(netrange)):\s*(?P<range>.+)\s*$", re.IGNORECASE)
         self._re_ipv4_network_cidr = re.compile("^cidr:\s*(?P<range>.+)\s*$", re.IGNORECASE)

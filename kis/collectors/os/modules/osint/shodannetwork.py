@@ -83,7 +83,7 @@ class CollectorClass(BaseKisImportNetwork):
         code etc.
         """
         dedup_host_names = {}
-        if command.return_code:
+        if command.return_code > 0:
             self._set_execution_failed(session=session, command=command)
             return
         for json_object in command.json_output:

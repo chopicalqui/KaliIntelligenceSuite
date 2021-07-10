@@ -310,7 +310,7 @@ class BaseAmass(BaseDnsCollector, DomainCollector):
         :param process: The PopenCommand object that executed the given result. This object holds stderr, stdout, return
         code etc.
         """
-        if command.return_code != 0:
+        if command.return_code > 0:
             self._set_execution_failed(session, command)
         for line in command.stdout_output:
             match_dns = self._re_dns.match(line)

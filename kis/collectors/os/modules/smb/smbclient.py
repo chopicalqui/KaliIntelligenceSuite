@@ -97,7 +97,7 @@ class CollectorClass(BaseSmbClient, ServiceCollector):
         code etc.
         """
         command.hint = []
-        command.hide = command.return_code != 0
+        command.hide = command.return_code > 0
         for line in command.stdout_output:
             line = line.strip()
             match_share = self._re_shares.match(line)

@@ -748,8 +748,8 @@ class Engine:
             
             -- If web service, then add the default path '/' to the path table
             IF ((TG_OP = 'INSERT' OR TG_OP = 'UPDATE') AND NEW.state = 'Open' AND
-                (NEW.nmap_service_name IN ('ssl|http', 'http', 'http-alt', 'https', 'http-proxy', 'sgi-soap', 'caldav') OR
-                 NEW.nessus_service_name IN ('www', 'http-alt', 'http', 'https', 'pcsync-https', 'homepage', 'greenbone-administrator', 'openvas-administrator')) AND
+                (NEW.nmap_service_name IN ('ssl|http', 'http', https', 'http-alt', 'https-alt', 'http-proxy', 'https-proxy', ''sgi-soap', 'caldav') OR
+                 NEW.nessus_service_name IN ('www', 'http', 'https', 'http-alt', 'https-alt', 'pcsync-http', 'pcsync-https', 'homepage', 'greenbone-administrator', 'openvas-administrator')) AND
                 NOT EXISTS(SELECT * FROM path WHERE service_id = NEW.id AND name = '/')) THEN
                 INSERT INTO path (service_id, name, type, creation_date) VALUES (NEW.id, '/', 'Http', NOW());
             END IF;

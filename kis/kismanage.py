@@ -296,15 +296,15 @@ class ManageDatabase:
         if self._arguments.module == "hostname":
             scope = ReportScopeType[self._arguments.scope]
             in_scope = scope == ReportScopeType.within
-            for host_name in self._get_items("HOSTNAME"):
+            for host_name_str in self._get_items("HOSTNAME"):
                 if self._arguments.add or self._arguments.Add:
                     host_name = self._domain_utils.add_host_name(session=session,
                                                                  workspace=workspace,
-                                                                 name=host_name,
+                                                                 name=host_name_str,
                                                                  in_scope=in_scope,
                                                                  source=source)
                     if not host_name:
-                        raise ValueError("adding host name '{}' failed".format(host_name))
+                        raise ValueError("adding host name '{}' failed".format(host_name_str))
                 elif self._arguments.sharphound:
                     with open(host_name, "rb") as file:
                         json_object = json.loads(file.read())
@@ -329,11 +329,13 @@ class ManageDatabase:
                 elif self._arguments.delete or self._arguments.Delete:
                     self._domain_utils.delete_host_name(session=session,
                                                         workspace=workspace,
-                                                        host_name=host_name)
+                                                        host_name=host_name_str)
                 else:
-                    result = self._domain_utils.get_host_name(session=session, workspace=workspace, host_name=host_name)
+                    result = self._domain_utils.get_host_name(session=session,
+                                                              workspace=workspace,
+                                                              host_name=host_name_str)
                     if not result:
-                        raise ValueError("cannot set scope as host name '{}' does not exist".format(host_name))
+                        raise ValueError("cannot set scope as host name '{}' does not exist".format(host_name_str))
                     elif result._in_scope != in_scope:
                         result._in_scope = in_scope
 

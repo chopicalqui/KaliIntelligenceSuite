@@ -2016,17 +2016,16 @@ class BaseCrackMapExec(BaseCollector):
         :return: List of Collector instances that shall be processed.
         """
         collectors = []
-        ipv4_address = service.host.ipv4_address
-        if ipv4_address and self.match_service_port(service):
+        if self.match_service_port(service):
             os_command = [self._path_crackmapexec, module, "--port", service.port]
             if not service.has_credentials and self._user and self._password:
                 os_command += self._create_credential_arguments(self._user, self._password, self._domain, self._hashes)
                 os_command += arguments
-                os_command.append(ipv4_address)
+                os_command.append(service.host.address)
                 collectors.append(self._get_or_create_command(session, os_command, collector_name, service=service))
             elif not service.has_credentials and not self._user and not self._password:
                 os_command += arguments
-                os_command.append(ipv4_address)
+                os_command.append(service.host.address)
                 collectors.append(self._get_or_create_command(session, os_command, collector_name, service=service))
             else:
                 for item in service.credentials:
@@ -2036,7 +2035,7 @@ class BaseCrackMapExec(BaseCollector):
                                                                         item.domain,
                                                                         item.type != CredentialType.Cleartext)
                         os_command += arguments
-                        os_command.append(ipv4_address)
+                        os_command.append(service.host.address)
                         collectors.append(self._get_or_create_command(session,
                                                                       os_command,
                                                                       collector_name,
@@ -2150,7 +2149,7 @@ class BaseChangeme(BaseCollector):
         code etc.
         """
         found_credentials = False
-        if command.return_code != 0:
+        if command.return_code > 0:
             self._set_execution_failed(session, command)
         for json_object in command.json_output:
             if "results" in json_object:
@@ -2646,7 +2645,7 @@ class BaseNmap(BaseCollector):
         """
         if command.xml_output:
             utils = NmapUtils(command.xml_output)
-            if command.return_code != 0:
+            if command.return_code > 0:
                 self._set_execution_failed(session, command)
                 return
             if command.collector_name.type == CollectorType.service:

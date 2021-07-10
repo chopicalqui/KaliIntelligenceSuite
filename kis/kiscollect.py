@@ -88,16 +88,25 @@ $ kiscollect -w $ws --debug --whoisdomain --whoishost --dnsdumpster --securitytr
 --dnscrobattld --theharvester --hunter --builtwith --haveibeenbreach --haveibeenpaste --awsslurp
 
 review collected domain information and eventually add additional second-level domains and sub-domains in scope
-$ kisreport domain -w $ws --csv | csvcut -c "Second-Level Domain Scope","Second-Level Domain","Companies" | sort -u | csvlook
+$ kisreport domain -w $ws --csv --scope outside | csvcut -c "Second-Level Domain (SLD)","Scope (SLD)","Companies (SLD)" \
+    | csvsort -c "Second-Level Domain (SLD)" | csvlook
 $ domains=
 $ kismanage domain -w $ws -s {all,strict} $domains
 $ hostnames=
 $ kismanage hostname -w $ws --add $domains $hostnames
 
+search whois entries of out-of-scope domains for company information (e.g., email address, name servers, phone numbers)
+that indicate that domain belong to the target company. if they do, then add them in scope
+$ kisreport domain -w $ws --igrep "(($name)|($phone)|($nameserver))" -I whoisdomain --scope outside | csvlook
+
 review collected network information and eventually add networks in scope
 $ kisreport network -w $ws --csv | csvlook
 $ networks=
 $ kismanage network -w $ws -s {all,strict} $networks
+
+search whois entries of out-of-scope networks for company information (e.g., email address, name servers, phone numbers)
+that indicate that networks belong to the target company. if they do, then add them in scope
+$ kisreport network -w $ws --igrep "(($name)|($phone)|($nameserver))" -I whoisnetwork --scope outside | csvlook
 
 review collected company information and eventually add companies in scope
 $ kisreport company -w $ws --csv | csvlook
@@ -120,6 +129,8 @@ $ kisreport domain -w $ws --csv | csvlook
 
 obtain CSV list of identified IPv4/IPv6 addresses
 $ kisreport host -w $ws --csv | csvlook
+
+You might want to repeat the above steps until there are no new in-scope second-level domains.
 
 
 - II. active intel gathering during external and internal penetration tests
@@ -147,7 +158,8 @@ $ kiscollect -w $ws --debug --strict -t5 --ftphydra --snmphydra --snmpcheck --sn
 --dnsaxfr --ftpfilelist --certopenssl --httpntlmnmap --ikescan --anyservicenmap --smbcme --httpburpsuitepro
 
 review collected domain information and eventually add domains in scope
-$ kisreport domain -w $ws --csv | csvcut -c "Second-Level Domain Scope","Second-Level Domain","Companies" | sort -u | csvlook
+$ kisreport domain -w $ws --csv --scope outside | csvcut -c "Second-Level Domain (SLD)","Scope (SLD)","Companies (SLD)" \
+    | csvsort -c "Second-Level Domain (SLD)" | csvlook
 $ domains=
 $ kismanage domain -w $ws -s {all,strict} $domains
 
@@ -162,7 +174,7 @@ $ kiscollect -w $ws --debug --strict -t5 --ftphydra --snmphydra --snmpcheck --sn
 --vhost domain
 
 collect screenshots with aquatone
-$ kisreport path -w $ws --scope within --type Http --csv | csvcut -H -c 15 | aquatone -out aquatone
+$ kisreport path -w $ws --scope within --type Http --csv | csvcut -c "Full Path" | grep -v "Full Path" | aquatone -out aquatone
 
 export collected information into microsoft excel
 $ kisreport excel /tmp/kis-scan-results.xlsx -w $ws
@@ -195,7 +207,7 @@ $ kiscollect -w $ws --debug --strict -t5 --dnstakeover --dnsamassactive --dnsdki
 --dnsgobuster --dnsenum --dnsrecon --dnsaxfr --smtpuserenum --httpsqlmap --dnshostpublic --dns-server $dns_server
 
 # Find additional domains using dnsgen and massdns
-$ kisreport domain -w $ws --csv --scope within | csvcut -c "Host Name" | sort -u | dnsgen - | massdns -r \
+$ kisreport domain -w $ws --csv --scope within | csvcut -c "Host Name (HN)" | sort -u | dnsgen - | massdns -r \
 /opt/lazydns/resolvers.txt -c 5 -t A -o S --flush 2> /dev/null
 
 # At the end, do final DNS lookup to ensure that all collected host names are resolved. This ensures that the data is 

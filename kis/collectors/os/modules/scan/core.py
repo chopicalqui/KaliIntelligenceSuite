@@ -259,7 +259,7 @@ class BaseNmap(BaseCollector):
         :param process: The PopenCommand object that executed the given result. This object holds stderr, stdout, return
         code etc.
         """
-        if command.return_code != 0:
+        if command.return_code > 0:
             self._set_execution_failed(session, command)
             return
         if report_item:
@@ -433,4 +433,4 @@ class BaseMasscan(BaseCollector):
                                          stdout=f,
                                          report_item=report_item)
             di.import_content(command.xml_output)
-            
+

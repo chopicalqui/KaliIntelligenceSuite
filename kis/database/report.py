@@ -518,10 +518,11 @@ class _HostReportGenerator(_BaseReportGenerator):
                         host_name_sources = host_name.sources_str
                         network_str = host.ipv4_network.network if host.ipv4_network else None
                         for service in host_name.services:
-                            if service.state in [ServiceState.Open, ServiceState.Closed] and \
-                                    descriptor.match_nmap_service_name(service):
+                            if service.state in [ServiceState.Open, ServiceState.Closed]:
                                 services_exist = True
-                                url_str = [path.get_urlparse().geturl() for path in service.paths if path.name == "/"]
+                                is_http = descriptor.match_nmap_service_name(service)
+                                url_str = [path.get_urlparse().geturl() for path in service.paths if path.name == "/"] \
+                                    if is_http else []
                                 result.append([workspace.name,
                                                "VHost",
                                                network_str,
@@ -551,7 +552,7 @@ class _HostReportGenerator(_BaseReportGenerator):
                                                service.nmap_service_state_reason,
                                                service.nmap_product_version,
                                                service.tls,
-                                               True,
+                                               is_http,
                                                url_str[0] if url_str else None,
                                                service.smb_message_signing,
                                                service.rdp_nla,
