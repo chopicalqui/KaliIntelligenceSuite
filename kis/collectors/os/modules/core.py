@@ -359,7 +359,7 @@ class BaseCollector(config.Collector):
                  engine: Engine,
                  http_proxy: str = None,
                  cookies: List[str] = {},
-                 ui_manager = None,
+                 listeners: list = None,
                  print_commands: bool = None,
                  threads: int = 1,
                  hashes: bool = None,
@@ -391,7 +391,7 @@ class BaseCollector(config.Collector):
         :param engine: The database object, which allows interacting with the database
         :param http_proxy: HTTP proxy that shall be used by web collectors
         :param cookies: HTTP cookies that shall be used by web collectors
-        :param ui_manager: UI manager object, which allows interacting with the UI
+        :param listeners: Listeners that shall be notified in case of a new report item is created
         :param print_commands: If true, commands are only printed and not executed
         :param threads: The number of threads that execute commands. Potentially useful for collectors during command
         creation
@@ -427,7 +427,7 @@ class BaseCollector(config.Collector):
         self._output_dir = output_dir
         self._engine = engine
         self._number_of_threads = threads
-        self._ui_manager = ui_manager
+        self._listeners = listeners if listeners else []
         self._hashes = hashes
         self.execution_class = execution_class
         self._http_proxy = urlparse(http_proxy) if http_proxy else None
@@ -521,7 +521,8 @@ class BaseCollector(config.Collector):
         :param report_item: The report item that shall be reported
         :return:
         """
-        self._ui_manager.add_report_item(report_item)
+        for item in self._listeners:
+            item.add_report_item(report_item)
 
     def match_service_tls(self, service: Service):
         """
@@ -624,7 +625,7 @@ class BaseCollector(config.Collector):
         :param report_item: Item that can be used for pushing information into the view
         """
         if report_item:
-            report_item.listener = self._ui_manager
+            report_item.listener = self._listeners
         paths = self._domain_utils.add_robots_txt(session=session,
                                                   service=service,
                                                   robots_txt=robots_txt,
@@ -648,7 +649,7 @@ class BaseCollector(config.Collector):
         :return:
         """
         if report_item:
-            report_item.listener = self._ui_manager
+            report_item.listener = self._listeners
         service_method = self._domain_utils.add_service_method(session=session,
                                                                name=name,
                                                                service=service,
@@ -675,7 +676,7 @@ class BaseCollector(config.Collector):
         :param report_item: Item that can be used for pushing information into the view
         """
         if report_item:
-            report_item.listener = self._ui_manager
+            report_item.listener = self._listeners
         host = self._ip_utils.add_host_host_name_mapping(session=session,
                                                          host=host,
                                                          host_name=host_name,
@@ -703,7 +704,7 @@ class BaseCollector(config.Collector):
         :param report_item: Item that can be used for pushing information into the view
         """
         if report_item:
-            report_item.listener = self._ui_manager
+            report_item.listener = self._listeners
         mapping = self._domain_utils.add_host_name_host_name_mapping(session=session,
                                                                      source_host_name=source_host_name,
                                                                      resolved_host_name=resolved_host_name,
@@ -728,7 +729,7 @@ class BaseCollector(config.Collector):
         :return:
         """
         if report_item:
-            report_item.listener = self._ui_manager
+            report_item.listener = self._listeners
         host = self._ip_utils.add_host(session=session,
                                        workspace=command.workspace,
                                        address=address,
@@ -752,7 +753,7 @@ class BaseCollector(config.Collector):
         :return:
         """
         if report_item:
-            report_item.listener = self._ui_manager
+            report_item.listener = self._listeners
         network = self._ip_utils.add_network(session=session,
                                              workspace=command.workspace,
                                              network=network,
@@ -796,7 +797,7 @@ class BaseCollector(config.Collector):
         :return:
         """
         if report_item:
-            report_item.listener = self._ui_manager
+            report_item.listener = self._listeners
         rvalue = self._domain_utils.add_company(session=session,
                                                 workspace=workspace,
                                                 name=name,
@@ -843,7 +844,7 @@ class BaseCollector(config.Collector):
         :return:
         """
         if report_item:
-            report_item.listener = self._ui_manager
+            report_item.listener = self._listeners
         rvalue = self._domain_utils.add_service(session=session,
                                                 port=port,
                                                 protocol_type=protocol_type,
@@ -879,7 +880,7 @@ class BaseCollector(config.Collector):
         :return:
         """
         if report_item:
-            report_item.listener = self._ui_manager
+            report_item.listener = self._listeners
         certificate = self._domain_utils.add_certificate(session=session,
                                                          command=command,
                                                          content=content,
@@ -955,7 +956,7 @@ class BaseCollector(config.Collector):
         :return:
         """
         if report_item:
-            report_item.listener = self._ui_manager
+            report_item.listener = self._listeners
         host_name = self._domain_utils.add_domain_name(session=session,
                                                        workspace=command.workspace,
                                                        item=host_name,
@@ -983,7 +984,7 @@ class BaseCollector(config.Collector):
         :return:
         """
         if report_item:
-            report_item.listener = self._ui_manager
+            report_item.listener = self._listeners
         email = self._email_utils.add_email(session=session,
                                             workspace=command.workspace,
                                             text=email,
@@ -1035,7 +1036,7 @@ class BaseCollector(config.Collector):
         :return:
         """
         if report_item:
-            report_item.listener = self._ui_manager
+            report_item.listener = self._listeners
         rvalue = self._domain_utils.add_additional_info(session=session,
                                                         name=name,
                                                         values=values,
@@ -1073,7 +1074,7 @@ class BaseCollector(config.Collector):
         :return:
         """
         if report_item:
-            report_item.listener = self._ui_manager
+            report_item.listener = self._listeners
         rvalue = self._domain_utils.add_credential(session=session,
                                                    username=username,
                                                    password=password,
@@ -1096,7 +1097,7 @@ class BaseCollector(config.Collector):
         :param report_item: Item that can be used for pushing information into the view
         """
         if report_item:
-            report_item.listener = self._ui_manager
+            report_item.listener = self._listeners
         self._domain_utils.add_hint(command=command,
                                     hint=hint,
                                     report_item=report_item)
@@ -1125,7 +1126,7 @@ class BaseCollector(config.Collector):
         :return:
         """
         if report_item:
-            report_item.listener = self._ui_manager
+            report_item.listener = self._listeners
         rvalue = self._domain_utils.add_path(session=session,
                                              service=service,
                                              path=path,
@@ -1156,7 +1157,7 @@ class BaseCollector(config.Collector):
         :return: The newly added path object
         """
         if report_item:
-            report_item.listener = self._ui_manager
+            report_item.listener = self._listeners
         rvalue = self._domain_utils.add_url(session=session,
                                             service=service,
                                             url=url,
@@ -1186,7 +1187,7 @@ class BaseCollector(config.Collector):
         :return:
         """
         if report_item:
-            report_item.listener = self._ui_manager
+            report_item.listener = self._listeners
         result = self._domain_utils.add_tls_info(session=session,
                                                  service=service,
                                                  version=version,
@@ -1224,7 +1225,7 @@ class BaseCollector(config.Collector):
         :return:
         """
         if report_item:
-            report_item.listener = self._ui_manager
+            report_item.listener = self._listeners
         result = self._domain_utils.add_tls_info_cipher_suite_mapping(session=session,
                                                                       tls_info=tls_info,
                                                                       cipher_suite=cipher_suite,
@@ -1278,7 +1279,7 @@ class BaseCollector(config.Collector):
         :return:
         """
         if report_item:
-            report_item.listener = self._ui_manager
+            report_item.listener = self._listeners
         result = self._domain_utils.add_cert_info(session=session,
                                                   service=service,
                                                   company=company,
@@ -1623,34 +1624,40 @@ class BaseCollector(config.Collector):
                 logger.warning("could not find binary file '{}'.".format(file))
 
     @staticmethod
-    def get_report_item(command: Command) -> ReportItem:
+    def get_report_item(command: Command, listeners: list = None) -> ReportItem:
         """
-        This method creates and returns a report item based on the given command
-        :param command:
+        This method creates and returns a report item based on the given command.
+        :param command: The command object containing the collection results.
+        :param listeners: The listeners that need to be notified about this report item.
         :return:
         """
         # todo new collector
         report_item = None
         if command.collector_name.type == CollectorType.service or \
                 command.collector_name.type == CollectorType.host:
-            report_item = ReportItem(ip=command.host.address,
+            report_item = ReportItem(listeners=listeners,
+                                     ip=command.host.address,
                                      collector_name=command.collector_name.name,
                                      port=command.service.port if command.service else None,
                                      protocol=command.service.protocol_str if command.service else None)
         elif command.collector_name.type == CollectorType.ipv4_network:
-            report_item = ReportItem(ip=command.ipv4_network.network,
+            report_item = ReportItem(listeners=listeners,
+                                     ip=command.ipv4_network.network,
                                      collector_name=command.collector_name.name)
         elif command.collector_name.type == CollectorType.host_name_service or \
                 command.collector_name.type == CollectorType.domain:
-            report_item = ReportItem(ip=command.host_name.full_name,
+            report_item = ReportItem(listeners=listeners,
+                                     ip=command.host_name.full_name,
                                      collector_name=command.collector_name.name,
                                      port=command.service.port if command.service else None,
                                      protocol=command.service.protocol_str if command.service else None)
         elif command.collector_name.type == CollectorType.email:
-            report_item = ReportItem(ip=command.email.email_address,
+            report_item = ReportItem(listeners=listeners,
+                                     ip=command.email.email_address,
                                      collector_name=command.collector_name.name)
         elif command.collector_name.type == CollectorType.company:
-            report_item = ReportItem(ip=command.company.name,
+            report_item = ReportItem(listeners=listeners,
+                                     ip=command.company.name,
                                      collector_name=command.collector_name.name)
         return report_item
 
@@ -1791,7 +1798,8 @@ class BaseCollector(config.Collector):
                                 engine: Engine,
                                 command_id: int,
                                 status: CommandStatus,
-                                process: PopenCommand = None) -> None:
+                                process: PopenCommand = None,
+                                listeners: list = None) -> None:
         """This method stores the command's output in the database and analyses the results of the command execution.
 
         After the execution, this method checks the OS command's results to determine the command's execution status as
@@ -1804,6 +1812,7 @@ class BaseCollector(config.Collector):
         :param status: The command's execution status
         :param process: The PopenCommand object that executed the given result. This object holds stderr, stdout, return
         code etc.
+        :param listeners: The listeners that need to be notified about this report item.
         """
         with self._update_db_lock:
             with engine.session_scope() as session:
@@ -1820,7 +1829,7 @@ class BaseCollector(config.Collector):
                 except Exception as e:
                     logger.exception(e)
                 session.commit()
-                report_item = BaseCollector.get_report_item(command)
+                report_item = BaseCollector.get_report_item(command, listeners=listeners)
                 self.verify_command_execution(session,
                                               command=command,
                                               source=source,
@@ -2149,7 +2158,7 @@ class BaseChangeme(BaseCollector):
         code etc.
         """
         found_credentials = False
-        if command.return_code > 0:
+        if command.return_code and command.return_code > 0:
             self._set_execution_failed(session, command)
         for json_object in command.json_output:
             if "results" in json_object:
@@ -2645,7 +2654,7 @@ class BaseNmap(BaseCollector):
         """
         if command.xml_output:
             utils = NmapUtils(command.xml_output)
-            if command.return_code > 0:
+            if command.return_code and command.return_code > 0:
                 self._set_execution_failed(session, command)
                 return
             if command.collector_name.type == CollectorType.service:
@@ -2673,7 +2682,7 @@ class BaseNmap(BaseCollector):
                                                                                          service_tag.attrib)
                     for extractor_class in self._nmap_xml_extractor_classes:
                         if report_item:
-                            report_item.listener = self._ui_manager
+                            report_item.listener = self._listeners
                         extractor = extractor_class(session=session,
                                                     workspace=command.workspace,
                                                     command=command,

@@ -106,14 +106,15 @@ class TestCollectorName(BaseDataModelTestCase):
     def test_unique_constraint(self):
         self.init_db()
         with self._engine.session_scope() as session:
-            self._test_unique_constraint(session, name="unittest", type=CollectorType.domain)
+            self._test_unique_constraint(session, name="unittest", type=CollectorType.domain, priority=2)
 
     def test_not_null_constraint(self):
         self.init_db()
         with self._engine.session_scope() as session:
             self._test_not_null_constraint(session)
-            self._test_not_null_constraint(session, name="unittest")
-            self._test_not_null_constraint(session, type=CollectorType.domain)
+            self._test_not_null_constraint(session, type=CollectorType.domain, priority=2)
+            self._test_not_null_constraint(session, name="unittest", priority=2)
+            self._test_not_null_constraint(session, name="unittest", type=CollectorType.domain)
 
     def test_check_constraint(self):
         self.init_db()
@@ -123,7 +124,7 @@ class TestCollectorName(BaseDataModelTestCase):
     def test_success(self):
         self.init_db()
         with self._engine.session_scope() as session:
-            self._test_success(session, name="unittest", type=CollectorType.domain)
+            self._test_success(session, name="unittest", type=CollectorType.domain, priority=2)
 
 
 class TestServiceMethod(BaseDataModelTestCase):

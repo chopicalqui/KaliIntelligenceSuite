@@ -146,7 +146,7 @@ class CollectorClass(BaseKisImportDomain, DomainCollector):
         :param process: The PopenCommand object that executed the given result. This object holds stderr, stdout, return
         code etc.
         """
-        if command.return_code > 0:
+        if command.return_code and command.return_code > 0:
             self._set_execution_failed(session=session, command=command)
             return
         for json_object in command.json_output:

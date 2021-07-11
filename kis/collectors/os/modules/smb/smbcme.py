@@ -96,7 +96,7 @@ class CollectorClass(BaseCrackMapExec, ServiceCollector):
         :param process: The PopenCommand object that executed the given result. This object holds stderr, stdout, return
         code etc.
         """
-        if command.return_code != 0:
+        if command.return_code and command.return_code > 0:
             command.hide = False
             self._set_execution_failed(session, command)
             return
@@ -124,7 +124,9 @@ class CollectorClass(BaseCrackMapExec, ServiceCollector):
                     command.host.os_details = os_info
                 if signing and signing in ['true', 'false']:
                     command.service.smb_message_signing = signing == 'true'
-                report_item.listener = self._ui_manager
-                report_item.details = "SMB message signing: {}, SMBv1: {}".format(signing, smbv1)
-                report_item.report_type = "SMB"
-                report_item.notify()
+                self.add_additional_info(session=session,
+                                         command=command,
+                                         name="SMB",
+                                         values=["SMB message signing: {}, SMBv1: {}".format(signing, smbv1)],
+                                         source=source,
+                                         report_item=report_item)

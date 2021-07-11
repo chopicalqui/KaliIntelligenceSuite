@@ -24,6 +24,7 @@ __version__ = 0.1
 
 import unittest
 import tempfile
+import time
 import subprocess
 from urllib.parse import urlparse
 from typing import List
@@ -122,15 +123,12 @@ class TestExecutionThreadTimeoutTermination(BaseKisTestCase):
         super().__init__(test_name)
 
     def test_terminate(self):
-        process = PopenCommand(os_command=["sleep", "10"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        process = PopenCommand(os_command=["sleep", "10"],
+                               cwd="/tmp",
+                               timeout=1,
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE)
         process.start()
-        process.wait(1)
-        self.assertTrue(process.killed)
-
-    def test_terminate_02(self):
-        process = PopenCommandOpenSsl(os_command=["sleep", "10"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        process.start()
-        process.wait(1)
         self.assertTrue(process.killed)
 
 

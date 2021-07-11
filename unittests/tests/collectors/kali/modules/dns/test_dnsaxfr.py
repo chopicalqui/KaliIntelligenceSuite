@@ -26,7 +26,7 @@ import os
 import tempfile
 from typing import List
 from unittests.tests.collectors.kali.modules.dns.core import BaseKaliDnsCollectorTestCase
-from collectors.os.modules.dns.dnsaxfr import CollectorClass as DnsaxfrCollector
+from collectors.os.modules.dns.dnsaxfrservice import CollectorClass as DnsaxfrCollector
 from unittests.tests.collectors.core import CollectorProducerTestSuite
 from database.model import CollectorType
 from database.model import DnsResourceRecordType

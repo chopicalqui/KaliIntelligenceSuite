@@ -11,3 +11,4 @@ openpyxl
 psutil
 pytest
 pysqlcipher3
+pandas

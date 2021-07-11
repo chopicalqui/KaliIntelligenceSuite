@@ -2545,6 +2545,7 @@ class CollectorName(DeclarativeBase):
     id = Column(Integer, primary_key=True)
     name = Column(String(50), nullable=False, unique=False)
     type = Column(Enum(CollectorType), nullable=False, unique=False)
+    priority = Column(Integer, nullable=False, unique=False)
     creation_date = Column(DateTime, nullable=False, default=datetime.utcnow())
     last_modified = Column(DateTime, nullable=True, onupdate=datetime.utcnow())
     __table_args__ = (UniqueConstraint('name', 'type', name='_collector_name_unique'),)

@@ -208,7 +208,7 @@ class CollectorClass(BaseHttpCollector, ServiceCollector, HostNameServiceCollect
         code etc.
         """
         # set execution status
-        if command.return_code > 0:
+        if command.return_code and command.return_code > 0:
             self._set_execution_failed(session, command)
             return
         output = os.linesep.join(command.stdout_output) + " "

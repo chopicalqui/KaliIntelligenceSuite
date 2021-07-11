@@ -53,9 +53,7 @@ from configs.config import SortingHelpFormatter
 from configs.config import BaseConfig
 from configs.config import Collector
 from collectors.os.collector import CollectorProducer
-from collectors.os.collector import CollectorConsumer
-from view.curses import CursesUiManager
-from view.core import PrintCommmandUi
+from view.console import KisCollectConsole
 from database.model import CommandStatus
 from database.model import VhostChoice
 from database.utils import Engine
@@ -63,12 +61,11 @@ from database.utils import DeclarativeBase
 
 
 if __name__ == "__main__":
-    ui_manager = CursesUiManager()
     try:
         engine = Engine()
         DeclarativeBase.metadata.bind = engine.engine
         commands_queue = queue.Queue()
-        producer = CollectorProducer(engine, commands_queue, ui_manager)
+        producer = CollectorProducer(engine, commands_queue)
         epilog='''---- USE CASES ----
 
 - I. semi-passive subdomain gathering
@@ -83,9 +80,9 @@ import domains into database and execute collection
 $ kismanage workspace --add $ws
 $ kismanage domain -w $ws --add $domains
 $ kismanage hostname -w $ws --add $domains $hostnames
-$ kiscollect -w $ws --debug --whoisdomain --whoishost --dnsdumpster --securitytrails --censysdomain --crtshdomain \
---virustotal --certspotter --dnssublist3r --dnsspf --hostio --dnshostpublic --dnsamasspassive --dnscrobatdomain \
---dnscrobattld --theharvester --hunter --builtwith --haveibeenbreach --haveibeenpaste --awsslurp
+$ sudo kiscollect -w $ws --debug --awsslurp --builtwith --censysdomain --certspotter --crtshdomain --dnsamasspassive \
+--dnscrobatdomain --dnscrobattld --dnsdumpster --dnshostpublic --dnsspf --dnssublist3r --haveibeenbreach \
+--haveibeenpaste --hostio --hunter --securitytrails --theharvester --virustotal --whoisdomain --whoishost --autostart
 
 review collected domain information and eventually add additional second-level domains and sub-domains in scope
 $ kisreport domain -w $ws --csv --scope outside | csvcut -c "Second-Level Domain (SLD)","Scope (SLD)","Companies (SLD)" \
@@ -114,10 +111,11 @@ $ companies=
 $ kismanage company -w $ws -s within $companies
 
 continue collection with updated scope
-$ kiscollect -w $ws --debug --whoisdomain --whoishost --dnsdumpster --securitytrails --censysdomain --crtshdomain \
---virustotal --certspotter --dnssublist3r --dnsspf --hostio --dnshostpublic --dnsamasspassive --dnscrobatdomain \
---dnscrobattld --theharvester --hunter --builtwith --haveibeenbreach --haveibeenpaste --awsslurp --reversewhois \
---crtshcompany --dnscrobatreversehost --dnscrobatreversenetwork --dnsreverselookup --shodanhost --shodannetwork
+$ sudo kiscollect -w $ws --debug --awsslurp --builtwith --censysdomain --certspotter --crtshcompany --crtshdomain \
+--dnsamasspassive --dnscrobatdomain --dnscrobatreversehost --dnscrobatreversenetwork --dnscrobattld --dnsdumpster \
+--dnshostpublic --dnsreverselookup --dnsspf --dnssublist3r --haveibeenbreach --haveibeenpaste --hostio --hunter \
+--reversewhois --securitytrails --shodanhost --shodannetwork --theharvester --virustotal --whoisdomain --whoishost \
+ --autostart
 
 run the following command to obtain a list of all in-scope company names. review the items in column "Owns" and
 "Owns Scope". if column "Owns Scope" is not "all", then you might want to add the respective item in "Owns" in scope
@@ -149,13 +147,13 @@ import nmap scan results as well as in-scope IPv4/IPv6 networks/addresses into d
 $ kismanage workspace --add $ws
 $ kismanage network -w $ws --add $networks
 $ kismanage scan -w $ws --nmap $nmap_paths
-$ kiscollect -w $ws --debug --strict -t5 --ftphydra --snmphydra --snmpcheck --snmpwalk --onesixtyone --showmount --ipmi \
---nbtscan --ikescan --ldapsearch --oraclesidguess --ntpq --sshnmap --httpgobuster --httpnikto --httphydra --smtpnmap \
---mysqlhydra --pgsqlhydra --smbnmap --smbmap --smbclient --rpcclient --rpcnmap --rpcinfo --mssqlhydra --mssqlnmap \
---finger --httpnmap --pop3nmap --imapnmap --tftpnmap --nfsnmap --x11nmap --msrpcenum --mysqlnmap --rdpnmap \
---httpdavtest --httpwhatweb --tlsnmap --smbfilelist --sslyze --sslscan --sshchangeme --httpchangeme \
---httpmsfrobotstxt --certnmap --ftpnmap --ldapnmap --dnsnmap --ldapnmap --snmpnmap --telnetnmap --vncnmap \
---dnsaxfr --ftpfilelist --certopenssl --httpntlmnmap --ikescan --anyservicenmap --smbcme --httpburpsuitepro
+$ sudo kiscollect -w $ws --debug --strict -t5 --anyservicenmap --certnmap --certopenssl --dnsaxfrdomain \
+--dnsaxfrservice --dnsnmap --finger --ftpfilelist --ftphydra --ftpnmap --httpchangeme --httpdavtest --httpgobuster \
+--httphydra --httpmsfrobotstxt --httpnikto --httpnmap --httpntlmnmap --httpwhatweb --ikescan --imapnmap --ipmi \
+--ldapnmap --ldapsearch --msrpcenum --mssqlhydra --mssqlnmap --mysqlhydra --mysqlnmap --nbtscan --nfsnmap --ntpq \
+--onesixtyone --oraclesidguess --pgsqlhydra --pop3nmap --rdpnmap --rpcclient --rpcinfo --rpcnmap --showmount \
+--smbclient --smbcme --smbfilelist --smbmap --smbnmap --smtpnmap --snmpcheck --snmphydra --snmpnmap --snmpwalk \
+--sshchangeme --sshnmap --sslscan --sslyze --telnetnmap --tftpnmap --tlsnmap --vncnmap --x11nmap  --autostart
 
 review collected domain information and eventually add domains in scope
 $ kisreport domain -w $ws --csv --scope outside | csvcut -c "Second-Level Domain (SLD)","Scope (SLD)","Companies (SLD)" \
@@ -164,14 +162,14 @@ $ domains=
 $ kismanage domain -w $ws -s {all,strict} $domains
 
 continue collection based on virtual hosts (might be useful in external penetration tests)
-$ kiscollect -w $ws --debug --strict -t5 --ftphydra --snmphydra --snmpcheck --snmpwalk --onesixtyone --showmount --ipmi \
---nbtscan --ikescan --ldapsearch --oraclesidguess --ntpq --sshnmap --httpgobuster --httpnikto --httphydra --smtpnmap \
---mysqlhydra --pgsqlhydra --smbnmap --smbmap --smbclient --rpcclient --rpcnmap --rpcinfo --mssqlhydra --mssqlnmap \
---finger --httpnmap --pop3nmap --imapnmap --tftpnmap --nfsnmap --x11nmap --msrpcenum --mysqlnmap --rdpnmap \
---httpdavtest --httpwhatweb --tlsnmap --smbfilelist --sslyze --sslscan --sshchangeme --httpchangeme \
---httpmsfrobotstxt --certnmap --ftpnmap --ldapnmap --dnsnmap --ldapnmap --snmpnmap --telnetnmap --vncnmap \
---dnsaxfr --ftpfilelist --certopenssl --httpntlmnmap --ikescan --anyservicenmap --smbcme --httpburpsuitepro \
---vhost domain
+$ sudo kiscollect -w $ws --debug --strict -t5 --anyservicenmap --certnmap --certopenssl --dnsaxfrdomain \
+--dnsaxfrservice --dnsnmap --finger --ftpfilelist --ftphydra --ftpnmap --httpchangeme --httpdavtest --httpgobuster \
+--httphydra --httpmsfrobotstxt --httpnikto --httpnmap --httpntlmnmap --httpwhatweb --ikescan --imapnmap --ipmi \
+--ldapnmap --ldapsearch --msrpcenum --mssqlhydra --mssqlnmap --mysqlhydra --mysqlnmap --nbtscan --nfsnmap --ntpq \
+--onesixtyone --oraclesidguess --pgsqlhydra --pop3nmap --rdpnmap --rpcclient --rpcinfo --rpcnmap --showmount \
+--smbclient --smbcme --smbfilelist --smbmap --smbnmap --smtpnmap --snmpcheck --snmphydra --snmpnmap --snmpwalk \
+--sshchangeme --sshnmap --sslscan --sslyze --telnetnmap --tftpnmap --tlsnmap --vncnmap --x11nmap --httpburpsuitepro \
+--vhost domain  --autostart
 
 collect screenshots with aquatone
 $ kisreport path -w $ws --scope within --type Http --csv | csvcut -c "Full Path" | grep -v "Full Path" | aquatone -out aquatone
@@ -203,8 +201,9 @@ In addition, to the tests in example I and II, the following commands can be exe
 # Add domains in scope and execute collection. Note that you might want to specify a DNS server to test for DNS
 # zone transfers
 $ dns_server=
-$ kiscollect -w $ws --debug --strict -t5 --dnstakeover --dnsamassactive --dnsdkim --dnsdmarc --vhostgobuster \
---dnsgobuster --dnsenum --dnsrecon --dnsaxfr --smtpuserenum --httpsqlmap --dnshostpublic --dns-server $dns_server
+$ sudo kiscollect -w $ws --debug --strict -t5 --dnsamassactive --dnsaxfr --dnsdkim --dnsdmarc --dnsenum --dnsgobuster \
+--dnshostpublic --dnsrecon --dnstakeover --httpsqlmap --smtpuserenum --vhostgobuster --dnshostpublic \
+--dns-server $dns_server  --autostart
 
 # Find additional domains using dnsgen and massdns
 $ kisreport domain -w $ws --csv --scope within | csvcut -c "Host Name (HN)" | sort -u | dnsgen - | massdns -r \
@@ -212,7 +211,7 @@ $ kisreport domain -w $ws --csv --scope within | csvcut -c "Host Name (HN)" | so
 
 # At the end, do final DNS lookup to ensure that all collected host names are resolved. This ensures that the data is 
 # complete for the final report
-$ kiscollect -w $ws --debug --strict -t5 --dnshostpublic
+$ sudo kiscollect -w $ws --debug --strict -t5 --dnshostpublic --autostart
 
 Finally, you might want to re-run the entire process to collect further information.
 '''
@@ -239,9 +238,9 @@ Finally, you might want to re-run the entire process to collect further informat
         ogroup.add_argument("--debug",
                             action="store_true",
                             help="prints extra information to log file")
-        ogroup.add_argument("-B", "--batch-mode",
+        ogroup.add_argument("-a", "--autostart",
                             action="store_true",
-                            help="automatically start, execute, and stop the application without user interaction")
+                            help="automatically start collection when application starts")
         ogroup.add_argument("--strict",
                             action="store_true",
                             help="collect information only from services that are definitely open (nmap state is "
@@ -339,7 +338,7 @@ Finally, you might want to re-run the entire process to collect further informat
                             action="store_true",
                             help="indefinitely repeat the execution of selected collectors")
         args = parser.parse_args()
-        if os.geteuid() != 0:
+        if os.geteuid() != 0 and not args.print_commands:
             config = Collector()
             print("{} must be executed with root privileges. afterwards, it is possible to execute "
                   "individual commands with lower privileged users like 'nobody'".format(sys.argv[0]), file=sys.stderr)
@@ -350,8 +349,7 @@ Finally, you might want to re-run the entire process to collect further informat
         with tempfile.TemporaryDirectory() as temp_dir:
             arguments = vars(args)
             if args.output_dir and not os.path.isdir(args.output_dir):
-                ui_manager.set_message("output directory '{}' does not exist!".format(args.output_dir),
-                                       file=sys.stderr)
+                print("output directory '{}' does not exist!".format(args.output_dir), file=sys.stderr)
                 sys.exit(1)
             arguments["output_dir"] = args.output_dir if args.output_dir else temp_dir
             producer.init(arguments)
@@ -377,28 +375,19 @@ Finally, you might want to re-run the entire process to collect further informat
                 log_level = logging.WARNING
             if args.debug:
                 log_level = logging.DEBUG
-            logging.basicConfig(filename=BaseConfig.get_log_file(),
-                                format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                                datefmt='%Y-%m-%d %H:%M:%S',
-                                level=log_level)
-            logger = logging.getLogger(sys.argv[0])
-            logger.info(" ".join(sys.argv))
-            # We start our daemon consumer threads
-            if args.print_commands:
-                ui_manager = PrintCommmandUi()
-                producer.ui_manager = ui_manager
-            producer.ui_manager.init_windows()
-            for i in range(0, producer.number_of_threads):
-                cc = CollectorConsumer(engine,
-                                       commands_queue,
-                                       producer)
-                cc.start()
-            producer.start()
-            ui_manager.process_user_input()
-            producer.join()
-            producer.ui_manager.end_window()
-    except Exception as e:
-        ui_manager.end_window()
-        traceback.print_exc(file=sys.stderr)
-        ui_manager.log_exception(e)
+            if not args.print_commands:
+                logging.basicConfig(filename=BaseConfig.get_log_file(),
+                                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                                    datefmt='%Y-%m-%d %H:%M:%S',
+                                    level=log_level)
+                logger = logging.getLogger(sys.argv[0])
+                logger.info("$ ".format(" ".join(sys.argv)))
 
+            # Let's get started
+            if args.print_commands:
+                producer.start()
+                producer.join()
+            else:
+                KisCollectConsole(args=args, producer_thread=producer).cmdloop()
+    except Exception as e:
+        traceback.print_exc(file=sys.stderr)

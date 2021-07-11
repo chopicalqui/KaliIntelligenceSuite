@@ -338,8 +338,9 @@ class BaseKisTestCase(unittest.TestCase):
     def create_collector_name(self,
                               session: Session,
                               name: str = "nikto",
-                              type: CollectorType = CollectorType.service):
-        return self._engine.get_or_create(session, CollectorName, name=name, type=type)
+                              type: CollectorType = CollectorType.service,
+                              priority: int = 0):
+        return self._engine.get_or_create(session, CollectorName, name=name, type=type, priority=priority)
 
     def create_command(self,
                        session: Session,
@@ -829,21 +830,24 @@ class BaseKisTestCase(unittest.TestCase):
                                        collector_name=self._engine.get_or_create(session,
                                                                                  CollectorName,
                                                                                  name="test",
-                                                                                 type=CollectorType.service),
+                                                                                 type=CollectorType.service,
+                                                                                 priority=0),
                                        service=service)
         self._domain_utils.add_command(session=session,
                                        os_command=["nmap", "10"],
                                        collector_name=self._engine.get_or_create(session,
                                                                                  CollectorName,
                                                                                  name="tcpnmap",
-                                                                                 type=CollectorType.ipv4_network),
+                                                                                 type=CollectorType.ipv4_network,
+                                                                                 priority=0),
                                        network=network)
         command = self._domain_utils.add_command(session=session,
                                                  os_command=["whois", "10"],
                                                  collector_name=self._engine.get_or_create(session,
                                                                                            CollectorName,
                                                                                            name="test",
-                                                                                           type=CollectorType.host),
+                                                                                           type=CollectorType.host,
+                                                                                           priority=0),
                                                  host=host)
         command.status = CommandStatus.completed
         self._domain_utils.add_command(session=session,
@@ -851,14 +855,16 @@ class BaseKisTestCase(unittest.TestCase):
                                        collector_name=self._engine.get_or_create(session,
                                                                                  CollectorName,
                                                                                  name="test",
-                                                                                 type=CollectorType.domain),
+                                                                                 type=CollectorType.domain,
+                                                                                 priority=0),
                                        host_name=host_name)
         command = self._domain_utils.add_command(session=session,
                                                  os_command=["kisimport", "10"],
                                                  collector_name=self._engine.get_or_create(session,
                                                                                            CollectorName,
                                                                                            name="test",
-                                                                                           type=CollectorType.email),
+                                                                                           type=CollectorType.email,
+                                                                                           priority=0),
                                                  email=email)
         # add file
         self._domain_utils.add_file_content(session=session,

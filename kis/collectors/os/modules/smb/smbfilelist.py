@@ -104,7 +104,7 @@ class CollectorClass(BaseSmbClient, ServiceCollector):
         :param process: The PopenCommand object that executed the given result. This object holds stderr, stdout, return
         code etc.
         """
-        command.hide = command.return_code > 0
+        command.hide = command.return_code and command.return_code > 0
         output = os.linesep.join(command.stderr_output) + os.linesep.join(command.stdout_output)
         for match in self._nt_status_re.finditer(output):
             code = match.group("value")

@@ -259,11 +259,9 @@ class BaseNmap(BaseCollector):
         :param process: The PopenCommand object that executed the given result. This object holds stderr, stdout, return
         code etc.
         """
-        if command.return_code > 0:
+        if command.return_code and command.return_code > 0:
             self._set_execution_failed(session, command)
             return
-        if report_item:
-            report_item.listener = self._ui_manager
         with open(os.devnull, "w") as f:
             di = NmapDatabaseImporter(session,
                                       command.workspace,
@@ -424,8 +422,6 @@ class BaseMasscan(BaseCollector):
         :param process: The PopenCommand object that executed the given result. This object holds stderr, stdout, return
         code etc.
         """
-        if report_item:
-            report_item.listener = self._ui_manager
         with open(os.devnull, "w") as f:
             di = MasscanDatabaseImporter(session,
                                          command.workspace, [],

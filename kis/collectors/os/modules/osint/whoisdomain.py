@@ -134,7 +134,7 @@ class CollectorClass(BaseWhois, DomainCollector):
         code etc.
         """
         command.hide = True
-        if command.return_code > 0:
+        if command.return_code and command.return_code > 0:
             self._set_execution_failed(session, command)
         for line in command.stdout_output:
             match = self._re_organizations.match(line)

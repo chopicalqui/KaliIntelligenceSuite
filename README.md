@@ -31,7 +31,9 @@ Additional features are:
 
  -  parallel Kali Linux command execution by using a specifiable number of threads
 
- -  allowing users to kill Kali commands via the KIS user interface in case they take too long
+ -  enables users to kill Kali commands via the KIS user interface in case they take too long
+
+ -  access public APIs to enhance data with OSINT
 
 ## KIS' Data and Collection Model
 
@@ -57,8 +59,7 @@ understand the following collection types, which are supported by KIS:
  sources is somehow limited (e.g., querying certain sources like Shodan.io cost credits), they are treated like active 
  collectors, and, as a result, targets must be marked as in scope in order to perform active* collections on them.
 
-Scopes can be set on the following items by using the script
-[kismanage](https://github.com/chopicalqui/KaliIntelligenceSuite/blob/master/KISMANAGE.md):
+Scopes can be set on the following items by using the script `kismanage`:
 
  - **IP networks** and **IP addresses**: For IP networks the following scope types can be set:
     * `all`: Sets the given IP network (e.g., 192.168.1.0/24) together with all IP addresses (e.g., 192.168.1.1) that 
@@ -170,8 +171,7 @@ Scopes can be set on the following items by using the script
     explicitly set this scope type. Nevertheless, this scope type can be used to manually exclude 
     second-level domains at a later time.
  - **Virtual hosts (vhost)**: KIS supports scanning vhosts (https://httpd.apache.org/docs/2.4/vhosts/) by using tools 
- like Nikto or Burp Suite Professional (see argument `--vhost` of script
- [kiscollect](https://github.com/chopicalqui/KaliIntelligenceSuite/blob/master/KISCOLLECT.md)). Which vhosts are in 
+ like Nikto or Burp Suite Professional (see argument `--vhost` of script `kiscollect`. Which vhosts are in 
  scope and which are not is indirectly specified by scoping **IP networks** and **IP addresses** (see above) together 
  with **Second-level domain** and **host names** (see above). Below are two examples to demonstrate how it works:
  
@@ -219,18 +219,17 @@ Scopes can be set on the following items by using the script
 ## List of KIS Collectors
 
 The following table shows the list of existing collectors that are supported by KIS. These collectors are executed by
-the script [kiscollect](https://github.com/chopicalqui/KaliIntelligenceSuite/blob/master/KISCOLLECT.md) to create and execute
-actual OS commands.
+the script `kiscollect` to create and execute actual OS commands.
 
 The **Priority** column provides information about the order of execution; the lower the number, the earlier the
 respective OS commands are created and executed and subsequent collectors can profit from the already collected
 information. Collectors with a priority of `-` are not automatically executed as they either require user interaction
 or additional information (e.g., domain credentials) for execution.
 
-The **Name** column contains the name of the collector. These names can be added as command arguments to
-[kiscollect](https://github.com/chopicalqui/KaliIntelligenceSuite/blob/master/KISCOLLECT.md) (e.g. `--httpnikto`). 
-The name also indicates, which underlying OS command is executed. Column **Level** specifies whether the collector is 
-operating on:
+The **Name** column contains the name of the collector. These names can be added as commandline arguments to
+`kiscollect` (e.g. `--httpnikto`). The name also indicates, which underlying OS command is executed.
+
+Column **Level** specifies whether the collector is operating on:
   - services: Scans services by using IPv4/IPv6 addresses and UDP/TCP port numbers
   - vhosts: Scans web services by using host names (instead of IP addresses) and TCP port numbers
   - hosts: Obtains information based on IPv4/IPv6 addresses
@@ -274,7 +273,7 @@ The column **User** specifies the user with which the respective operating syste
 | 143      | dnscrobatdomain           | domain          | Active*  | -          | -       | nobody |
 | 144      | dnscrobattld              | domain          | Active*  | -          | -       | nobody |
 | 150      | theharvester              | domain          | Passive  | -          | -       | kali   |
-| 155      | awsslurp                  | domain          | Active   |            | -       | nobody |
+| 155      | awsslurp                  | domain          | Active   | -          | -       | nobody |
 | 160      | dnsenum                   | domain          | Active   | -          | -       | nobody |
 | 170      | dnsgobuster               | domain          | Active   | -          | -       | nobody |
 | 180      | dnsrecon                  | domain          | Active   | -          | -       | nobody |
@@ -304,7 +303,8 @@ The column **User** specifies the user with which the respective operating syste
 | 1250     | udpnmapdomain             | domain          | Active   | IPv4, IPv6 | -       | root   |
 | 1270     | icmpnmapnetwork           | network         | Active   | IPv4, IPv6 | -       | root   |
 | 1300     | tcpmasscannetwork         | network         | Active   | IPv4       | -       | root   |
-| 1305     | dnsaxfr                   | domain, service | Active   | IPv4, IPv6 | -       | nobody |
+| 1305     | dnsaxfrdomain             | domain          | Active   | -          | -       | nobody |
+| 1306     | dnsaxfrservice            | service         | Active*  | Ipv4, Ipv6 | -       | nobody |
 | 1320     | vhostgobuster             | service         | Active   | IPv4, IPv6 | -       | nobody |
 | 1350     | anyservicenmap            | service         | Active   | IPv4, IPv6 | -       | root   |
 | 1820     | tcptraceroute             | host            | Active   | IPv4, IPv6 | -       | nobody |
@@ -341,7 +341,7 @@ The column **User** specifies the user with which the respective operating syste
 | 11700    | ipmi                      | service         | Active   | IPv4, IPv6 | -       | root   |
 | 12100    | ftpfilelist               | service         | Active   | IPv4, IPv6 | -       | nobody |
 | 13000    | showmount                 | service         | Active   | IPv4, IPv6 | 300     | nobody |
-| 13090    | smbcme                    | service         | Active   | IPv4       | -       | kali   |
+| 13090    | smbcme                    | service         | Active   | IPv4, IPv6 | -       | kali   |
 | 13100    | smbclient                 | service         | Active   | IPv4, IPv6 | -       | nobody |
 | 13200    | smbfilelist               | service         | Active   | IPv4, IPv6 | -       | nobody |
 | 13210    | smbmap                    | service         | Active   | IPv4       | -       | nobody |
@@ -370,7 +370,7 @@ The column **User** specifies the user with which the respective operating syste
 | 91200    | httpnikto                 | service, vhost  | Active   | IPv4       | -       | nobody |
 | 91225    | httpburpsuitepro          | domain, host    | Active   | IPv4, IPv6 | -       | nobody |
 | 91250    | httpdavtest               | service, vhost  | Active   | IPv4, IPv6 | -       | nobody |
-| 91250    | httpwhatweb               | service         | Active   | IPv4, IPv6 | -       | nobody |
+| 91260    | httpwhatweb               | service         | Active   | IPv4, IPv6 | -       | nobody |
 | 91300    | httpsqlmap                | service, vhost  | Active   | IPv4, IPv6 | -       | nobody |
 | 91400    | smtpuserenum              | service         | Active   | IPv4       | -       | nobody |
 | 91600    | mysqlhydra                | service         | Active   | IPv4, IPv6 | -       | nobody |
@@ -417,12 +417,10 @@ In order to use KIS, the following configuration steps must be successfully acco
    `/home/kali/go/bin/slurp`
    `/home/kali/go/src/github.com/0xbharath/slurp/permutations.json`
    
-   If, the slurp location is different, then update the file path in
-   [collectors.config](https://github.com/chopicalqui/KaliIntelligenceSuite/blob/master/kis/configs/collectors.config), 
+   If, the slurp location is different, then update the file path in [collectors.config](kis/configs/collectors.config),
    section `[file_paths]`, entry `slurp`. In addition, make sure that slurp's permutations file (`permutations.json`) is
-   correctly set in 
-   [collectors.config](https://github.com/chopicalqui/KaliIntelligenceSuite/blob/master/kis/configs/collectors.config), 
-   section `[default_wordlists]`, entry `slurp_permutations_file`.
+   correctly set in  [collectors.config](kis/configs/collectors.config), section `[default_wordlists]`,
+   entry `slurp_permutations_file`.
 
  - [mandatory] Check KIS setup to determine potential issues
 
@@ -446,24 +444,42 @@ In order to use KIS, the following configuration steps must be successfully acco
 
 After the setup, the following KIS commands are available.
 
- - **kismanage**: This tool allows:
-    * setting up and testing KIS
-    * managing the database (re-creation, creating backups, restoring backups, etc.)
-    * creating workspaces, networks, host names, emails, and companies
-    * importing Nmap, Nessus, and Masscan scan results
-    * defining the scope
+### kismanage
 
- - **[kiscollect](https://github.com/chopicalqui/KaliIntelligenceSuite/blob/master/KISCOLLECT.md)**: This tool performs 
- the automated intelligence collection based on the already collected data. For more information, refer to
- [kiscollect](https://github.com/chopicalqui/KaliIntelligenceSuite/blob/master/KISCOLLECT.md)
- - **kisreport**: This tool allows the analysis
- of the collected data via various filtering options. Supported report formats are:
-    * Character-separated values (CSV): Export of the collected intelligence in the structured CSV format.
-    This allows further processing via tools like grep, csvcut, or Aquatone
-    * Microsoft Excel: Export of all collected intelligence into a Microsoft Excel file.
-    * Text: Export of the collected raw text intelligence (e.g., text output of tool Nikto)
-    * Raw: Export of additionally collected files like JSON objects from APIs like Shodan.io, or certificate files.
+This script allows:
+  - setting up and testing KIS
+  - managing the database (re-creation, creating backups, restoring backups, etc.)
+  - creating workspaces, networks, host names, emails, companies, etc.
+  - importing Nmap, Nessus, and Masscan scan results
+  - defining the scope
 
+Run the following command to obtain more information and examples:
+```bash
+$ kismanage -h
+```
+
+### kiscollect
+
+This script implements a commandline interface to collect the intelligence.
+
+Run the following command to obtain more information and examples:
+```bash
+$ kiscollect -h
+```
+
+### kisreport
+
+This script allows the analysis of the collected data via various filtering options. Supported report formats are:
+  - Character-separated values (CSV): Export of the collected intelligence in the structured CSV format. This allows
+  further processing via tools like grep, csvcut, or Aquatone
+  - Microsoft Excel: Export of all collected intelligence into a Microsoft Excel file.
+  - Text: Export of the collected raw text intelligence (e.g., text output of tool Nikto)
+  - Raw: Export of additionally collected files like JSON objects from APIs like Shodan.io, or certificate files.
+
+Run the following command to obtain more information and examples:
+```bash
+$ kisreport -h
+```
    
 ## Author
 
@@ -472,5 +488,4 @@ After the setup, the following KIS commands are available.
 
 ## License
 
-This project is licensed under the GPLv3 License - see the
-[license](https://github.com/chopicalqui/KaliIntelligenceSuite/blob/master/LICENSE) file for details.
+This project is licensed under the GPLv3 License - see the [license](LICENSE) file for details.

@@ -54,6 +54,7 @@ class CollectorProducerTestSuite:
     def __init__(self, engine: Engine, arguments: Dict[str, str]):
         self._engine = engine
         self._arguments = arguments
+        self._vhost = arguments["vhost"] if "vhost" in arguments else None
 
     def create_collector_instance(self,
                                   arg_parse_module: ArgParserModule = None,
@@ -64,6 +65,8 @@ class CollectorProducerTestSuite:
         """
         if arg_parse_module:
             arg_parse_module.create_instance(**self._arguments)
+            arg_parse_module.collector_type_info = CollectorProducer.get_collector_types(arg_parse_module,
+                                                                                         vhost=self._vhost)
             result = arg_parse_module
         else:
             result = collector_class(engine=self._engine, name=collector_name, **self._arguments)
@@ -110,6 +113,7 @@ class CollectorProducerTestSuite:
         for module in collectors:
             if not module.instance:
                 module.create_instance(engine=self._engine, **self._arguments)
+            module.collector_type_info = CollectorProducer.get_collector_types(module, vhost=self._vhost)
         producer = self.create_collector_producer()
         producer.selected_collectors.extend(collectors)
         producer._create()
@@ -122,6 +126,7 @@ class CollectorProducerTestSuite:
         for module in collectors:
             if not module.instance:
                 module.create_instance(engine=self._engine, **self._arguments)
+            module.collector_type_info = CollectorProducer.get_collector_types(module, vhost=self._vhost)
         producer = self.create_collector_producer(command_queue=command_queue)
         producer.selected_collectors.extend(collectors)
         consumer = CollectorConsumer(engine=self._engine, commands_queue=command_queue, producer_thread=producer)

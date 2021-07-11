@@ -27,9 +27,9 @@ import os
 import time
 import logging
 import pwd
+import traceback
 from threading import Thread
 from threading import Lock
-from threading import Timer
 from typing import List
 from datetime import datetime
 
@@ -217,11 +217,13 @@ class PopenCommand(BaseCommand):
                  stdout = subprocess.STDOUT,
                  stderr = subprocess.STDOUT,
                  cwd: str = None,
+                 timeout: int = None,
                  **kwargs):
         super().__init__(os_command=os_command, stdout=stdout, stderr=stderr, cwd=cwd, shell=False, **kwargs)
         self._proc = None
         self._return_code = None
         self._killed = False
+        self._timeout = timeout if timeout and timeout > 0 else None
 
     @property
     def proc(self):
@@ -295,7 +297,8 @@ class PopenCommand(BaseCommand):
         """
         :return: Returns true, if the process was killed, else false
         """
-        return self._killed
+        with self._lock:
+            return self._killed
 
     def poll(self) -> int:
         """
@@ -334,21 +337,6 @@ class PopenCommand(BaseCommand):
         """Terminates the process with SIGTERM"""
         self._kill_all(signal=9)
 
-    def wait(self, timeout: int=None) -> int:
-        """
-        Wait for the process to terminate.
-
-        :param timeout: The process has time to terminate until the timeout is reached. If this does not happen, then
-        the process is automatically terminated.
-        :return: Returns the process' return code
-        """
-        with self._lock:
-            if timeout:
-                t = Timer(timeout, self.terminate)
-                t.start()
-            self._return_code = self._proc.wait() if self._proc else 1
-            return self._return_code
-
     def communicate(self, input=None, timeout=None):
         """
         Send input to stdin of the running process.
@@ -359,14 +347,18 @@ class PopenCommand(BaseCommand):
     def run(self) -> None:
         """This method starts the execution of the OS command."""
         with self._lock:
-            self._start_time = datetime.utcnow()
-            self._proc = subprocess.Popen(self.command,
-                                          stdout=self._stdout,
-                                          stderr=self._stderr,
-                                          shell=False,
-                                          cwd=self._cwd,
-                                          env={'PATH': os.environ["PATH"], 'HOME': self._cwd},
-                                          preexec_fn=self._demote)
+            try:
+                self._start_time = datetime.utcnow()
+                self._proc = subprocess.Popen(self.command,
+                                              stdout=self._stdout,
+                                              stderr=self._stderr,
+                                              shell=False,
+                                              cwd=self._cwd,
+                                              env={'PATH': os.environ["PATH"], 'HOME': self._cwd},
+                                              preexec_fn=self._demote)
+                self._return_code = self._proc.wait(self._timeout)
+            except subprocess.TimeoutExpired:
+                self._killed = True
 
     def close(self) -> None:
         if self._proc:
@@ -439,18 +431,22 @@ class PopenCommandOpenSsl(PopenCommand):
     def run(self) -> None:
         """This method starts the execution of the OS command."""
         with self._lock:
-            self._start_time = datetime.utcnow()
-            self._proc = subprocess.Popen(self.command,
-                                          stdout=subprocess.PIPE,
-                                          stderr=subprocess.PIPE,
-                                          stdin=subprocess.PIPE,
-                                          shell=False,
-                                          env={'PATH': os.environ["PATH"], 'HOME': os.environ["HOME"]},
-                                          cwd=self._cwd,
-                                          preexec_fn=self._demote)
-            self._stderr_list = [item.decode("utf-8").strip() for item in iter(self._proc.stderr.readline, b'')]
-            self._stdout_list = [item.decode("utf-8").strip() for item in iter(self._proc.stdout.readline, b'')]
-            self._proc.communicate(b"x")
+            try:
+                self._start_time = datetime.utcnow()
+                self._proc = subprocess.Popen(self.command,
+                                              stdout=subprocess.PIPE,
+                                              stderr=subprocess.PIPE,
+                                              stdin=subprocess.PIPE,
+                                              shell=False,
+                                              env={'PATH': os.environ["PATH"], 'HOME': os.environ["HOME"]},
+                                              cwd=self._cwd,
+                                              preexec_fn=self._demote)
+                self._stderr_list = [item.decode("utf-8").strip() for item in iter(self._proc.stderr.readline, b'')]
+                self._stdout_list = [item.decode("utf-8").strip() for item in iter(self._proc.stdout.readline, b'')]
+                self._proc.communicate(b"x")
+                self._proc.wait(self._timeout)
+            except subprocess.TimeoutExpired:
+                self._killed = True
 
     def close(self) -> None:
         pass

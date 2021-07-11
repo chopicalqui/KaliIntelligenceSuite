@@ -47,6 +47,7 @@ from collectors.os.modules.core import BaseCollector
 from collectors.os.collector import VhostChoice
 from collectors.os.collector import CollectorProducer
 from collectors.os.modules.http.httpnikto import CollectorClass as NiktoCollector
+from collectors.os.modules.http.httpburpsuitepro import CollectorClass as BurpSuiteProCollector
 from unittests.tests.collectors.kali.modules.core import BaseKaliCollectorTestCase
 from unittests.tests.collectors.core import CollectorProducerTestSuite
 from sqlalchemy.orm.session import Session
@@ -181,6 +182,195 @@ class PathCreationTest(BaseKisTestCase):
             self.assertEqual(os.path.join(temp_dir, address), working_dir)
             self.assertTrue(os.path.isdir(working_dir))
             self.assertEqual(os.path.join(temp_dir, address, "{}_{}.xml".format(collector_name, address)), xml_file)
+
+
+class TestBurpSuiteProCommandCreation(BaseKaliCollectorTestCase):
+    """
+    This class tests the command creation logic
+    """
+
+    def __init__(self, test_name: str):
+        super().__init__(test_name,
+                         collector_name="httpburpsuitepro",
+                         collector_class=BurpSuiteProCollector)
+
+    def _unittest_service_command_creation(self,
+                                           session: Session,
+                                           vhost: VhostChoice = None,
+                                           workspace_str: str = "unittest",
+                                           host_name_scope: ScopeType = ScopeType.all,
+                                           host_scope: ScopeType = ScopeType.all):
+        source = self.create_source(session=session, source_str="dnshost")
+        # Setup database
+        self.create_network(session=session,
+                            network="192.168.1.0/24",
+                            scope=host_scope,
+                            workspace_str=workspace_str)
+        self.create_host(session=session, workspace_str=workspace_str, address="192.168.1.1")
+        host = self.create_host(session=session, workspace_str=workspace_str, address="192.168.1.2")
+        self.create_hostname(session=session,
+                             workspace_str=workspace_str,
+                             host_name="www.test1.com", scope=host_name_scope)
+        host_name = self.create_hostname(session=session,
+                                         workspace_str=workspace_str,
+                                         host_name="www.test2.com", scope=host_name_scope)
+        self.create_service(session=session, workspace_str=workspace_str, address="192.168.1.1", port=80)
+        self.create_service(session=session, workspace_str=workspace_str, address="192.168.1.2", port=80)
+        self.create_service(session=session, workspace_str=workspace_str, host_name_str="www.test1.com", port=80)
+        self.create_service(session=session, workspace_str=workspace_str, host_name_str="www.test3.com", port=80)
+        self._domain_utils.add_host_host_name_mapping(session=session,
+                                                      host=host,
+                                                      host_name=host_name,
+                                                      source=source,
+                                                      mapping_type=DnsResourceRecordType.a)
+        session.commit()
+        # Create command
+        with tempfile.TemporaryDirectory() as temp_dir:
+            arguments = {"workspace": workspace_str, "output_dir": temp_dir}
+            if vhost:
+                arguments["vhost"] = vhost
+            test_suite = CollectorProducerTestSuite(engine=self._engine, arguments=arguments)
+            test_suite.create_commands([self._arg_parse_module])
+        session.commit()
+        # Verify results
+        if not vhost:
+            results = session.query(Command) \
+                .join(Host) \
+                .join(Workspace).filter(Workspace.name == workspace_str).count()
+            self.assertEqual(2 if host_scope == ScopeType.all else 0, results)
+            results = session.query(Command) \
+                .join(HostName) \
+                .join(DomainName) \
+                .join(Workspace).filter(Workspace.name == workspace_str).count()
+            self.assertEqual(0, results)
+        elif vhost == VhostChoice.all:
+            results = session.query(Command) \
+                .join(Host) \
+                .join(Workspace).filter(Workspace.name == workspace_str).count()
+            self.assertEqual(2 if host_scope == ScopeType.all else 0, results)
+            results = session.query(Command) \
+                .join(HostName) \
+                .join(DomainName) \
+                .join(Workspace).filter(Workspace.name == workspace_str).count()
+            self.assertEqual(1 if host_name_scope == ScopeType.all and host_scope == ScopeType.all else 0, results)
+        elif vhost == VhostChoice.domain:
+            results = session.query(Command) \
+                .join(Host) \
+                .join(Workspace).filter(Workspace.name == workspace_str).count()
+            self.assertEqual(0, results)
+            results = session.query(Command) \
+                .join(HostName) \
+                .join(DomainName) \
+                .join(Workspace).filter(Workspace.name == workspace_str).count()
+            self.assertEqual(1 if host_name_scope == ScopeType.all and host_scope == ScopeType.all else 0, results)
+
+    def test_vhost_none_host_in_scope(self):
+        self.init_db()
+        vhost = None
+        with self._engine.session_scope() as session:
+            self._unittest_service_command_creation(session,
+                                                    vhost=vhost,
+                                                    host_scope=ScopeType.all,
+                                                    host_name_scope=ScopeType.exclude)
+
+    def test_vhost_none_host_name_in_scope(self):
+        self.init_db()
+        vhost = None
+        with self._engine.session_scope() as session:
+            self._unittest_service_command_creation(session,
+                                                    vhost=vhost,
+                                                    host_scope=ScopeType.exclude,
+                                                    host_name_scope=ScopeType.all)
+
+    def test_vhost_none_host_host_name_in_scope(self):
+        self.init_db()
+        vhost = None
+        with self._engine.session_scope() as session:
+            self._unittest_service_command_creation(session,
+                                                    vhost=vhost,
+                                                    host_scope=ScopeType.all,
+                                                    host_name_scope=ScopeType.all)
+
+    def test_vhost_none(self):
+        self.init_db()
+        vhost = None
+        with self._engine.session_scope() as session:
+            self._unittest_service_command_creation(session,
+                                                    vhost=vhost,
+                                                    host_scope=ScopeType.exclude,
+                                                    host_name_scope=ScopeType.exclude)
+
+    def test_vhost_all_host_in_scope(self):
+        self.init_db()
+        vhost = VhostChoice.all
+        with self._engine.session_scope() as session:
+            self._unittest_service_command_creation(session,
+                                                    vhost=vhost,
+                                                    host_scope=ScopeType.all,
+                                                    host_name_scope=ScopeType.exclude)
+
+    def test_vhost_all_host_name_in_scope(self):
+        self.init_db()
+        vhost = VhostChoice.all
+        with self._engine.session_scope() as session:
+            self._unittest_service_command_creation(session,
+                                                    vhost=vhost,
+                                                    host_scope=ScopeType.exclude,
+                                                    host_name_scope=ScopeType.all)
+
+    def test_vhost_all_host_host_name_in_scope(self):
+        self.init_db()
+        vhost = VhostChoice.all
+        with self._engine.session_scope() as session:
+            self._unittest_service_command_creation(session,
+                                                    vhost=vhost,
+                                                    host_scope=ScopeType.all,
+                                                    host_name_scope=ScopeType.all)
+
+    def test_vhost_all(self):
+        self.init_db()
+        vhost = VhostChoice.all
+        with self._engine.session_scope() as session:
+            self._unittest_service_command_creation(session,
+                                                    vhost=vhost,
+                                                    host_scope=ScopeType.exclude,
+                                                    host_name_scope=ScopeType.exclude)
+
+    def test_vhost_domain_host_in_scope(self):
+        self.init_db()
+        vhost = VhostChoice.domain
+        with self._engine.session_scope() as session:
+            self._unittest_service_command_creation(session,
+                                                    vhost=vhost,
+                                                    host_scope=ScopeType.all,
+                                                    host_name_scope=ScopeType.exclude)
+
+    def test_vhost_domain_host_name_in_scope(self):
+        self.init_db()
+        vhost = VhostChoice.domain
+        with self._engine.session_scope() as session:
+            self._unittest_service_command_creation(session,
+                                                    vhost=vhost,
+                                                    host_scope=ScopeType.exclude,
+                                                    host_name_scope=ScopeType.all)
+
+    def test_vhost_domain_host_host_name_in_scope(self):
+        self.init_db()
+        vhost = VhostChoice.domain
+        with self._engine.session_scope() as session:
+            self._unittest_service_command_creation(session,
+                                                    vhost=vhost,
+                                                    host_scope=ScopeType.all,
+                                                    host_name_scope=ScopeType.all)
+
+    def test_vhost_domain(self):
+        self.init_db()
+        vhost = VhostChoice.domain
+        with self._engine.session_scope() as session:
+            self._unittest_service_command_creation(session,
+                                                    vhost=vhost,
+                                                    host_scope=ScopeType.exclude,
+                                                    host_name_scope=ScopeType.exclude)
 
 
 class TestCommandServiceCreation(BaseKaliCollectorTestCase):
@@ -1028,7 +1218,9 @@ class TestCreatingAllCommands(BaseKisTestCase):
         return result
 
     def _assert_list_equal(self, expected_list: list, actual_list: list):
+        expected_list = [item.lower() for item in expected_list]
         expected_list.sort()
+        actual_list = [item.lower() for item in actual_list]
         actual_list.sort()
         self.assertListEqual(expected_list, actual_list)
 
@@ -1064,7 +1256,20 @@ class TestCreatingAllCommands(BaseKisTestCase):
                     arguments[collector] = config["arguments"]
             producer.init(arguments)
             producer._create(debug=True)
-        # Check database
+        # Check database (use the following code for trouble shooting; the code above takes very long to create all 580
+        # commands.
+        # with tempfile.TemporaryDirectory() as temp_dir:
+        #     arguments = {"workspace": workspace,
+        #                  "output_dir": temp_dir,
+        #                  "vhost": "all",
+        #                  "wordlist_files": ["/usr/share/wordlists/dirb/common.txt"],
+        #                  "print_commands": True}
+        #     specific_collector = None
+        #     if specific_collector:
+        #         arguments[specific_collector] = True
+        #     else:
+        #         for collector, config in self._collector_info.items():
+        #             arguments[collector] = config["arguments"]
         with self._engine.session_scope() as session:
             for collector, values in self._collector_info.items():
                 actual_versions = {}

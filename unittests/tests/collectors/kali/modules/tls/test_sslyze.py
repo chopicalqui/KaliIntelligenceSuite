@@ -101,4 +101,4 @@ class SslyzeCollectorTestCase(BaseNmapCollectorTestCase):
             self.assertListEqual(expected_results, results)
             # TlsInfoCipherSuiteMapping
             results = session.query(TlsInfoCipherSuiteMapping).count()
-            self.assertEqual(24, results)
+            self.assertEqual(23, results)

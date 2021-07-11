@@ -49,6 +49,7 @@ from database.model import PathType
 from database.model import HttpQuery
 from database.model import Service
 from database.model import Command
+from database.model import CollectorType
 from database.model import File
 from database.model import CommandFileMapping
 from database.model import Company
@@ -273,6 +274,20 @@ class BaseUtils:
         return mapping
 
     @staticmethod
+    def add_collector_name(session: Session,
+                           name: str,
+                           type: CollectorType,
+                           priority: int) -> CollectorName:
+        result = session.query(CollectorName).filter_by(name=name, type=type).one_or_none()
+        if not result:
+            result = CollectorName(name=name, type=type, priority=priority)
+            session.add(result)
+            session.flush()
+        else:
+            result.priority = priority
+        return result
+
+    @staticmethod
     def add_command(session: Session,
                     os_command: List[str],
                     collector_name: CollectorName,
@@ -419,7 +434,8 @@ class BaseUtils:
         session.flush()
         return command
 
-    def add_source(self, session: Session, name: str) -> Source:
+    @staticmethod
+    def add_source(session: Session, name: str) -> Source:
         """
         This method adds the given company to the database
         :param session: The database session used for addition the IPv4 network
@@ -908,7 +924,7 @@ class BaseUtils:
             if source:
                 source.services.append(result)
             if report_item:
-                report_item.details = "new potentially service: {}/{} ({})".format(result.protocol_str,
+                report_item.details = "potentially new service: {}/{} ({})".format(result.protocol_str,
                                                                                    result.port,
                                                                                    result.state_str)
                 report_item.report_type = "SERVICE"

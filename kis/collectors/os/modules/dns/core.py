@@ -310,7 +310,7 @@ class BaseAmass(BaseDnsCollector, DomainCollector):
         :param process: The PopenCommand object that executed the given result. This object holds stderr, stdout, return
         code etc.
         """
-        if command.return_code > 0:
+        if command.return_code and command.return_code > 0:
             self._set_execution_failed(session, command)
         for line in command.stdout_output:
             match_dns = self._re_dns.match(line)
@@ -374,3 +374,94 @@ class BaseCrobat(BaseDnsCollector):
             collector = self._get_or_create_command(session, os_command, collector_name, network=network)
             collectors.append(collector)
         return collectors
+
+
+class BaseDnsAxfr(BaseDnsCollector):
+    """This class implements the base class for zone transfers."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._re_entry = re.compile("^(?P<hostname>.+?)\.\s+\d+\s+IN\s+(?P<type>[A-Z]+)\s+(\d+\s)?(?P<content>.+)$",
+                                    re.IGNORECASE)
+
+    def verify_results(self, session: Session,
+                       command: Command,
+                       source: Source,
+                       report_item: ReportItem,
+                       process: PopenCommand = None, **kwargs) -> None:
+        """This method analyses the results of the command execution.
+
+        After the execution, this method checks the OS command's results to determine the command's execution status as
+        well as existing vulnerabilities (e.g. weak login credentials, NULL sessions, hidden Web folders). The
+        stores the output in table command. In addition, the collector might add derived information to other tables as
+        well.
+
+        :param session: Sqlalchemy session that manages persistence operations for ORM-mapped objects
+        :param command: The command instance that contains the results of the command execution
+        :param source: The source object of the current collector
+        :param report_item: Item that can be used for reporting potential findings in the UI
+        :param process: The PopenCommand object that executed the given result. This object holds stderr, stdout, return
+        code etc.
+        """
+        command.hide = True
+        for line in command.stdout_output:
+            match = self._re_entry.match(line)
+            if match:
+                host_name_str = match.group("hostname").strip(". ")
+                record_type_str = match.group("type").strip().lower()
+                content = match.group("content").strip().strip(". ")
+                try:
+                    record_type = DnsResourceRecordType[record_type_str]
+                    host_name = self.add_host_name(session=session,
+                                                   command=command,
+                                                   host_name=host_name_str,
+                                                   source=source,
+                                                   report_item=report_item)
+                    if host_name:
+                        if record_type in [DnsResourceRecordType.a, DnsResourceRecordType.aaaa] and content:
+                            # Add IPv4 address to database
+                            host = self.add_host(session=session,
+                                                 command=command,
+                                                 source=source,
+                                                 address=content,
+                                                 report_item=report_item)
+                            if not host:
+                                logger.debug("ignoring host due to invalid IP address in line: {}".format(line))
+                            else:
+                                self.add_host_host_name_mapping(session=session,
+                                                                command=command,
+                                                                host=host,
+                                                                host_name=host_name,
+                                                                source=source,
+                                                                mapping_type=record_type,
+                                                                report_item=report_item)
+                        if record_type == DnsResourceRecordType.cname and content:
+                            cname_host_name = self.add_host_name(session=session,
+                                                                 command=command,
+                                                                 host_name=content,
+                                                                 source=source,
+                                                                 report_item=report_item)
+                            if cname_host_name:
+                                self.add_host_name_host_name_mapping(session=session,
+                                                                     command=command,
+                                                                     source_host_name=host_name,
+                                                                     resolved_host_name=cname_host_name,
+                                                                     source=source,
+                                                                     mapping_type=DnsResourceRecordType.cname,
+                                                                     report_item=report_item)
+                            else:
+                                logger.debug("ignoring host name due to invalid domain in line: {}".format(line))
+
+                        else:
+                            for item in self._domain_utils.extract_domains(content):
+                                host_name = self.add_host_name(session=session,
+                                                               command=command,
+                                                               host_name=item,
+                                                               source=source,
+                                                               report_item=report_item)
+                                if not host_name:
+                                    logger.debug("ignoring host name due to invalid domain in line: {}".format(line))
+                    else:
+                        logger.debug("ignoring host name due to invalid domain in line: {}".format(line))
+                except KeyError as ex:
+                    logger.exception(ex)

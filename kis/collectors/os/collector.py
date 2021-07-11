@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 __version__ = 0.1
 
+import enum
 import importlib
 import os
 import pkgutil
@@ -29,8 +30,8 @@ import sqlalchemy
 import time
 import sys
 import stat
+import traceback
 from argparse import _ArgumentGroup
-from view.core import BaseUiManager
 from queue import Queue
 from datetime import datetime
 from threading import Lock
@@ -54,6 +55,7 @@ from database.utils import Engine
 from sqlalchemy import and_
 from typing import Dict
 from typing import List
+from collectors.core import BaseUtils
 from collectors.os.modules.core import DomainCollector
 from collectors.os.modules.core import HostCollector
 from collectors.os.modules.core import ServiceCollector
@@ -64,8 +66,27 @@ from collectors.os.modules.core import CompanyCollector
 from collectors.os.modules.core import ExecutionFailedException
 from collectors.os.modules.core import Delay
 from collectors.os.modules.core import BaseCollector
+from sqlalchemy.orm.session import Session
 
 logger = logging.getLogger('collector')
+
+
+class CollectionStatus(enum.Enum):
+    not_started = enum.auto()
+    running = enum.auto()
+    stopped = enum.auto()
+    finished = enum.auto()
+
+
+class CollectorTypeCommandCreationMethodMapping:
+    """
+    This class contains the mapping between the given collector type and the method.
+    """
+
+    def __init__(self, collector_type: CollectorType, method_name: str, enabled: bool = True):
+        self.collector_type = collector_type
+        self.method_name = method_name
+        self.enabled = enabled
 
 
 class ArgParserModule:
@@ -77,6 +98,9 @@ class ArgParserModule:
         self._arg_option = arg_option
         self._collector_class = collector_class
         self._instance = instance
+        # List of tuples containing the CollectorName.type information as the first element and the corresponding
+        # collector creation method (type str) as the second element.
+        self.collector_type_info = []
 
     @property
     def name(self) -> str:
@@ -137,7 +161,6 @@ class CollectorProducer(Thread):
     def __init__(self,
                  engine: Engine,
                  command_queue: Queue = None,
-                 ui_manager: BaseUiManager = None,
                  workspace: str = None,
                  restart_statuses: List[CommandStatus] = [],
                  analyze_results: bool = False,
@@ -162,7 +185,6 @@ class CollectorProducer(Thread):
         self._current_collector = None
         self._current_collector_index = 0
         self._current_collector_lock = Lock()
-        self._ui_manager = ui_manager
         self._included_items = included_items
         self._excluded_items = excluded_items
         self._restart_statuses = restart_statuses
@@ -173,8 +195,11 @@ class CollectorProducer(Thread):
         self._delay = None
         self._vhost = vhost
         self._continue_execution = False
-        if ui_manager:
-            self._ui_manager.set_producer_thread(self)
+        self._collection_status_lock = Lock()
+        self._collection_status = CollectionStatus.not_started
+        self._consumer_threads_lock = Lock()
+        self._consumer_threads = []
+        self.consoles = []
 
     @property
     def collector_classes(self) -> Dict[str, BaseCollector]:
@@ -186,6 +211,21 @@ class CollectorProducer(Thread):
     @property
     def selected_collectors(self) -> List[ArgParserModule]:
         return self._selected_collectors
+
+    @property
+    def collection_status(self) -> CollectionStatus:
+        with self._collection_status_lock:
+            return self._collection_status
+
+    @collection_status.setter
+    def collection_status(self, value: CollectionStatus):
+        with self._collection_status_lock:
+            self._collection_status = value
+
+    @property
+    def consumer_threads(self) -> list:
+        with self._consumer_threads_lock:
+            return self._consumer_threads
 
     @property
     def engine(self) -> Engine:
@@ -224,17 +264,6 @@ class CollectorProducer(Thread):
         return self._workspace
 
     @property
-    def ui_manager(self) -> BaseUiManager:
-        return self._ui_manager
-
-    @ui_manager.setter
-    def ui_manager(self, value: BaseUiManager):
-        if not value:
-            raise ValueError("Value must not be None!")
-        self._ui_manager = value
-        self._ui_manager.set_producer_thread(self)
-
-    @property
     def analyze_results(self) -> bool:
         return self._analyze_results
 
@@ -243,6 +272,21 @@ class CollectorProducer(Thread):
         if not self._delay:
             self._delay = Delay(self._delay_min, self._delay_max, self._print_commands, self._analyze_results)
         return self._delay
+
+    def register_console(self, console) -> None:
+        """
+        This method is used by console implementations to register them for notification.
+        """
+        self.consoles.append(console)
+
+    def add_consumer_thread(self):
+        """
+        This method adds a new consumer thread to speedup collection.
+        """
+        thread = CollectorConsumer(self._engine, self._command_queue, self)
+        thread.start()
+        with self._consumer_threads_lock:
+            self._consumer_threads.append(thread)
 
     def _load_modules(self) -> dict:
         """
@@ -272,10 +316,6 @@ class CollectorProducer(Thread):
     def log_exception(self, exception: Exception):
         """This method logs the exception"""
         logger.exception(exception)
-        if self._ui_manager:
-            self._ui_manager.log_exception(exception)
-        else:
-            print(exception, file=sys.stderr)
 
     def add_argparser_arguments(self, group: _ArgumentGroup) -> None:
         """
@@ -294,7 +334,7 @@ class CollectorProducer(Thread):
         :return:
         """
         self._selected_collectors = []
-        kwargs = {"ui_manager": self._ui_manager}
+        kwargs = {}
         to_instantiate = []
         for key, value in args.items():
             # If the key is in the dictionary, then we deal with a collector class, which we have to instantiate
@@ -319,8 +359,6 @@ class CollectorProducer(Thread):
                 self._delay_min = value
             elif key == "delay_max" and value:
                 self._delay_max = value
-            elif key == "batch_mode" and value:
-                self._ui_manager.batch_mode = value
             elif key == "vhost" and value:
                 self._vhost = VhostChoice[value]
             elif key == "continue" and value:
@@ -328,9 +366,16 @@ class CollectorProducer(Thread):
             elif key == "output_dir" and value:
                 os.chmod(value, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
             kwargs[key] = value
-        for item in to_instantiate:
-            item.create_instance(engine=self._engine, **kwargs)
-            self._selected_collectors.append(item)
+        with self._engine.session_scope() as session:
+            for item in to_instantiate:
+                item.create_instance(engine=self._engine, **kwargs)
+                item.collector_type_info = self.get_collector_types(item, vhost=self._vhost)
+                self._selected_collectors.append(item)
+                for mapping in item.collector_type_info:
+                    BaseUtils.add_collector_name(session=session,
+                                                 name=item.name,
+                                                 type=mapping.collector_type,
+                                                 priority=item.instance.priority)
         self._selected_collectors.sort()
 
     def clear_commands_queue(self):
@@ -343,12 +388,78 @@ class CollectorProducer(Thread):
                 self._command_queue.get(block=False)
                 self._command_queue.task_done()
 
+    @staticmethod
+    def get_collector_types(collector: ArgParserModule, vhost: VhostChoice) -> list:
+        """
+        This method determines the collector types of the given ArgParserModule object in combination with the vhost
+        setting.
+        :return: List of tuples containing the collector type as the first element and the name of the command creation
+        method as the second element.
+        """
+        # todo: update for new collector
+        mapping = {CollectorType.domain: CollectorTypeCommandCreationMethodMapping(CollectorType.domain,
+                                                                                   "_create_domain_name_commands"),
+                   CollectorType.host: CollectorTypeCommandCreationMethodMapping(CollectorType.host,
+                                                                                 "_create_host_commands"),
+                   CollectorType.service: CollectorTypeCommandCreationMethodMapping(CollectorType.service,
+                                                                                    "_create_service_commands"),
+                   CollectorType.ipv4_network: CollectorTypeCommandCreationMethodMapping(CollectorType.ipv4_network,
+                                                                                         "_create_ipv4_network_commands"),
+                   CollectorType.host_name_service: CollectorTypeCommandCreationMethodMapping(CollectorType.host_name_service,
+                                                                                              "_create_host_name_service_commands"),
+                   CollectorType.email: CollectorTypeCommandCreationMethodMapping(CollectorType.email,
+                                                                                  "_create_email_commands"),
+                   CollectorType.company: CollectorTypeCommandCreationMethodMapping(CollectorType.company,
+                                                                                    "_create_company_commands")}
+        result = []
+        # todo: update for new collector
+        # Test for vhost settings
+        if isinstance(collector.instance, ServiceCollector) and isinstance(collector.instance, HostNameServiceCollector):
+            # If the vhost argument has not been specified or is all, then service collectors are used.
+            mapping_object = mapping[CollectorType.service]
+            mapping_object.enabled = not vhost or vhost == VhostChoice.all
+            result.append(mapping_object)
+            # If the vhost argument is set to domain, then only vhost service collectors are allowed.
+            mapping_object = mapping[CollectorType.host_name_service]
+            mapping_object.enabled = vhost and (vhost == VhostChoice.domain or vhost == VhostChoice.all)
+            result.append(mapping_object)
+        # Test for vhost settings: Special case for BurpSuite collector, which submits scans per host to reduce scanning
+        # tasks in Burp.
+        elif isinstance(collector.instance, DomainCollector) and isinstance(collector.instance, HostCollector):
+            # If the vhost argument has not been specified or is all, then service collectors are used.
+            mapping_object = mapping[CollectorType.host]
+            mapping_object.enabled = not vhost or vhost == VhostChoice.all
+            result.append(mapping_object)
+            # If the vhost argument is set to domain, then only vhost service collectors are allowed.
+            mapping_object = mapping[CollectorType.domain]
+            mapping_object.enabled = vhost and (vhost == VhostChoice.domain or vhost == VhostChoice.all)
+            result.append(mapping_object)
+        elif isinstance(collector.instance, HostNameServiceCollector) and \
+                not isinstance(collector.instance, ServiceCollector):
+            raise NotImplementedError("collector '{}' is a HostNameServiceCollector but not a ServiceCollector. "
+                                      "this is most likely a coding error.")
+        else:
+            if isinstance(collector.instance, DomainCollector):
+                result.append(mapping[CollectorType.domain])
+            if isinstance(collector.instance, HostCollector):
+                result.append(mapping[CollectorType.host])
+            if isinstance(collector.instance, ServiceCollector):
+                result.append(mapping[CollectorType.service])
+            if isinstance(collector.instance, Ipv4NetworkCollector):
+                result.append(mapping[CollectorType.ipv4_network])
+            if isinstance(collector.instance, EmailCollector):
+                result.append(mapping[CollectorType.email])
+            if isinstance(collector.instance, CompanyCollector):
+                result.append(mapping[CollectorType.company])
+            if len(result) > 1 or len(result) == 0:
+                raise NotImplementedError("collector '{}' has the following types, which "
+                                          "is not implemented: {}".format(collector.name,
+                                                                          ", ".join([item[0].name for item in result])))
+        return result
+
     def _create(self, debug: bool = False):
         """This method creates all OS commands"""
         self._engine.delete_incomplete_commands(self._workspace)
-        if self._ui_manager and not self.print_commands:
-            self._ui_manager.start_ui()
-            self._ui_manager.wait_for_start()
         continue_collection = True
         while continue_collection:
             self.current_collector_index = 0
@@ -356,56 +467,26 @@ class CollectorProducer(Thread):
                 uniq_command_ids = {}
                 try:
                     # if the user enters q, then we quit collection
-                    if self._ui_manager and self._ui_manager.quit_collection:
+                    if self.collection_status == CollectionStatus.stopped:
                         break
                     self.current_collector = collector
+                    collector_types = [item.collector_type for item in collector.collector_type_info]
                     with self._engine.session_scope() as session:
                         try:
                             commands = []
-                            # todo: update for new collector
-                            if isinstance(collector.instance, DomainCollector):
-                                collector_name = self._engine.get_or_create(session,
-                                                                            CollectorName,
-                                                                            name=collector.name,
-                                                                            type=CollectorType.domain)
-                                commands = commands + self._create_domain_name_commands(session, collector_name)
-                            if isinstance(collector.instance, HostCollector):
-                                collector_name = self._engine.get_or_create(session,
-                                                                            CollectorName,
-                                                                            name=collector.name,
-                                                                            type=CollectorType.host)
-                                commands = commands + self._create_host_commands(session, collector_name)
-                            if isinstance(collector.instance, ServiceCollector):
-                                collector_name = self._engine.get_or_create(session,
-                                                                            CollectorName,
-                                                                            name=collector.name,
-                                                                            type=CollectorType.service)
-                                commands = commands + self._create_service_commands(session, collector_name)
-                            if isinstance(collector.instance, Ipv4NetworkCollector):
-                                collector_name = self._engine.get_or_create(session,
-                                                                            CollectorName,
-                                                                            name=collector.name,
-                                                                            type=CollectorType.ipv4_network)
-                                commands = commands + self._create_ipv4_network_commands(session, collector_name)
-                            if isinstance(collector.instance, HostNameServiceCollector):
-                                collector_name = self._engine.get_or_create(session,
-                                                                            CollectorName,
-                                                                            name=collector.name,
-                                                                            type=CollectorType.host_name_service)
-                                commands = commands + self._create_host_name_service_commands(session, collector_name)
-                            if isinstance(collector.instance, EmailCollector):
-                                collector_name = self._engine.get_or_create(session,
-                                                                            CollectorName,
-                                                                            name=collector.name,
-                                                                            type=CollectorType.email)
-                                commands = commands + self._create_email_commands(session, collector_name)
-                            if isinstance(collector.instance, CompanyCollector):
-                                collector_name = self._engine.get_or_create(session,
-                                                                            CollectorName,
-                                                                            name=collector.name,
-                                                                            type=CollectorType.company)
-                                commands = commands + self._create_company_commands(session, collector_name)
-                            self._engine.get_or_create(session, Source, name=collector.name)
+                            for mapping in collector.collector_type_info:
+                                # Obtain the collector name object from the database (the table was already populated
+                                # during the initialization of this object)
+                                collector_name = BaseUtils.add_collector_name(session=session,
+                                                                              name=collector.name,
+                                                                              type=mapping.collector_type,
+                                                                              priority=collector.instance.priority)
+                                # Create the OS commands
+                                if mapping.enabled:
+                                    command_creation_method = getattr(self, mapping.method_name)
+                                    commands += command_creation_method(session, collector_name, collector_types)
+                            BaseUtils.add_source(session=session, name=collector_name.name)
+                            # Populate the queue
                             for item in commands:
                                 if (item.status_value <= CommandStatus.collecting.value or
                                     (self._restart_statuses and
@@ -414,8 +495,7 @@ class CollectorProducer(Thread):
                                                                                  self.current_collector.instance.timeout,
                                                                                  self.current_collector.instance.active_collector)
                         except Exception as ex:
-                            if debug:
-                                raise ex
+                            traceback.print_exc(file=sys.stderr)
                             session.rollback()
                             self.log_exception(ex)
                             break
@@ -424,16 +504,16 @@ class CollectorProducer(Thread):
                             self._command_queue.put(value)
                         self._command_queue.join()
                 except Exception as ex:
-                    if debug:
-                        raise ex
+                    traceback.print_exc(file=sys.stderr)
                     self.log_exception(ex)
                     self.current_collector = None
                 self.current_collector_index += 1
-            continue_collection = self._ui_manager and not self._ui_manager.quit_collection and self._continue_execution
+            continue_collection = self.collection_status == CollectionStatus.running and self._continue_execution
             if continue_collection:
                 time.sleep(2)
-        if self._ui_manager:
-            self._ui_manager.notify_finished()
+        if not self.print_commands:
+            for console in self.consoles:
+                console.notify_finished()
 
     def _verify_command(self, commands: List[Command]):
         if commands and commands[0].os_command and \
@@ -441,7 +521,10 @@ class CollectorProducer(Thread):
             raise FileNotFoundError(
                 "the command '{}' does not exist!".format(commands[0].os_command[0]))
 
-    def _create_ipv4_network_commands(self, session, collector_name: CollectorName) -> List[Command]:
+    def _create_ipv4_network_commands(self,
+                                      session: Session,
+                                      collector_name: CollectorName,
+                                      collector_types: list) -> List[Command]:
         """This method creates all OS commands that rely on IPv4 network information"""
         commands = []
         q = session.query(Network) \
@@ -450,16 +533,17 @@ class CollectorProducer(Thread):
         for ipv4_network in q:
             if ipv4_network.is_processable(self._included_items,
                                            self._excluded_items,
-                                           self.current_collector.instance.active_collector) and \
-                    (self._vhost is None or self._vhost == VhostChoice.all or
-                     not isinstance(self.current_collector.instance, DomainCollector)):
+                                           self.current_collector.instance.active_collector):
                 commands = commands + self.current_collector.instance.create_ipv4_network_commands(session,
                                                                                                    ipv4_network,
                                                                                                    collector_name)
                 self._verify_command(commands)
         return commands
 
-    def _create_domain_name_commands(self, session, collector_name: CollectorName) -> List[Command]:
+    def _create_domain_name_commands(self,
+                                     session: Session,
+                                     collector_name: CollectorName,
+                                     collector_types: list) -> List[Command]:
         """This method creates all OS commands that rely on domain information"""
         commands = []
         q = session.query(HostName) \
@@ -467,7 +551,8 @@ class CollectorProducer(Thread):
             .join((Workspace, DomainName.workspace)) \
             .filter(Workspace.name == self._workspace)
         for host_name in q:
-            if not isinstance(self.current_collector.instance, Ipv4NetworkCollector):
+            collector_type_count = len(collector_types)
+            if collector_type_count == 1:
                 if host_name.is_processable(included_items=self._included_items,
                                             excluded_items=self._excluded_items,
                                             collector_type=CollectorType.domain,
@@ -476,18 +561,27 @@ class CollectorProducer(Thread):
                                                                                                  host_name,
                                                                                                  collector_name)
                     self._verify_command(commands)
-            elif self._vhost:
-                if host_name.is_processable(included_items=self._included_items,
-                                            excluded_items=self._excluded_items,
-                                            collector_type=CollectorType.host_name_service,
-                                            active_collector=self.current_collector.instance.active_collector):
+            elif collector_type_count == 2:
+                # This case address the collector httpburpsuiteprofessional
+                if CollectorType.domain in collector_types and \
+                    CollectorType.host in collector_types and \
+                    host_name.is_processable(included_items=self._included_items,
+                                             excluded_items=self._excluded_items,
+                                             collector_type=CollectorType.host_name_service,
+                                             active_collector=self.current_collector.instance.active_collector):
                     commands = commands + self.current_collector.instance.create_domain_commands(session,
                                                                                                  host_name,
                                                                                                  collector_name)
-                    self._verify_command(commands)
+            else:
+                raise NotImplementedError("this collector '{}' implements the following collector types, which is not "
+                                          "implemented: {}".format(collector_name,
+                                                                   ", ".join([item.name for item in collector_types])))
         return commands
 
-    def _create_host_commands(self, session, collector_name: CollectorName) -> List[Command]:
+    def _create_host_commands(self,
+                              session: Session,
+                              collector_name: CollectorName,
+                              collector_types: list) -> List[Command]:
         """This method creates all OS commands that rely on host information (e.g. IP address)"""
         commands = []
         q = session.query(Host) \
@@ -504,8 +598,9 @@ class CollectorProducer(Thread):
         return commands
 
     def _create_service_commands(self,
-                                 session,
-                                 collector_name: CollectorName) -> List[Command]:
+                                 session: Session,
+                                 collector_name: CollectorName,
+                                 collector_types: list) -> List[Command]:
         """This method creates all OS commands that rely on service information (e.g. port number)"""
         commands = []
         # services for a host
@@ -527,8 +622,9 @@ class CollectorProducer(Thread):
         return commands
 
     def _create_host_name_service_commands(self,
-                                           session,
-                                           collector_name: CollectorName) -> List[Command]:
+                                           session: Session,
+                                           collector_name: CollectorName,
+                                           collector_types: list) -> List[Command]:
         """This method creates all OS commands that rely on service information (e.g. port number)"""
         commands = []
         q = session.query(Service) \
@@ -549,8 +645,9 @@ class CollectorProducer(Thread):
         return commands
 
     def _create_email_commands(self,
-                               session,
-                               collector_name: CollectorName) -> List[Command]:
+                               session: Session,
+                               collector_name: CollectorName,
+                               collector_types: list) -> List[Command]:
         """This method creates all OS commands that rely on email information (e.g. port number)"""
         commands = []
         q = session.query(Email) \
@@ -569,8 +666,9 @@ class CollectorProducer(Thread):
         return commands
 
     def _create_company_commands(self,
-                                 session,
-                                 collector_name: CollectorName) -> List[Command]:
+                                 session: Session,
+                                 collector_name: CollectorName,
+                                 collector_types: list) -> List[Command]:
         """This method creates all OS commands that rely on email information (e.g. port number)"""
         commands = []
         q = session.query(Company) \
@@ -587,15 +685,14 @@ class CollectorProducer(Thread):
         return commands
 
     def _analyze(self):
-        """Analyzes all collected information"""
-        if self._ui_manager and not self.print_commands:
-            self._ui_manager.start_ui()
-            self._ui_manager.wait_for_start()
+        """
+        Analyzes all collected information
+        """
         self.current_collector_index = 0
         for argument in self._selected_collectors:
             try:
                 # if the user enters q, then we quit collection
-                if self._ui_manager and self._ui_manager.quit_collection:
+                if self.collection_status == CollectionStatus.stopped:
                     break
                 self.current_collector = argument
                 with self._engine.session_scope() as session:
@@ -703,17 +800,48 @@ class CollectorProducer(Thread):
                 self.log_exception(ex)
                 self.current_collector = None
             self.current_collector_index += 1
-        self._ui_manager.notify_finished()
+
+    def terminate_all_processes(self) -> None:
+        """
+        This method kills all currently running processes.
+        :return:
+        """
+        for thread in self.consumer_threads:
+            thread.terminate_current_command()
+
+    def stop(self) -> None:
+        # Signal that collection stopped
+        self.collection_status = CollectionStatus.stopped
+        print("emptying command queue ...")
+        self.clear_commands_queue()
+        print("terminating all threads ...")
+        self.terminate_all_processes()
 
     def run(self) -> None:
+        # Signal that collection started
+        self.collection_status = CollectionStatus.running
+
+        # Start all worker threads
+        for i in range(0, self.number_of_threads):
+            self.add_consumer_thread()
+
+        # Create commands or just analyse already collecte data
         if self._analyze_results:
             self._analyze()
         else:
             self._create()
 
+        with self._consumer_threads_lock:
+            self._consumer_threads = []
+        if self.collection_status == CollectionStatus.running:
+            self.collection_status = CollectionStatus.finished
+
 
 class CollectorConsumer(Thread):
-    """This class executes all commands"""
+    """
+    This class executes all commands
+    """
+
     THREAD_COUNT = 0
 
     def __init__(self,
@@ -730,29 +858,43 @@ class CollectorConsumer(Thread):
         self._current_service = None
         self._current_start_time = None
         self._current_username = None
-        self._ui_manager = producer_thread.ui_manager
         self._consumer_status_lock = Lock()
         self._current_process = None
         self._delay = producer_thread.delay
-        if self._ui_manager and not self._producer_thread.print_commands:
-            self._ui_manager.add_consumer_thread(self)
+        self._consoles = producer_thread.consoles
+        self._current_os_command_lock = Lock()
+        self._current_os_command = []
 
     def __repr__(self):
         with self._consumer_status_lock:
             collector_name = self._producer_thread.current_collector.name\
                 if self._producer_thread.current_collector else "n/a"
+            collector_name = collector_name if len(collector_name) < 20 else collector_name[:20]
             current_host = self._current_host if self._current_host else "n/a"
-            current_host = current_host if len(current_host) < 25 else current_host[:24]
             current_service = self._current_service if self._current_service else "n/a"
             current_username = self._current_username if self._current_username else "n/a"
             duration = CollectorConsumer.strfdelta(datetime.utcnow() - self._current_start_time)\
                 if self._current_start_time else "n/a"
-            return "thread {:3d} ({:^6}) - [{}] {:25}  {:<9} - {}".format(self._id,
-                                                                          current_username,
-                                                                          collector_name,
-                                                                          current_host,
-                                                                          current_service,
-                                                                          duration)
+            return "{} ({:^6}) - [{:<15}] - {:<8} - {:<9} - {}".format(self.thread_str,
+                                                                       current_username,
+                                                                       collector_name,
+                                                                       duration,
+                                                                       current_service,
+                                                                       current_host)
+
+    @property
+    def thread_str(self) -> str:
+        return "thread {:3d}".format(self._id)
+
+    @property
+    def current_os_command(self) -> str:
+        with self._current_os_command_lock:
+            return self.current_command
+
+    @current_os_command.setter
+    def current_os_command(self, value: str):
+        with self._current_os_command_lock:
+            self.current_command = value
 
     @staticmethod
     def strfdelta(tdelta, fmt="{hours:02d}:{minutes:02d}:{seconds:02d}"):
@@ -778,7 +920,7 @@ class CollectorConsumer(Thread):
             self._current_process.terminate()
 
     def run(self):
-        while True:
+        while self._producer_thread.collection_status == CollectionStatus.running:
             try:
                 self._current_process = None
                 command_item = self._commands_queue.get()
@@ -792,13 +934,14 @@ class CollectorConsumer(Thread):
                         working_directory = command.working_directory
                         username = command.username
                         os_command = command.os_command_substituted
+                        os_command_str = command.os_command_string
                         self._current_username = username
                         if self._producer_thread.print_commands:
-                            self._ui_manager.set_message(command.os_command_string)
+                            print(os_command_str)
                         elif not self._producer_thread.current_collector.instance.start_command_execution(session,
                                                                                                           command):
                             # Before we execute the command, we check whether it should be executed
-                            os_command = []
+                            os_command = None
                             command.status = CommandStatus.terminated
                             command.stop_time = datetime.utcnow()
                             executed_command = False
@@ -847,15 +990,16 @@ class CollectorConsumer(Thread):
                                     self._current_service = "n/a"
                                 self._current_start_time = command.start_time
                     if not self._producer_thread.print_commands and os_command:
+                        self.current_os_command = os_command_str
                         # Now we run the process
                         self._current_process = self._producer_thread.\
                             current_collector.instance.execution_class(os_command,
+                                                                       timeout=command_item.timeout,
                                                                        cwd=working_directory,
                                                                        stdout=subprocess.PIPE,
                                                                        stderr=subprocess.PIPE,
                                                                        username=username)
                         self._current_process.start()
-                        self._current_process.wait(timeout=command_item.timeout)
                         if not self._current_process.killed:
                             self._current_process.stop_time = datetime.utcnow()
                             status_id = CommandStatus.completed
@@ -868,9 +1012,10 @@ class CollectorConsumer(Thread):
                             self._producer_thread.current_collector.instance.process_command_results(self._engine,
                                                                                                      command_item.command_id,
                                                                                                      status_id,
-                                                                                                     self._current_process)
+                                                                                                     self._current_process,
+                                                                                                     listeners=self._consoles)
                         except sqlalchemy.orm.exc.NoResultFound as ex:
-                            self._ui_manager.set_message("no command with ID {} found".format(command_item.command_id))
+                            print("no command with ID {} found".format(command_item.command_id))
                             logger.critical("no command with ID {} found (see the following stacktrade)"
                                             .format(command_item.command_id))
                             self._producer_thread.log_exception(ex)
@@ -880,14 +1025,12 @@ class CollectorConsumer(Thread):
                         except Exception as ex:
                             self._producer_thread.log_exception(ex)
                         self._current_process.close()
+                        self.current_os_command = None
                     with self._consumer_status_lock:
                         self._current_host = None
                         self._current_service = None
                         self._current_start_time = None
                     self._commands_queue.task_done()
-                    # If the user entered q, then we quit the collection
-                    if self._ui_manager and self._ui_manager.quit_collection:
-                        return
                     if self._producer_thread.current_collector and \
                             self._producer_thread.current_collector.instance and executed_command:
                         self._producer_thread.current_collector.instance.sleep()
@@ -896,4 +1039,6 @@ class CollectorConsumer(Thread):
                     self._commands_queue.task_done()
                     time.sleep(1)
             except Exception as ex:
+                self.current_os_command = None
+                traceback.print_exc(file=sys.stderr)
                 self._producer_thread.log_exception(ex)
