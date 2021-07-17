@@ -126,6 +126,7 @@ class CollectorClass(BaseCrackMapExec, ServiceCollector):
                     command.service.smb_message_signing = signing == 'true'
                 self.add_additional_info(session=session,
                                          command=command,
+                                         service=command.service,
                                          name="SMB",
                                          values=["SMB message signing: {}, SMBv1: {}".format(signing, smbv1)],
                                          source=source,

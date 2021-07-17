@@ -248,6 +248,37 @@ class Engine:
         """This method creates all functions"""
         # Triggers for setting host_names in or out of scope
         # pre_update_domain_name_scope_changes
+        # todo: update pre_command_changes for new collector
+        self._engine.execute("""CREATE OR REPLACE FUNCTION pre_command_changes()
+        RETURNS TRIGGER AS $$
+        BEGIN
+            IF (TG_OP = 'INSERT') THEN
+                IF (NEW.host_id IS NOT NULL) THEN
+                    SELECT w.id INTO NEW.workspace_id FROM workspace w
+                    INNER JOIN host h ON h.workspace_id = w.id AND h.id = NEW.host_id;
+                ELSIF (NEW.host_name_id IS NOT NULL) THEN
+                    SELECT w.id INTO NEW.workspace_id FROM workspace w
+                    INNER JOIN domain_name d ON d.workspace_id = w.id
+                    INNER JOIN host_name hn ON hn.domain_name_id = d.id AND hn.id = NEW.host_name_id;
+                ELSIF (NEW.network_id IS NOT NULL) THEN
+                    SELECT w.id INTO NEW.workspace_id FROM workspace w
+                    INNER JOIN network n ON n.workspace_id = w.id AND n.id = NEW.network_id;
+                ELSIF (NEW.email_id IS NOT NULL) THEN
+                    SELECT w.id INTO NEW.workspace_id FROM workspace w
+                    INNER JOIN domain_name d ON d.workspace_id = w.id
+                    INNER JOIN host_name hn ON hn.domain_name_id = d.id
+                    INNER JOIN email e ON e.host_name_id = hn.id AND e.id = NEW.email_id;
+                ELSIF (NEW.company_id IS NOT NULL) THEN
+                    SELECT w.id INTO NEW.workspace_id FROM workspace w
+                    INNER JOIN company c ON c.workspace_id = w.id AND c.id = NEW.company_id;
+                ELSE
+                    RAISE EXCEPTION 'this case has not been implemented';
+                END IF;
+            END IF;
+            RETURN NEW;
+        END;
+        $$ LANGUAGE PLPGSQL;""")
+        # pre_update_domain_name_scope_changes
         self._engine.execute("""CREATE OR REPLACE FUNCTION pre_update_domain_name_scope_changes()
         RETURNS TRIGGER AS $$
         BEGIN
@@ -759,6 +790,7 @@ class Engine:
 
     def _drop_functions(self) -> None:
         """This method drops all functions"""
+        self._engine.execute("""DROP FUNCTION pre_command_changes;""")
         self._engine.execute("""DROP FUNCTION pre_update_domain_name_scope_changes;""")
         self._engine.execute("""DROP FUNCTION post_update_host_names_after_domain_name_scope_changes;""")
         self._engine.execute("""DROP FUNCTION pre_update_host_name_scope;""")
@@ -770,6 +802,9 @@ class Engine:
 
     def _create_triggers(self) -> None:
         """This method creates all triggers."""
+        # Triggers on command table to automatically populate the workspace_id
+        self._engine.execute("""CREATE TRIGGER pre_command_changes BEFORE INSERT ON command
+ FOR EACH ROW EXECUTE PROCEDURE pre_command_changes();""")
         # Triggers on host_name and domain_name tables
         self._engine.execute("""CREATE TRIGGER pre_update_domain_name_scope_trigger BEFORE INSERT OR UPDATE ON domain_name
  FOR EACH ROW EXECUTE PROCEDURE pre_update_domain_name_scope_changes();""")

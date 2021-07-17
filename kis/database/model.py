@@ -2615,6 +2615,7 @@ class Command(DeclarativeBase):
                              unique=False)
     email_id = Column(Integer, ForeignKey("email.id", ondelete='cascade'), nullable=True, unique=False)
     company_id = Column(Integer, ForeignKey("company.id", ondelete='cascade'), nullable=True, unique=False)
+    workspace_id = Column(Integer, ForeignKey("workspace.id", ondelete='cascade'), nullable=False, unique=False)
     creation_date = Column(DateTime, nullable=False, default=datetime.utcnow())
     last_modified = Column(DateTime, nullable=True, onupdate=datetime.utcnow())
     start_time = Column(DateTime, nullable=True, unique=False)
@@ -2680,10 +2681,13 @@ class Command(DeclarativeBase):
                  host_name: Host = None,
                  ipv4_network: Network = None,
                  email: Email = None,
-                 company = None):
+                 company = None,
+                 workspace_id: int = None):
         # todo: update for new collector
         self.os_command = os_command
         self.collector_name = collector_name
+        # workspace_id is just set here for unittest purpose and should not be set.
+        self.workspace_id = workspace_id
         if service:
             self.service = service
             if service.host:

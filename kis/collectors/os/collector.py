@@ -200,6 +200,9 @@ class CollectorProducer(Thread):
         self._consumer_threads_lock = Lock()
         self._consumer_threads = []
         self.consoles = []
+        # This is just for UI purposes.
+        self._collector_list_lock = Lock()
+        self._collector_list = []
 
     @property
     def collector_classes(self) -> Dict[str, BaseCollector]:
@@ -272,6 +275,21 @@ class CollectorProducer(Thread):
         if not self._delay:
             self._delay = Delay(self._delay_min, self._delay_max, self._print_commands, self._analyze_results)
         return self._delay
+
+    @property
+    def remaining_collectors(self) -> list:
+        """
+        This property returns the list of remaining collectors that have not been processed.
+        """
+        result = []
+        remaining = False
+        with self._collector_list_lock:
+            for item in self._collector_list:
+                if self.current_collector is None or remaining:
+                    result.append(item)
+                elif self.current_collector.name == item:
+                    remaining = True
+        return result
 
     def register_console(self, console) -> None:
         """
@@ -371,6 +389,8 @@ class CollectorProducer(Thread):
                 item.create_instance(engine=self._engine, **kwargs)
                 item.collector_type_info = self.get_collector_types(item, vhost=self._vhost)
                 self._selected_collectors.append(item)
+                with self._collector_list_lock:
+                    self._collector_list.append(item.name)
                 for mapping in item.collector_type_info:
                     BaseUtils.add_collector_name(session=session,
                                                  name=item.name,

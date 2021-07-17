@@ -32,7 +32,6 @@ from database.model import Credentials
 from database.model import Email
 from database.model import Network
 from database.model import Source
-from database.model import Company
 from database.model import HostName
 from database.model import DomainName
 from database.model import Path
@@ -290,7 +289,8 @@ class TestDeleteHost(BaseKisTestCase):
             collector_name = self._engine.get_or_create(session,
                                                         CollectorName,
                                                         name="nikto",
-                                                        type=CollectorType.host)
+                                                        type=CollectorType.host,
+                                                        priority=1)
             self._domain_utils.add_command(session=session,
                                            os_command=["sleep", "10"],
                                            collector_name=collector_name,
@@ -410,7 +410,8 @@ class TestDeleteHostName(BaseKisTestCase):
             collector_name = self._engine.get_or_create(session,
                                                         CollectorName,
                                                         name="nikto",
-                                                        type=CollectorType.host_name_service)
+                                                        type=CollectorType.host_name_service,
+                                                        priority=1)
             self._domain_utils.add_command(session=session,
                                            os_command=["sleep", "10"],
                                            collector_name=collector_name,
@@ -582,7 +583,8 @@ class TestDeleteService(BaseKisTestCase):
             collector_name = self._engine.get_or_create(session,
                                                         CollectorName,
                                                         name="nikto",
-                                                        type=CollectorType.service)
+                                                        type=CollectorType.service,
+                                                        priority=1)
             self._domain_utils.add_command(session=session,
                                            os_command=["sleep", "10"],
                                            collector_name=collector_name,
@@ -767,7 +769,8 @@ class TestDeleteEmail(BaseKisTestCase):
             collector_name = self._engine.get_or_create(session,
                                                         CollectorName,
                                                         name="nikto",
-                                                        type=CollectorType.email)
+                                                        type=CollectorType.email,
+                                                        priority=1)
             self._domain_utils.add_command(session=session,
                                            os_command=["sleep", "10"],
                                            collector_name=collector_name,

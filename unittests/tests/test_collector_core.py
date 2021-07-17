@@ -2087,7 +2087,7 @@ class TestAddService(BaseKisTestCase):
                                 Workspace.name == item).count()
                     self.assertEqual(1, results)
             if report_item:
-                self.assertIn("new potentially service: {}/{}".format(protocol_type.name.lower(), port),
+                self.assertIn("potentially new service: {}/{}".format(protocol_type.name.lower(), port),
                               report_item.get_report())
         results = session.query(Service) \
             .filter(Service.port == port,

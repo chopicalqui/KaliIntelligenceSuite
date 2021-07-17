@@ -115,7 +115,7 @@ $ sudo kiscollect -w $ws --debug --awsslurp --builtwith --censysdomain --certspo
 --dnsamasspassive --dnscrobatdomain --dnscrobatreversehost --dnscrobatreversenetwork --dnscrobattld --dnsdumpster \
 --dnshostpublic --dnsreverselookup --dnsspf --dnssublist3r --haveibeenbreach --haveibeenpaste --hostio --hunter \
 --reversewhois --securitytrails --shodanhost --shodannetwork --theharvester --virustotal --whoisdomain --whoishost \
- --autostart
+--autostart
 
 run the following command to obtain a list of all in-scope company names. review the items in column "Owns" and
 "Owns Scope". if column "Owns Scope" is not "all", then you might want to add the respective item in "Owns" in scope
@@ -153,7 +153,7 @@ $ sudo kiscollect -w $ws --debug --strict -t5 --anyservicenmap --certnmap --cert
 --ldapnmap --ldapsearch --msrpcenum --mssqlhydra --mssqlnmap --mysqlhydra --mysqlnmap --nbtscan --nfsnmap --ntpq \
 --onesixtyone --oraclesidguess --pgsqlhydra --pop3nmap --rdpnmap --rpcclient --rpcinfo --rpcnmap --showmount \
 --smbclient --smbcme --smbfilelist --smbmap --smbnmap --smtpnmap --snmpcheck --snmphydra --snmpnmap --snmpwalk \
---sshchangeme --sshnmap --sslscan --sslyze --telnetnmap --tftpnmap --tlsnmap --vncnmap --x11nmap  --autostart
+--sshchangeme --sshnmap --sslscan --sslyze --telnetnmap --tftpnmap --tlsnmap --vncnmap --x11nmap --autostart
 
 review collected domain information and eventually add domains in scope
 $ kisreport domain -w $ws --csv --scope outside | csvcut -c "Second-Level Domain (SLD)","Scope (SLD)","Companies (SLD)" \
@@ -169,7 +169,7 @@ $ sudo kiscollect -w $ws --debug --strict -t5 --anyservicenmap --certnmap --cert
 --onesixtyone --oraclesidguess --pgsqlhydra --pop3nmap --rdpnmap --rpcclient --rpcinfo --rpcnmap --showmount \
 --smbclient --smbcme --smbfilelist --smbmap --smbnmap --smtpnmap --snmpcheck --snmphydra --snmpnmap --snmpwalk \
 --sshchangeme --sshnmap --sslscan --sslyze --telnetnmap --tftpnmap --tlsnmap --vncnmap --x11nmap --httpburpsuitepro \
---vhost domain  --autostart
+--vhost domain --autostart
 
 collect screenshots with aquatone
 $ kisreport path -w $ws --scope within --type Http --csv | csvcut -c "Full Path" | grep -v "Full Path" | aquatone -out aquatone
@@ -203,7 +203,7 @@ In addition, to the tests in example I and II, the following commands can be exe
 $ dns_server=
 $ sudo kiscollect -w $ws --debug --strict -t5 --dnsamassactive --dnsaxfr --dnsdkim --dnsdmarc --dnsenum --dnsgobuster \
 --dnshostpublic --dnsrecon --dnstakeover --httpsqlmap --smtpuserenum --vhostgobuster --dnshostpublic \
---dns-server $dns_server  --autostart
+--dns-server $dns_server --autostart
 
 # Find additional domains using dnsgen and massdns
 $ kisreport domain -w $ws --csv --scope within | csvcut -c "Host Name (HN)" | sort -u | dnsgen - | massdns -r \

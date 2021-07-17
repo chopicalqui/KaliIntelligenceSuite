@@ -32,6 +32,7 @@ import argparse
 import traceback
 import collections
 from database.model import Command
+from database.model import Workspace
 from database.model import CollectorName
 from database.model import CollectorType
 from database.model import CommandStatus
@@ -56,8 +57,7 @@ class ThreadArgumentEnum(enum.Enum):
 
 class CollectorArgumentEnum(enum.Enum):
     current = enum.auto()
-    add = enum.auto()
-    delete = enum.auto()
+    remaining = enum.auto()
 
 
 class KisConsoleConsoleCommand(enum.Enum):
@@ -219,7 +219,7 @@ exit the application.""")
         return True
 
     def help_start(self):
-        print("""usage: {}|s
+        print("""usage: {}
 
 start the collection.""".format(KisConsoleConsoleCommand.start.name))
 
@@ -246,8 +246,8 @@ print a summary of the collection status.""".format(KisConsoleConsoleCommand.sta
     def help_info(self):
         print("""usage: {}
 
-displays the last {} items collected by the worker threads.""".format(KisConsoleConsoleCommand.info.name,
-                                                                       self._buffer_size))
+display the last {} items collected by the worker threads.""".format(KisConsoleConsoleCommand.info.name,
+                                                                     self._buffer_size))
 
     def do_info(self, input: str):
         try:
@@ -312,12 +312,12 @@ terminate the running thread of ID so that it can grep the next task. this is us
         print("""usage: {} [{{{}}}]
 
 this command does the following depending on the given subcommand:
-- if no subcommand is given, then it prints statistics about all current worker threads.
-- {}: displays the command that is currently executed by all threads.
-- {}: adds a new worker thread.""".format(KisConsoleConsoleCommand.thread.name,
-                                          "|".join([item.name for item in ThreadArgumentEnum]),
-                                          ThreadArgumentEnum.command.name,
-                                          ThreadArgumentEnum.add.name))
+- if no subcommand is given, then it print statistics about all current worker threads.
+- {}: display the command that is currently executed by all threads.
+- {}: add a new worker thread.""".format(KisConsoleConsoleCommand.thread.name,
+                                         "|".join([item.name for item in ThreadArgumentEnum]),
+                                         ThreadArgumentEnum.command.name,
+                                         ThreadArgumentEnum.add.name))
 
     def do_thread(self, input: str):
         try:
@@ -342,27 +342,28 @@ this command does the following depending on the given subcommand:
         print("""usage: {} [{{{}}}]
 
 this command does the following depending on the given subcommand:
-- if no subcommand is given, then it prints statistics about all active collectors.
-- {}: adds a new collector.
-- {}: prints the name of the current collector.
-- {}: deletes the given collectors.""".format(KisConsoleConsoleCommand.collector.name,
-                                              "|".join([item.name for item in CollectorArgumentEnum]),
-                                              CollectorArgumentEnum.add.name,
-                                              CollectorArgumentEnum.current.name,
-                                              CollectorArgumentEnum.delete.name))
+- if no subcommand is given, then print statistics about all collectors within the given workspace for which OS
+  commands have already been created.
+- {}: print the name of the current collector.
+- {}: print the names of the selected collectors that have not been processed yet.""".format(
+            KisConsoleConsoleCommand.collector.name,
+            "|".join([item.name for item in CollectorArgumentEnum]),
+            CollectorArgumentEnum.current.name,
+            CollectorArgumentEnum.remaining.name))
 
     def do_collector(self, input: str):
         try:
             arguments = self._process_input(KisConsoleConsoleCommand.collector, input)
             if len(arguments) == 0:
-                selected_collectors = {item.name: item for item in self._producer_thread.selected_collectors}
                 with self._engine.session_scope() as session:
+                    workspace_id = session.query(Workspace.id).filter_by(name=self._workspace)
                     query = session.query(CollectorName.name.label("collector"),
-                                  CollectorName.type.label("type"),
-                                  func.coalesce(Command.status, CommandStatus.pending.name).label("status"),
-                                  CollectorName.priority,
-                                  func.count(Command.status).label("count")) \
+                                          CollectorName.type.label("type"),
+                                          func.coalesce(Command.status, CommandStatus.pending.name).label("status"),
+                                          CollectorName.priority,
+                                          func.count(Command.status).label("count")) \
                         .outerjoin((Command, CollectorName.commands)) \
+                        .filter(Workspace.id == workspace_id) \
                         .group_by(CollectorName.name,
                                   CollectorName.type,
                                   func.coalesce(Command.status, CommandStatus.pending.name),
@@ -377,15 +378,14 @@ this command does the following depending on the given subcommand:
                                                  aggfunc=numpy.sum,
                                                  fill_value=0).sort_values(by="priority")
                     print(results)
-            elif arguments[0] == CollectorArgumentEnum.add:
-                raise NotImplementedError("not implemented yet!")
             elif arguments[0] == CollectorArgumentEnum.current:
                 if self._producer_thread.current_collector:
                     print(self._producer_thread.current_collector.name)
                 else:
                     print("none")
-            elif arguments[0] == CollectorArgumentEnum.delete:
-                raise NotImplementedError("not implemented yet!")
+            elif arguments[0] == CollectorArgumentEnum.remaining:
+                for item in self._producer_thread.remaining_collectors:
+                    print(item)
         except Exception as ex:
             traceback.print_exc(file=sys.stderr)
 
