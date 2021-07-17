@@ -111,6 +111,6 @@ class CollectorClass(BaseNfsCollector, ServiceCollector):
                               command=command,
                               service=command.service,
                               path=export,
-                              path_type=PathType.Nfs_Share,
+                              path_type=PathType.nfs_export,
                               source=source,
                               report_item=report_item)

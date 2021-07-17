@@ -1085,19 +1085,19 @@ class TestAddCredential(BaseKisTestCase):
         """
         self._unittest_add_credential(user_name="username",
                                       password="password",
-                                      credential_type=CredentialType.Cleartext,
+                                      credential_type=CredentialType.cleartext,
                                       service_port=None,
                                       email_address=None,
                                       ex_message='credential must be assigned to an email address or service')
         self._unittest_add_credential(user_name=None,
                                       password="password",
-                                      credential_type=CredentialType.Cleartext,
+                                      credential_type=CredentialType.cleartext,
                                       service_port=80,
                                       email_address="test@test.com",
                                       ex_message='credential must either be assigned to an email address or a service')
         self._unittest_add_credential(user_name="username",
                                       password="password",
-                                      credential_type=CredentialType.Cleartext,
+                                      credential_type=CredentialType.cleartext,
                                       service_port=80,
                                       email_address="test@test.com",
                                       ex_message='user name must not be specified together with an email address')
@@ -1119,7 +1119,7 @@ class TestAddCredential(BaseKisTestCase):
         Unittests for BaseUtils.add_credential
         :return:
         """
-        self._unittest_add_credential(password="password", credential_type=CredentialType.Cleartext, service_port=80)
+        self._unittest_add_credential(password="password", credential_type=CredentialType.cleartext, service_port=80)
 
     def test_username_and_password(self):
         """
@@ -1128,7 +1128,7 @@ class TestAddCredential(BaseKisTestCase):
         """
         self._unittest_add_credential(user_name="username",
                                       password="password",
-                                      credential_type=CredentialType.Cleartext,
+                                      credential_type=CredentialType.cleartext,
                                       service_port=80)
 
     def test_username_domain_and_password(self):
@@ -1139,7 +1139,7 @@ class TestAddCredential(BaseKisTestCase):
         self._unittest_add_credential(user_name="username",
                                       domain="domain",
                                       password="password",
-                                      credential_type=CredentialType.Cleartext,
+                                      credential_type=CredentialType.cleartext,
                                       service_port=80)
 
 
@@ -1371,18 +1371,18 @@ class TestAddPath(BaseKisTestCase):
         :return:
         """
         self._unittest_add_path(path="/test/admin",
-                                path_type=PathType.Http,
+                                path_type=PathType.http,
                                 service_port=80)
         self._unittest_add_path(path="test/admin",
-                                path_type=PathType.Http,
+                                path_type=PathType.http,
                                 service_port=80,
                                 size_bytes=10)
         self._unittest_add_path(path="test/admin",
-                                path_type=PathType.Http,
+                                path_type=PathType.http,
                                 service_port=80,
                                 return_code=200)
         self._unittest_add_path(path="test/admin",
-                                path_type=PathType.Http,
+                                path_type=PathType.http,
                                 service_port=80,
                                 size_bytes=20,
                                 return_code=200)
@@ -3075,7 +3075,7 @@ class TestAddCommand(BaseKisTestCase):
         collector_name = None
         for item in self._workspaces:
             if service_port:
-                collector_name = self.create_collector_name(session=session, type=CollectorType.service)
+                collector_name = self.create_collector_name(session=session, type=CollectorType.host_service)
                 service = self.create_service(session=session,
                                               workspace_str=item,
                                               port=service_port)
@@ -3085,12 +3085,12 @@ class TestAddCommand(BaseKisTestCase):
                                         address=address,
                                         workspace_str=item)
             if network_str:
-                collector_name = self.create_collector_name(session=session, type=CollectorType.ipv4_network)
+                collector_name = self.create_collector_name(session=session, type=CollectorType.network)
                 network = self.create_network(session=session,
                                               network=network_str,
                                               workspace_str=item)
             if host_name_str:
-                collector_name = self.create_collector_name(session=session, type=CollectorType.host_name_service)
+                collector_name = self.create_collector_name(session=session, type=CollectorType.vhost_service)
                 host_name = self.create_hostname(session=session,
                                                  workspace_str=item,
                                                  host_name=host_name_str)
@@ -3968,10 +3968,10 @@ class TestAddHostHostNameMapping(BaseKisTestCase):
                 self.assertEqual((host_scope == ScopeType.all),
                                  result.resolves_to_in_scope_ipv4_address())
                 self.assertEqual((host_scope == ScopeType.all) and (host_name_scope == ScopeType.all),
-                                 result.host_name.in_scope(CollectorType.host_name_service))
+                                 result.host_name.in_scope(CollectorType.vhost_service))
             else:
                 self.assertFalse(result.resolves_to_in_scope_ipv4_address())
-                self.assertFalse(result.host_name.in_scope(CollectorType.host_name_service))
+                self.assertFalse(result.host_name.in_scope(CollectorType.vhost_service))
             self.assertEqual((host_name_scope == ScopeType.all),
                              result.host_name.in_scope(CollectorType.domain))
             # update mapping
@@ -3994,7 +3994,7 @@ class TestAddHostHostNameMapping(BaseKisTestCase):
             self.assertEqual((host_scope == ScopeType.all),
                              result.resolves_to_in_scope_ipv4_address())
             self.assertEqual((host_scope == ScopeType.all and host_name_scope == ScopeType.all),
-                             result.host_name.in_scope(CollectorType.host_name_service))
+                             result.host_name.in_scope(CollectorType.vhost_service))
             self.assertEqual((host_name_scope == ScopeType.all),
                              result.host_name.in_scope(CollectorType.domain))
 
@@ -4252,7 +4252,7 @@ LV7Xq47alFBvD8nLARX9mqLFXjaiMNLPihX/Oo3AJd+kXuDeJz6igUsf9UeIcbRc
                                               workspace_str=item,
                                               command=["nikto", "https://127.0.0.1"],
                                               collector_name_str="nikto",
-                                              collector_name_type=CollectorType.service,
+                                              collector_name_type=CollectorType.host_service,
                                               service_port=service_port)
             elif host_name_str:
                 command = self.create_command(session=session,

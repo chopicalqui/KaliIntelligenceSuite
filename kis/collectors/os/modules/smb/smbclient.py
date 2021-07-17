@@ -108,7 +108,7 @@ class CollectorClass(BaseSmbClient, ServiceCollector):
                               command=command,
                               service=command.service,
                               path=name,
-                              path_type=PathType.Smb_Share,
+                              path_type=PathType.smb_share,
                               source=source,
                               report_item=report_item)
                 self.add_hint(command=command,

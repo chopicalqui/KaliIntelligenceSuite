@@ -75,7 +75,7 @@ Export list for 127.0.0.1:
                                               workspace_str=self._workspaces[0],
                                               command=["showmount", "-e", "10.0.0.1"],
                                               collector_name_str=self._collector_name,
-                                              collector_name_type=CollectorType.service,
+                                              collector_name_type=CollectorType.host_service,
                                               service_port=2049,
                                               scope=ScopeType.all,
                                               output_path=temp_dir)
@@ -86,7 +86,7 @@ Export list for 127.0.0.1:
                                           source=source,
                                           report_item=self._report_item)
         with self._engine.session_scope() as session:
-            results = [item.name for item in session.query(Path).filter_by(type=PathType.Nfs_Share) \
+            results = [item.name for item in session.query(Path).filter_by(type=PathType.nfs_export) \
                 .filter(Service.port == 2049, Workspace.name == self._workspaces[0]).all()]
             results.sort()
             self.assertListEqual(["/media/nfs", "/media/nfs 1", "/media/nfs 2"], results)

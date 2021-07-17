@@ -98,7 +98,7 @@ by OJ Reeves (@TheColonial) & Christian Mehlmauer (@_FireFart_)
                                               workspace_str=self._workspaces[0],
                                               command=["gobuster", "127.0.0.1"],
                                               collector_name_str=self._collector_name,
-                                              collector_name_type=CollectorType.service,
+                                              collector_name_type=CollectorType.host_service,
                                               service_port=80,
                                               scope=ScopeType.all,
                                               stdout_output=self.get_command_text_outputs()[0],

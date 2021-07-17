@@ -78,13 +78,13 @@ class CollectorClass(BaseNmap, DomainCollector):
             # compile list of host names that are in scope and shall be scanned
             for item in host_name.domain_name.host_names:
                 if item.name is not None:
-                    if item.in_scope(CollectorType.host_name_service):
+                    if item.in_scope(CollectorType.vhost_service):
                         ipv4_host_names.append(item.full_name)
                         # compile list of IPv4 addresses to which the given host name resolves and which are out of scope
                         for mapping in item.get_host_host_name_mappings(types=[DnsResourceRecordType.a]):
                             if not mapping.host.in_scope:
                                 exclude_ipv4_addresses.append(mapping.host.ipv4_address)
-                    if item.in_scope_ipv6(CollectorType.host_name_service):
+                    if item.in_scope_ipv6(CollectorType.vhost_service):
                         ipv6_host_names.append(item.full_name)
                         # compile list of IPv6 addresses to which the given host name resolves and which are out of scope
                         for mapping in item.get_host_host_name_mappings(types=[DnsResourceRecordType.aaaa]):

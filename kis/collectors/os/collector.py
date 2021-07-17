@@ -421,11 +421,11 @@ class CollectorProducer(Thread):
                                                                                    "_create_domain_name_commands"),
                    CollectorType.host: CollectorTypeCommandCreationMethodMapping(CollectorType.host,
                                                                                  "_create_host_commands"),
-                   CollectorType.service: CollectorTypeCommandCreationMethodMapping(CollectorType.service,
+                   CollectorType.host_service: CollectorTypeCommandCreationMethodMapping(CollectorType.host_service,
                                                                                     "_create_service_commands"),
-                   CollectorType.ipv4_network: CollectorTypeCommandCreationMethodMapping(CollectorType.ipv4_network,
+                   CollectorType.network: CollectorTypeCommandCreationMethodMapping(CollectorType.network,
                                                                                          "_create_ipv4_network_commands"),
-                   CollectorType.host_name_service: CollectorTypeCommandCreationMethodMapping(CollectorType.host_name_service,
+                   CollectorType.vhost_service: CollectorTypeCommandCreationMethodMapping(CollectorType.vhost_service,
                                                                                               "_create_host_name_service_commands"),
                    CollectorType.email: CollectorTypeCommandCreationMethodMapping(CollectorType.email,
                                                                                   "_create_email_commands"),
@@ -436,11 +436,11 @@ class CollectorProducer(Thread):
         # Test for vhost settings
         if isinstance(collector.instance, ServiceCollector) and isinstance(collector.instance, HostNameServiceCollector):
             # If the vhost argument has not been specified or is all, then service collectors are used.
-            mapping_object = mapping[CollectorType.service]
+            mapping_object = mapping[CollectorType.host_service]
             mapping_object.enabled = not vhost or vhost == VhostChoice.all
             result.append(mapping_object)
             # If the vhost argument is set to domain, then only vhost service collectors are allowed.
-            mapping_object = mapping[CollectorType.host_name_service]
+            mapping_object = mapping[CollectorType.vhost_service]
             mapping_object.enabled = vhost and (vhost == VhostChoice.domain or vhost == VhostChoice.all)
             result.append(mapping_object)
         # Test for vhost settings: Special case for BurpSuite collector, which submits scans per host to reduce scanning
@@ -464,9 +464,9 @@ class CollectorProducer(Thread):
             if isinstance(collector.instance, HostCollector):
                 result.append(mapping[CollectorType.host])
             if isinstance(collector.instance, ServiceCollector):
-                result.append(mapping[CollectorType.service])
+                result.append(mapping[CollectorType.host_service])
             if isinstance(collector.instance, Ipv4NetworkCollector):
-                result.append(mapping[CollectorType.ipv4_network])
+                result.append(mapping[CollectorType.network])
             if isinstance(collector.instance, EmailCollector):
                 result.append(mapping[CollectorType.email])
             if isinstance(collector.instance, CompanyCollector):
@@ -587,7 +587,7 @@ class CollectorProducer(Thread):
                     CollectorType.host in collector_types and \
                     host_name.is_processable(included_items=self._included_items,
                                              excluded_items=self._excluded_items,
-                                             collector_type=CollectorType.host_name_service,
+                                             collector_type=CollectorType.vhost_service,
                                              active_collector=self.current_collector.instance.active_collector):
                     commands = commands + self.current_collector.instance.create_domain_commands(session,
                                                                                                  host_name,
@@ -656,7 +656,7 @@ class CollectorProducer(Thread):
             if service.is_open(self._strict_open) and \
                     service.host_name.is_processable(self._included_items,
                                                      self._excluded_items,
-                                                     CollectorType.host_name_service,
+                                                     CollectorType.vhost_service,
                                                      self.current_collector.instance.active_collector) and self._vhost:
                 commands = commands + self.current_collector.instance.create_host_name_service_commands(session,
                                                                                                         service,
@@ -746,7 +746,7 @@ class CollectorProducer(Thread):
                                       CollectorName.name == argument.name)).all():
                         if command.host_name.is_processable(self._included_items,
                                                             self._excluded_items,
-                                                            CollectorType.host_name_service):
+                                                            CollectorType.vhost_service):
                             try:
                                 source = self._engine.get_or_create(session, Source, name=command.collector_name.name)
                                 report_item = BaseCollector.get_report_item(command)
@@ -883,7 +883,7 @@ class CollectorConsumer(Thread):
         self._delay = producer_thread.delay
         self._consoles = producer_thread.consoles
         self._current_os_command_lock = Lock()
-        self._current_os_command = []
+        self._current_os_command = None
 
     def __repr__(self):
         with self._consumer_status_lock:
@@ -909,12 +909,12 @@ class CollectorConsumer(Thread):
     @property
     def current_os_command(self) -> str:
         with self._current_os_command_lock:
-            return self.current_command
+            return self._current_os_command
 
     @current_os_command.setter
     def current_os_command(self, value: str):
         with self._current_os_command_lock:
-            self.current_command = value
+            self._current_os_command = value
 
     @staticmethod
     def strfdelta(tdelta, fmt="{hours:02d}:{minutes:02d}:{seconds:02d}"):

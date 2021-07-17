@@ -110,7 +110,7 @@ class CollectorClass(BaseSmbCollector, ServiceCollector):
         """
         collectors = []
         paths = session.query(Path).join(Service).filter(Service.id == service.id,
-                                                         Path.type == PathType.Smb_Share).all()
+                                                         Path.type == PathType.smb_share).all()
         if paths:
             for path in paths:
                 collectors += self._get_commands(session, service, collector_name, share=path.name)

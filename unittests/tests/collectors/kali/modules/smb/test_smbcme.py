@@ -70,7 +70,7 @@ SMB         10.0.0.1        445    DC01             [*] Windows 10.0 Build 17763
                                               workspace_str=self._workspaces[0],
                                               command=["crackmapexec", "smb", "10.0.0.1"],
                                               collector_name_str=self._collector_name,
-                                              collector_name_type=CollectorType.service,
+                                              collector_name_type=CollectorType.host_service,
                                               service_port=445,
                                               scope=ScopeType.all,
                                               output_path=temp_dir)

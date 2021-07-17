@@ -95,7 +95,7 @@ Allow: /test/
                                               workspace_str=self._workspaces[0],
                                               command=["changeme", "127.0.0.1"],
                                               collector_name_str=self._collector_name,
-                                              collector_name_type=CollectorType.service,
+                                              collector_name_type=CollectorType.host_service,
                                               service_port=80,
                                               scope=ScopeType.all,
                                               output_path=temp_dir)

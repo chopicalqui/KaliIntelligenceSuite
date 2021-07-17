@@ -236,7 +236,7 @@ class BaseKisImport(BaseCollector):
                 self.add_credential(session=session,
                                     command=command,
                                     password="anonymous",
-                                    credential_type=CredentialType.Cleartext,
+                                    credential_type=CredentialType.cleartext,
                                     username="anonymous",
                                     source=source,
                                     service=service,
@@ -274,7 +274,7 @@ class BaseKisImport(BaseCollector):
                                   command=command,
                                   service=service,
                                   path=location,
-                                  path_type=PathType.Http,
+                                  path_type=PathType.http,
                                   source=source,
                                   report_item=report_item)
             additional_vuln_info = []

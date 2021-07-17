@@ -1204,7 +1204,7 @@ class BaseUtils:
             path = BaseUtils.add_path(session=session,
                                       service=service,
                                       path=path_str,
-                                      path_type=PathType.Http,
+                                      path_type=PathType.http,
                                       size_bytes=size_bytes,
                                       return_code=status_code,
                                       source=source,

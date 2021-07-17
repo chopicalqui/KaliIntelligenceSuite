@@ -381,7 +381,7 @@ Finally, you might want to re-run the entire process to collect further informat
                                     datefmt='%Y-%m-%d %H:%M:%S',
                                     level=log_level)
                 logger = logging.getLogger(sys.argv[0])
-                logger.info("$ ".format(" ".join(sys.argv)))
+                logger.info("$ {}".format(" ".join(sys.argv)))
 
             # Let's get started
             if args.print_commands:

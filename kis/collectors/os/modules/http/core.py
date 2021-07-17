@@ -396,7 +396,7 @@ class HttpExtraInfoExtraction(BaseExtraServiceInfoExtraction):
                         self._domain_utils.add_path(session=self._session,
                                                     service=self._service,
                                                     path=path,
-                                                    path_type=PathType.Http,
+                                                    path_type=PathType.http,
                                                     source=self._source,
                                                     report_item=self._report_item)
 

@@ -1633,18 +1633,18 @@ class BaseCollector(config.Collector):
         """
         # todo new collector
         report_item = None
-        if command.collector_name.type == CollectorType.service or \
+        if command.collector_name.type == CollectorType.host_service or \
                 command.collector_name.type == CollectorType.host:
             report_item = ReportItem(listeners=listeners,
                                      ip=command.host.address,
                                      collector_name=command.collector_name.name,
                                      port=command.service.port if command.service else None,
                                      protocol=command.service.protocol_str if command.service else None)
-        elif command.collector_name.type == CollectorType.ipv4_network:
+        elif command.collector_name.type == CollectorType.network:
             report_item = ReportItem(listeners=listeners,
                                      ip=command.ipv4_network.network,
                                      collector_name=command.collector_name.name)
-        elif command.collector_name.type == CollectorType.host_name_service or \
+        elif command.collector_name.type == CollectorType.vhost_service or \
                 command.collector_name.type == CollectorType.domain:
             report_item = ReportItem(listeners=listeners,
                                      ip=command.host_name.full_name,
@@ -2042,7 +2042,7 @@ class BaseCrackMapExec(BaseCollector):
                         os_command += self._create_credential_arguments(item.username,
                                                                         item.password,
                                                                         item.domain,
-                                                                        item.type != CredentialType.Cleartext)
+                                                                        item.type != CredentialType.cleartext)
                         os_command += arguments
                         os_command.append(service.host.address)
                         collectors.append(self._get_or_create_command(session,
@@ -2172,7 +2172,7 @@ class BaseChangeme(BaseCollector):
                                         password=password,
                                         username=username,
                                         source=source,
-                                        credential_type=CredentialType.Cleartext,
+                                        credential_type=CredentialType.cleartext,
                                         service=command.service,
                                         report_item=report_item)
                     if target:
@@ -2458,7 +2458,7 @@ class BaseDotDotPwn(BaseCollector):
                 collectors.extend(tmp)
             else:
                 for credential in service.credentials:
-                    if credential.complete and credential.type == CredentialType.Cleartext:
+                    if credential.complete and credential.type == CredentialType.cleartext:
                         tmp = self._create_commands(session,
                                                     service,
                                                     collector_name,
@@ -2495,7 +2495,7 @@ class BaseDotDotPwn(BaseCollector):
                                   command=command,
                                   service=command.service,
                                   path=path_str,
-                                  path_type=PathType.Http,
+                                  path_type=PathType.http,
                                   source=source,
                                   report_item=report_item)
                 elif self._module in ["ftp", "tftp"]:
@@ -2503,7 +2503,7 @@ class BaseDotDotPwn(BaseCollector):
                                   command=command,
                                   service=command.service,
                                   path=path_str,
-                                  path_type=PathType.FileSystem,
+                                  path_type=PathType.filesystem,
                                   source=source,
                                   report_item=report_item)
 
@@ -2615,14 +2615,14 @@ class BaseNmap(BaseCollector):
                                                 nse_script_arguments=nse_script_arguments)
         elif service.host_name is not None:
             # resolve host name to IPv4 address
-            if service.host_name.in_scope(CollectorType.host_name_service):
+            if service.host_name.in_scope(CollectorType.vhost_service):
                 collectors = self.__create_commands(session=session,
                                                     service=service,
                                                     collector_name=collector_name,
                                                     nse_scripts=nse_scripts,
                                                     nse_script_arguments=nse_script_arguments)
             # resolve host name to IPv6 address
-            if service.host_name.in_scope_ipv6(CollectorType.host_name_service):
+            if service.host_name.in_scope_ipv6(CollectorType.vhost_service):
                 collectors = self.__create_commands(session=session,
                                                     service=service,
                                                     collector_name=collector_name,
@@ -2657,9 +2657,9 @@ class BaseNmap(BaseCollector):
             if command.return_code and command.return_code > 0:
                 self._set_execution_failed(session, command)
                 return
-            if command.collector_name.type == CollectorType.service:
+            if command.collector_name.type == CollectorType.host_service:
                 host_tags = [utils.get_host_tag_by_ipv4(ipv4_address=command.service.address)]
-            elif command.collector_name.type == CollectorType.host_name_service:
+            elif command.collector_name.type == CollectorType.vhost_service:
                 host_tags = utils.get_host_tags_by_host_name(host_name=command.target_name)
             else:
                 raise NotImplementedError("case not implemented for "
@@ -2777,9 +2777,9 @@ class BaseMedusa(BaseCollector):
                 os_command.append(medusa_module_argment)
             command = self._get_or_create_command(session, os_command, collector_name, service=service)
             if self._hashes:
-                self.add_execution_info_enum(command, CredentialType.Hash)
+                self.add_execution_info_enum(command, CredentialType.hash)
             else:
-                self.add_execution_info_enum(command, CredentialType.Cleartext)
+                self.add_execution_info_enum(command, CredentialType.cleartext)
             commands.append(command)
         return commands
 
@@ -2813,7 +2813,7 @@ class BaseMedusa(BaseCollector):
                                     command=command,
                                     username=user,
                                     password=password,
-                                    credential_type=CredentialType.Cleartext,
+                                    credential_type=CredentialType.cleartext,
                                     source=source,
                                     service=command.service,
                                     report_item=report_item)
@@ -2904,9 +2904,9 @@ class BaseHydra(BaseCollector):
                 os_command.append(hydra_module_argment)
             command = self._get_or_create_command(session, os_command, collector_name, service=service)
             if self._hashes:
-                self.add_execution_info_enum(command, CredentialType.Hash)
+                self.add_execution_info_enum(command, CredentialType.hash)
             else:
-                self.add_execution_info_enum(command, CredentialType.Cleartext)
+                self.add_execution_info_enum(command, CredentialType.cleartext)
             commands.append(command)
         return commands
 
@@ -2930,7 +2930,7 @@ class BaseHydra(BaseCollector):
         code etc.
         """
         credential_type = self.get_execution_info_enum(command, CredentialType)
-        credential_type = credential_type if credential_type else CredentialType.Cleartext
+        credential_type = credential_type if credential_type else CredentialType.cleartext
         credentials_found = False
         for line in command.stdout_output:
             match_creds = self._re_creds.match(line)

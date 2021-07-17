@@ -671,23 +671,23 @@ class TestCredentials(BaseDataModelTestCase):
                                          username="username",
                                          password="password",
                                          domain="domain",
-                                         type=CredentialType.Cleartext,
+                                         type=CredentialType.cleartext,
                                          service=service)
             self._test_unique_constraint(session,
                                          username="username",
                                          password="password",
-                                         type=CredentialType.Cleartext,
+                                         type=CredentialType.cleartext,
                                          service=service)
             self._test_unique_constraint(session,
                                          username="username",
                                          password="password",
                                          domain="domain",
-                                         type=CredentialType.Cleartext,
+                                         type=CredentialType.cleartext,
                                          email=email)
             self._test_unique_constraint(session,
                                          username="username",
                                          password="password",
-                                         type=CredentialType.Cleartext,
+                                         type=CredentialType.cleartext,
                                          email=email)
 
     def test_not_null_constraint(self):
@@ -705,12 +705,12 @@ class TestCredentials(BaseDataModelTestCase):
                                         username="username",
                                         password="password",
                                         domain="domain",
-                                        type=CredentialType.Cleartext)
+                                        type=CredentialType.cleartext)
             self._test_check_constraint(session,
                                         username="username",
                                         password="password",
                                         domain="domain",
-                                        type=CredentialType.Cleartext,
+                                        type=CredentialType.cleartext,
                                         email=email,
                                         service=service)
 
@@ -724,24 +724,24 @@ class TestCredentials(BaseDataModelTestCase):
                                service=service)
             self._test_success(session,
                                password="password",
-                               type=CredentialType.Cleartext,
+                               type=CredentialType.cleartext,
                                service=service)
             self._test_success(session,
                                username="username",
                                password="password",
-                               type=CredentialType.Cleartext,
+                               type=CredentialType.cleartext,
                                service=service)
             self._test_success(session,
                                username="username",
                                email=email)
             self._test_success(session,
                                password="password",
-                               type=CredentialType.Cleartext,
+                               type=CredentialType.cleartext,
                                email=email)
             self._test_success(session,
                                username="username",
                                password="password",
-                               type=CredentialType.Cleartext,
+                               type=CredentialType.cleartext,
                                email=email)
 
 
@@ -757,7 +757,7 @@ class TestPath(BaseDataModelTestCase):
         self.init_db()
         with self._engine.session_scope() as session:
             service = self.create_service(session)
-            self._test_unique_constraint(session, name="/tmp", type=PathType.Http, service=service)
+            self._test_unique_constraint(session, name="/tmp", type=PathType.http, service=service)
 
     def test_not_null_constraint(self):
         self.init_db()
@@ -765,9 +765,9 @@ class TestPath(BaseDataModelTestCase):
             service = self.create_service(session)
             self._test_not_null_constraint(session)
             self._test_not_null_constraint(session, name="/tmp")
-            self._test_not_null_constraint(session, name="/tmp", type=PathType.Http)
+            self._test_not_null_constraint(session, name="/tmp", type=PathType.http)
             self._test_not_null_constraint(session, name="/tmp", service=service)
-            self._test_not_null_constraint(session, type=PathType.Http, service=service)
+            self._test_not_null_constraint(session, type=PathType.http, service=service)
 
     def test_check_constraint(self):
         self.init_db()
@@ -778,7 +778,7 @@ class TestPath(BaseDataModelTestCase):
         self.init_db()
         with self._engine.session_scope() as session:
             service = self.create_service(session)
-            self._test_success(session, name="/tmp", type=PathType.Http, service=service)
+            self._test_success(session, name="/tmp", type=PathType.http, service=service)
 
 
 class TestFile(BaseDataModelTestCase):

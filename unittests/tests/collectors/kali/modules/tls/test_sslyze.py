@@ -76,7 +76,7 @@ class SslyzeCollectorTestCase(BaseNmapCollectorTestCase):
                                               workspace_str=self._workspaces[0],
                                               command=["sslyze", 'www.google.com'],
                                               collector_name_str="sslyze",
-                                              collector_name_type=CollectorType.service,
+                                              collector_name_type=CollectorType.host_service,
                                               service_port=443,
                                               scope=ScopeType.all)
                 command.json_output.append(self.get_command_json_outputs())

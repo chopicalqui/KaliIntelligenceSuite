@@ -94,7 +94,7 @@ class CollectorClass(BaseCollector, ServiceCollector):
                 collectors.append(collector)
             else:
                 for credential in service.credentials:
-                    if credential.complete and credential.type == CredentialType.Cleartext:
+                    if credential.complete and credential.type == CredentialType.cleartext:
                         collector = self._create_command(session,
                                                          service,
                                                          collector_name,
@@ -128,6 +128,6 @@ class CollectorClass(BaseCollector, ServiceCollector):
                           command=command,
                           service=command.service,
                           path=line,
-                          path_type=PathType.FileSystem,
+                          path_type=PathType.filesystem,
                           source=source,
                           report_item=report_item)

@@ -1115,7 +1115,7 @@ class TestCreatingAllCommands(BaseKisTestCase):
             self._domain_utils.add_path(session=session,
                                         service=service,
                                         path="C$",
-                                        path_type=PathType.Smb_Share)
+                                        path_type=PathType.smb_share)
             service = self._domain_utils.add_service(session=session,
                                                      port=port,
                                                      protocol_type=ProtocolType.tcp,
@@ -1125,7 +1125,7 @@ class TestCreatingAllCommands(BaseKisTestCase):
             self._domain_utils.add_path(session=session,
                                         service=service,
                                         path="C$",
-                                        path_type=PathType.Smb_Share)
+                                        path_type=PathType.smb_share)
         service = self._domain_utils.add_service(session=session,
                                                  port=port,
                                                  protocol_type=ProtocolType.udp,
@@ -1133,7 +1133,7 @@ class TestCreatingAllCommands(BaseKisTestCase):
                                                  host=host)
         if port == 161:
             self._domain_utils.add_credential(session=session,
-                                              credential_type=CredentialType.Cleartext,
+                                              credential_type=CredentialType.cleartext,
                                               password="public",
                                               service=service)
             service = self._domain_utils.add_service(session=session,
@@ -1142,7 +1142,7 @@ class TestCreatingAllCommands(BaseKisTestCase):
                                                      state=ServiceState.Open,
                                                      host=host)
             self._domain_utils.add_credential(session=session,
-                                              credential_type=CredentialType.Cleartext,
+                                              credential_type=CredentialType.cleartext,
                                               password="public",
                                               service=service)
 

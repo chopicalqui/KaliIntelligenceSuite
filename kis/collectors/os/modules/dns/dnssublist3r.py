@@ -109,7 +109,6 @@ class CollectorClass(BaseDnsCollector, DomainCollector):
             if begin_results:
                 # Add host name to database
                 for item in line.split("<br>"):
-                    logger.info(item)
                     host_name = self.add_host_name(session=session,
                                                    command=command,
                                                    source=source,

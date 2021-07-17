@@ -127,7 +127,7 @@ class BaseSmbNmap(BaseNmap):
         if username:
             result += ["smbusername={}".format(username)]
         if password:
-            password_argument = "smbhash" if credential_type == CredentialType.Hash else "smbpassword"
+            password_argument = "smbhash" if credential_type == CredentialType.hash else "smbpassword"
             result += ["{}={}".format(password_argument, password)]
         if domain:
             result += ["smbdomain={}".format(domain)]
@@ -164,7 +164,7 @@ class SmbExtraInfoExtraction(BaseExtraServiceInfoExtraction):
                                                 service=self._service,
                                                 path=name,
                                                 source=self._source,
-                                                path_type=PathType.Smb_Share,
+                                                path_type=PathType.smb_share,
                                                 report_item=self._report_item)
         elif script_count > 1:
             raise NotImplementedError("expected only one '/script/[@id='smb-enum-shares']' entry in "

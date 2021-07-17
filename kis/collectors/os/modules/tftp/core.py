@@ -118,7 +118,7 @@ class TftpExtraInfoExtraction(BaseExtraServiceInfoExtraction):
                     self._domain_utils.add_path(session=self._session,
                                                 service=self._service,
                                                 path=path_str,
-                                                path_type=PathType.FileSystem,
+                                                path_type=PathType.filesystem,
                                                 source=self._source,
                                                 report_item=self._report_item)
 

@@ -126,7 +126,7 @@ Server certificate""".split(os.linesep)
                                               workspace_str=self._workspaces[0],
                                               command=["openssl", "unittest.com"],
                                               collector_name_str=self._collector_name,
-                                              collector_name_type=CollectorType.service,
+                                              collector_name_type=CollectorType.host_service,
                                               scope=ScopeType.all,
                                               output_path=temp_dir)
                 command.stdout_output = self.get_command_text_outputs()

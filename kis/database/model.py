@@ -265,19 +265,19 @@ class CommandStatus(enum.Enum):
 
 
 class CredentialType(enum.Enum):
-    Cleartext = 10
-    Hash = 20
-    Oracle_TNS_SID = 30
+    cleartext = enum.auto()
+    hash = enum.auto()
+    oracle_tns_sid = enum.auto()
 
 
 class FileType(enum.Enum):
-    screenshot = 0
-    certificate = 10
-    json = 20
-    xml = 30
-    text = 40
-    binary = 50
-    other = 60
+    screenshot = enum.auto()
+    certificate = enum.auto()
+    json = enum.auto()
+    xml = enum.auto()
+    text = enum.auto()
+    binary = enum.auto()
+    other = enum.auto()
 
 
 class ServiceState(enum.Enum):
@@ -303,26 +303,26 @@ class DnsResourceRecordType(enum.Flag):
 
 
 class CollectorType(enum.Enum):
-    service = 10
-    host = 20
+    host_service = enum.auto()
+    host = enum.auto()
     # todo: update for new collector
-    domain = 30
-    ipv4_network = 40
-    host_name_service = 50
-    email = 60
-    company = 70
+    domain = enum.auto()
+    network = enum.auto()
+    vhost_service = enum.auto()
+    email = enum.auto()
+    company = enum.auto()
 
 
 class ProtocolType(enum.Enum):
-    udp = 10
-    tcp = 20
+    udp = enum.auto()
+    tcp = enum.auto()
 
 
 class PathType(enum.Enum):
-    Http = 10
-    Smb_Share = 20
-    Nfs_Share = 30
-    FileSystem = 40
+    http = enum.auto()
+    smb_share = enum.auto()
+    nfs_export = enum.auto()
+    filesystem = enum.auto()
 
 
 class ExtensionType(enum.Enum):
@@ -1284,7 +1284,7 @@ class HostName(DeclarativeBase):
         result = self.domain_name is not None and (self.domain_name.scope == ScopeType.all or (
             (self.domain_name.scope == ScopeType.strict or self.domain_name.scope == ScopeType.vhost) and
             self._in_scope))
-        if result and collector_type == CollectorType.host_name_service:
+        if result and collector_type == CollectorType.vhost_service:
             result = result and self.resolves_to_in_scope_ipv4_address()
         return result
 
@@ -1292,7 +1292,7 @@ class HostName(DeclarativeBase):
         result = self.domain_name is not None and (self.domain_name.scope == ScopeType.all or (
             (self.domain_name.scope == ScopeType.strict or self.domain_name.scope == ScopeType.vhost) and
             self._in_scope))
-        if result and collector_type == CollectorType.host_name_service:
+        if result and collector_type == CollectorType.vhost_service:
             result = result and self.resolves_to_in_scope_ipv6_address()
         return result
 
@@ -1505,7 +1505,7 @@ class HostName(DeclarativeBase):
                 Utils.get_text(rvalue, ident, True, "KIS intel report for {}{}", self.full_name, hosts,
                                color=FontColor.BLUE + FontColor.BOLD if color else None)
                 Utils.get_text(rvalue, ident, True, "| In scope:        {}",
-                               self.in_scope(CollectorType.host_name_service))
+                               self.in_scope(CollectorType.vhost_service))
                 Utils.get_text(rvalue, ident, True, "| Workspace:       {}", self.workspace.name)
                 Utils.get_text(rvalue, ident, True, "| Host name:       {}", self.full_name)
                 Utils.get_text(rvalue, ident, full, "| Companies:       {}", companies[self.domain_name.name])
@@ -2487,7 +2487,7 @@ class AdditionalInfo(DeclarativeBase):
             if self.service.host_name is not None:
                 rvalue = self.service.host_name.is_processable(included_items=included_items,
                                                                excluded_items=excluded_items,
-                                                               collector_type=CollectorType.host_name_service,
+                                                               collector_type=CollectorType.vhost_service,
                                                                scope=scope)
             elif self.service.host is not None:
                 rvalue = self.service.host.is_processable(included_items=included_items,
@@ -2715,12 +2715,12 @@ class Command(DeclarativeBase):
         """
         # todo update new collector
         if self.collector_name.type == CollectorType.domain or \
-                self.collector_name.type == CollectorType.host_name_service:
+                self.collector_name.type == CollectorType.vhost_service:
             workspace = self.host_name.domain_name.workspace
         elif self.collector_name.type == CollectorType.host or \
-                self.collector_name.type == CollectorType.service:
+                self.collector_name.type == CollectorType.host_service:
             workspace = self.host.workspace
-        elif self.collector_name.type == CollectorType.ipv4_network:
+        elif self.collector_name.type == CollectorType.network:
             workspace = self.ipv4_network.workspace
         elif self.collector_name.type == CollectorType.email:
             workspace = self.email.host_name.domain_name.workspace
@@ -2738,12 +2738,12 @@ class Command(DeclarativeBase):
         """
         # todo update new collector
         if self.collector_name.type == CollectorType.domain or \
-                self.collector_name.type == CollectorType.host_name_service:
+                self.collector_name.type == CollectorType.vhost_service:
             item = self.host_name.full_name
         elif self.collector_name.type == CollectorType.host or \
-                self.collector_name.type == CollectorType.service:
+                self.collector_name.type == CollectorType.host_service:
             item = self.host.address
-        elif self.collector_name.type == CollectorType.ipv4_network:
+        elif self.collector_name.type == CollectorType.network:
             item = self.ipv4_network.network
         elif self.collector_name.type == CollectorType.email:
             item = self.email.email_address
@@ -2760,8 +2760,8 @@ class Command(DeclarativeBase):
         :return:
         """
         # todo update new collector
-        if self.collector_name.type == CollectorType.host_name_service or \
-            self.collector_name.type == CollectorType.service:
+        if self.collector_name.type == CollectorType.vhost_service or \
+            self.collector_name.type == CollectorType.host_service:
             result = "{} {}".format(self.service.address, self.service.protocol_port_str)
         else:
             result = self.target_name
@@ -2812,17 +2812,17 @@ class Command(DeclarativeBase):
         # todo update new collector
         if self.collector_name.type == CollectorType.domain:
             file_name = "{}-{}".format(self.collector_name.name, self.host_name.full_name)
-        elif self.collector_name.type == CollectorType.host_name_service:
+        elif self.collector_name.type == CollectorType.vhost_service:
             file_name = "{}-{}-{}-{}".format(self.collector_name.name,
                                              self.host_name.full_name,
                                              self.service.protocol_str, self.service.port)
         elif self.collector_name.type == CollectorType.host:
             file_name = "{}-{}".format(self.collector_name.name, self.host.address)
-        elif self.collector_name.type == CollectorType.service:
+        elif self.collector_name.type == CollectorType.host_service:
             file_name = "{}-{}-{}-{}".format(self.collector_name.name,
                                              self.host.address,
                                              self.service.protocol_str, self.service.port)
-        elif self.collector_name.type == CollectorType.ipv4_network:
+        elif self.collector_name.type == CollectorType.network:
             file_name = "{}-{}".format(self.collector_name.name, self.ipv4_network.network.replace("/", "-"))
         elif self.collector_name.type == CollectorType.email:
             file_name = "{}-{}".format(self.collector_name.name, self.email.email_address)
@@ -3020,7 +3020,7 @@ class Command(DeclarativeBase):
             if self.service.host_name is not None:
                 rvalue = rvalue and self.service.host_name.is_processable(included_items=included_items,
                                                                           excluded_items=excluded_items,
-                                                                          collector_type=CollectorType.host_name_service,
+                                                                          collector_type=CollectorType.vhost_service,
                                                                           scope=scope)
             elif self.service.host is not None:
                 rvalue = rvalue and self.service.host.is_processable(included_items=included_items,
@@ -3165,7 +3165,7 @@ class Credentials(DeclarativeBase):
             if self.service.host_name is not None:
                 rvalue = self.service.host_name.is_processable(included_items=included_items,
                                                                excluded_items=excluded_items,
-                                                               collector_type=CollectorType.host_name_service,
+                                                               collector_type=CollectorType.vhost_service,
                                                                scope=scope)
             elif self.service.host is not None:
                 rvalue = self.service.host.is_processable(included_items=included_items,
@@ -3252,7 +3252,7 @@ class Path(DeclarativeBase):
             if self.service.host_name is not None:
                 rvalue = self.service.host_name.is_processable(included_items=included_items,
                                                                excluded_items=excluded_items,
-                                                               collector_type=CollectorType.host_name_service,
+                                                               collector_type=CollectorType.vhost_service,
                                                                scope=scope)
             elif self.service.host is not None:
                 rvalue = self.service.host.is_processable(included_items=included_items,
@@ -3273,9 +3273,9 @@ class Path(DeclarativeBase):
         name = self.name
         prefix = "|_" if is_last else "| "
         sources = ", ".join([item.name for item in self.sources])
-        if self.type == PathType.Http:
+        if self.type == PathType.http:
             name = self.get_urlparse().geturl()
-        elif self.type == PathType.Smb_Share:
+        elif self.type == PathType.smb_share:
             name = self.get_share()
         msg = None
         if self.return_code:
@@ -3295,11 +3295,11 @@ class Path(DeclarativeBase):
         This method returns the appropriate string representation of the given file type
         :return:
         """
-        if self.type == PathType.Smb_Share:
+        if self.type == PathType.smb_share:
             rvalue = self.get_share()
-        elif self.type == PathType.Http:
+        elif self.type == PathType.http:
             rvalue = self.get_urlparse().geturl()
-        elif self.type == PathType.Nfs_Share:
+        elif self.type == PathType.nfs_export:
             rvalue = self.get_nfs_share()
         else:
             rvalue = self.name
@@ -3718,7 +3718,7 @@ class CertInfo(DeclarativeBase):
             if self.service.host_name is not None:
                 rvalue = self.service.host_name.is_processable(included_items=included_items,
                                                                excluded_items=excluded_items,
-                                                               collector_type=CollectorType.host_name_service,
+                                                               collector_type=CollectorType.vhost_service,
                                                                scope=scope)
             elif self.service.host is not None:
                 rvalue = self.service.host.is_processable(included_items=included_items,
@@ -4036,7 +4036,7 @@ class TlsInfo(DeclarativeBase):
             if self.service.host_name is not None:
                 rvalue = self.service.host_name.is_processable(included_items=included_items,
                                                                excluded_items=excluded_items,
-                                                               collector_type=CollectorType.host_name_service,
+                                                               collector_type=CollectorType.vhost_service,
                                                                scope=scope)
             elif self.service.host is not None:
                 rvalue = self.service.host.is_processable(included_items=included_items,

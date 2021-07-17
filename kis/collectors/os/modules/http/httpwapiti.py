@@ -177,7 +177,7 @@ class CollectorClass(BaseHttpCollector, ServiceCollector, HostNameServiceCollect
             else:
                 output_file = self.create_file_path(service=service, file_extension="bin", create_new=True)
                 for credential in service.credentials:
-                    if credential.complete and credential.type == CredentialType.Cleartext:
+                    if credential.complete and credential.type == CredentialType.cleartext:
                         tmp = self._get_commands(session,
                                                  service,
                                                  collector_name,
@@ -217,13 +217,13 @@ class CollectorClass(BaseHttpCollector, ServiceCollector, HostNameServiceCollect
             path_str = item.group("path")
             host_str = item.group("host")
             if host_str:
-                if command.collector_name.type == CollectorType.host_name_service and \
+                if command.collector_name.type == CollectorType.vhost_service and \
                         command.host_name.full_name != host_str:
                     logger.debug("extracted host name '{}' not equal "
                                  "to targeted host name '{}'".format(host_str,
                                                                      command.host_name.full_name))
                     break
-                elif command.collector_name.type == CollectorType.service and \
+                elif command.collector_name.type == CollectorType.host_service and \
                         command.host.ipv4_address != host_str:
                     logger.debug("extracted host name '{}' not equal "
                                  "to targeted IPv4 address '{}'".format(host_str,

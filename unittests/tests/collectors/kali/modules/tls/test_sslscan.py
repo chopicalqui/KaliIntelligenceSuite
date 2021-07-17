@@ -226,7 +226,7 @@ Signed Certificate Timestamp:
                                               workspace_str=self._workspaces[0],
                                               command=["sslscan", 'www.google.com'],
                                               collector_name_str="sslscan",
-                                              collector_name_type=CollectorType.service,
+                                              collector_name_type=CollectorType.host_service,
                                               service_port=443,
                                               scope=ScopeType.all)
                 command.xml_output = self.get_command_xml_outputs()[0]

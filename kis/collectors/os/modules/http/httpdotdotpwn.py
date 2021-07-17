@@ -93,7 +93,7 @@ class CollectorClass(BaseHttpDotDotPwn, ServiceCollector, HostNameServiceCollect
                 collectors.extend(tmp)
             else:
                 for credential in service.credentials:
-                    if credential.complete and credential.type == CredentialType.Cleartext:
+                    if credential.complete and credential.type == CredentialType.cleartext:
                         tmp = self._create_commands(session,
                                                     service,
                                                     collector_name,

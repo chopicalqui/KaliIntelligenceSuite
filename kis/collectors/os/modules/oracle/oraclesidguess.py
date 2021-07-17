@@ -108,7 +108,7 @@ class CollectorClass(BaseOracleTnsCollector, ServiceCollector):
                                                  command=command,
                                                  username=None,
                                                  password=sid,
-                                                 credential_type=CredentialType.Oracle_TNS_SID,
+                                                 credential_type=CredentialType.oracle_tns_sid,
                                                  source=source,
                                                  service=command.service,
                                                  report_item=report_item)

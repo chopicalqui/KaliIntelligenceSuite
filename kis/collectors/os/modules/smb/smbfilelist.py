@@ -77,7 +77,7 @@ class CollectorClass(BaseSmbClient, ServiceCollector):
         collectors = []
         if self.match_service_port(service):
             for path in session.query(Path).join(Service).filter(Service.id == service.id,
-                                                                 Path.type == PathType.Smb_Share).all():
+                                                                 Path.type == PathType.smb_share).all():
                 collectors += self._create_commands(session,
                                                     service,
                                                     collector_name,

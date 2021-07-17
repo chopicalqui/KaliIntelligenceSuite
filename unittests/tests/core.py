@@ -338,7 +338,7 @@ class BaseKisTestCase(unittest.TestCase):
     def create_collector_name(self,
                               session: Session,
                               name: str = "nikto",
-                              type: CollectorType = CollectorType.service,
+                              type: CollectorType = CollectorType.host_service,
                               priority: int = 0):
         return self._engine.get_or_create(session, CollectorName, name=name, type=type, priority=priority)
 
@@ -347,7 +347,7 @@ class BaseKisTestCase(unittest.TestCase):
                        workspace_str: str = "unittest",
                        command: List[str] = ["nikto", "https://192.168.1.1"],
                        collector_name_str: str = "nikto",
-                       collector_name_type: CollectorType = CollectorType.service,
+                       collector_name_type: CollectorType = CollectorType.host_service,
                        ipv4_address: str = "192.168.1.1",
                        ipv4_network_str: str = None,
                        host_name_str: str = None,
@@ -372,7 +372,7 @@ class BaseKisTestCase(unittest.TestCase):
                                                workspace_str=workspace_str,
                                                network=ipv4_network_str,
                                                scope=scope)
-            collector_name_type = CollectorType.ipv4_network
+            collector_name_type = CollectorType.network
         elif host_name_str:
             host_name = self.create_hostname(session=session,
                                              workspace_str=workspace_str,
@@ -395,7 +395,7 @@ class BaseKisTestCase(unittest.TestCase):
                                           workspace_str=workspace_str,
                                           address=ipv4_address,
                                           port=service_port)
-            collector_name_type = CollectorType.service
+            collector_name_type = CollectorType.host_service
         collector_name = self.create_collector_name(session=session,
                                                     name=collector_name_str,
                                                     type=collector_name_type)
@@ -424,7 +424,7 @@ class BaseKisTestCase(unittest.TestCase):
                     session: Session,
                     workspace_str: str = "unittest",
                     path: str = "/tmp",
-                    path_type: PathType = PathType.FileSystem,
+                    path_type: PathType = PathType.filesystem,
                     size_bytes: int = None,
                     return_code: int = None,
                     service: Service = None) -> Path:
@@ -444,7 +444,7 @@ class BaseKisTestCase(unittest.TestCase):
                           workspace_str: str = "unittest",
                           username: str = "testuser",
                           password: str = "password",
-                          credential_type: CredentialType = CredentialType.Cleartext,
+                          credential_type: CredentialType = CredentialType.cleartext,
                           domain: str = None,
                           service: Service = None,
                           email: Email = None) -> Credentials:
@@ -666,7 +666,7 @@ class BaseKisTestCase(unittest.TestCase):
                       host_name: str = None) -> Credentials:
         rvalue = None
         if ipv4_address:
-            collector_name_type = collector_name_type if collector_name_type else CollectorType.service
+            collector_name_type = collector_name_type if collector_name_type else CollectorType.host_service
             rvalue = session.query(Command) \
                 .join(CollectorName) \
                 .join((Service, Command.service)) \
@@ -693,7 +693,7 @@ class BaseKisTestCase(unittest.TestCase):
                         CollectorName.name == collector_name,
                         Workspace.name == workspace_str).one_or_none()
         if ipv4_network:
-            collector_name_type = collector_name_type if collector_name_type else CollectorType.ipv4_network
+            collector_name_type = collector_name_type if collector_name_type else CollectorType.network
             rvalue = session.query(Command) \
                 .join(CollectorName) \
                 .join((Network, Command.ipv4_network)) \
@@ -769,14 +769,14 @@ class BaseKisTestCase(unittest.TestCase):
         # add credentials
         self._domain_utils.add_credential(session=session,
                                           password="test",
-                                          credential_type=CredentialType.Cleartext,
+                                          credential_type=CredentialType.cleartext,
                                           username="test",
                                           domain="test",
                                           source=self.create_source(session=session, source_str="ftphydra"),
                                           service=service)
         self._domain_utils.add_credential(session=session,
                                           password="test",
-                                          credential_type=CredentialType.Cleartext,
+                                          credential_type=CredentialType.cleartext,
                                           domain="test",
                                           source=self.create_source(session=session, source_str="ftphydra"),
                                           email=email)
@@ -830,7 +830,7 @@ class BaseKisTestCase(unittest.TestCase):
                                        collector_name=self._engine.get_or_create(session,
                                                                                  CollectorName,
                                                                                  name="test",
-                                                                                 type=CollectorType.service,
+                                                                                 type=CollectorType.host_service,
                                                                                  priority=0),
                                        service=service)
         self._domain_utils.add_command(session=session,
@@ -838,7 +838,7 @@ class BaseKisTestCase(unittest.TestCase):
                                        collector_name=self._engine.get_or_create(session,
                                                                                  CollectorName,
                                                                                  name="tcpnmap",
-                                                                                 type=CollectorType.ipv4_network,
+                                                                                 type=CollectorType.network,
                                                                                  priority=0),
                                        network=network)
         command = self._domain_utils.add_command(session=session,

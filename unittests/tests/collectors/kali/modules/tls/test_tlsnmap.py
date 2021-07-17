@@ -502,7 +502,7 @@ class BaseTlsNmapCollectorTestCase(BaseNmapCollectorTestCase):
                                               workspace_str=self._workspaces[0],
                                               command=["nmap", '-p', '443', '192.168.1.1'],
                                               collector_name_str="tlsnmap",
-                                              collector_name_type=CollectorType.service,
+                                              collector_name_type=CollectorType.host_service,
                                               service_port=443,
                                               scope=ScopeType.all)
                 command.xml_output = self.get_command_xml_outputs()[0]

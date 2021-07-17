@@ -151,7 +151,7 @@ class CollectorClass(BaseSmbCollector, ServiceCollector):
                                      command=command,
                                      service=command.service,
                                      path=share,
-                                     path_type=PathType.Smb_Share,
+                                     path_type=PathType.smb_share,
                                      source=source,
                                      report_item=report_item)
                 if path:

@@ -119,7 +119,7 @@ class CollectorClass(BaseMsfConsole, ServiceCollector):
                 self.add_credential(session=session,
                                     command=command,
                                     password=hash,
-                                    credential_type=CredentialType.Hash,
+                                    credential_type=CredentialType.hash,
                                     username=user,
                                     source=source,
                                     service=command.service,

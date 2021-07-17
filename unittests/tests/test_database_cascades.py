@@ -410,7 +410,7 @@ class TestDeleteHostName(BaseKisTestCase):
             collector_name = self._engine.get_or_create(session,
                                                         CollectorName,
                                                         name="nikto",
-                                                        type=CollectorType.host_name_service,
+                                                        type=CollectorType.vhost_service,
                                                         priority=1)
             self._domain_utils.add_command(session=session,
                                            os_command=["sleep", "10"],
@@ -519,7 +519,7 @@ class TestDeleteService(BaseKisTestCase):
             self.create_path(session=session,
                              workspace_str=self._workspaces[0],
                              path="/tmp",
-                             path_type=PathType.Http,
+                             path_type=PathType.http,
                              service=service)
         # delete workspace
         with self._engine.session_scope() as session:
@@ -583,7 +583,7 @@ class TestDeleteService(BaseKisTestCase):
             collector_name = self._engine.get_or_create(session,
                                                         CollectorName,
                                                         name="nikto",
-                                                        type=CollectorType.service,
+                                                        type=CollectorType.host_service,
                                                         priority=1)
             self._domain_utils.add_command(session=session,
                                            os_command=["sleep", "10"],

@@ -753,7 +753,7 @@ class _HostNameReportGenerator(_BaseReportGenerator):
         """
         return host_name.is_processable(included_items=self._included_items,
                                         excluded_items=self._excluded_items,
-                                        collector_type=CollectorType.host_name_service,
+                                        collector_type=CollectorType.vhost_service,
                                         scope=self._scope,
                                         include_ip_address=True)
 
@@ -812,7 +812,7 @@ class _HostNameReportGenerator(_BaseReportGenerator):
             for domain in workspace.domain_names:
                 for host_name in domain.host_names:
                     if self._filter(host_name):
-                        in_scope = host_name.in_scope(CollectorType.host_name_service)
+                        in_scope = host_name.in_scope(CollectorType.vhost_service)
                         results = self._egrep_text(host_name)
                         if self._not_grep and not results:
                             rows.append([host_name.id,
@@ -879,7 +879,7 @@ class _HostNameReportGenerator(_BaseReportGenerator):
                         ipv4_addresses = host_name.get_host_host_name_mappings_str(types=[DnsResourceRecordType.a,
                                                                                           DnsResourceRecordType.aaaa])
                         host_name_sources = host_name.sources_str
-                        in_scope = host_name.in_scope(CollectorType.host_name_service)
+                        in_scope = host_name.in_scope(CollectorType.vhost_service)
                         environment = self._domain_config.get_environment(host_name)
                         if host_name.services:
                             for service in host_name.services:
@@ -1068,14 +1068,14 @@ class _DomainNameReportGenerator(_BaseReportGenerator):
                                          domain.scope_str,
                                          host_name.full_name,
                                          host_name._in_scope,
-                                         host_name.in_scope(CollectorType.host_name_service),
+                                         host_name.in_scope(CollectorType.vhost_service),
                                          domain.companies_str,
                                          sources,
                                          host_name.name,
                                          environment,
                                          mapping.type_str,
                                          mapping.resolved_host_name.full_name,
-                                         mapping.resolved_host_name.in_scope(CollectorType.host_name_service),
+                                         mapping.resolved_host_name.in_scope(CollectorType.vhost_service),
                                          None,
                                          mapping.resolved_host_name.domain_name.companies_str
                                          if mapping.resolved_host_name.domain_name else None,
@@ -1094,7 +1094,7 @@ class _DomainNameReportGenerator(_BaseReportGenerator):
                                          domain.scope_str,
                                          host_name.full_name,
                                          host_name._in_scope,
-                                         host_name.in_scope(CollectorType.host_name_service),
+                                         host_name.in_scope(CollectorType.vhost_service),
                                          domain.companies_str,
                                          sources,
                                          host_name.name,
@@ -1115,7 +1115,7 @@ class _DomainNameReportGenerator(_BaseReportGenerator):
                                          domain.scope_str,
                                          host_name.full_name,
                                          host_name._in_scope,
-                                         host_name.in_scope(CollectorType.host_name_service),
+                                         host_name.in_scope(CollectorType.vhost_service),
                                          domain.companies_str,
                                          sources,
                                          host_name.name,
@@ -1241,7 +1241,7 @@ class _CanonicalNameReportGenerator(_BaseReportGenerator):
                                      host_name.domain_name.scope_str,
                                      host_name.full_name,
                                      host_name._in_scope,
-                                     host_name.in_scope(CollectorType.host_name_service),
+                                     host_name.in_scope(CollectorType.vhost_service),
                                      " -> ".join([item.summary for item in cnames]),
                                      resolves_to_ipv4,
                                      resolves_to_ipv6,
@@ -1319,7 +1319,7 @@ class _PathReportGenerator(_BaseReportGenerator):
                                                      host_name.domain_name.companies_str,
                                                      host_name.full_name,
                                                      host_name._in_scope,
-                                                     host_name.in_scope(CollectorType.host_name_service),
+                                                     host_name.in_scope(CollectorType.vhost_service),
                                                      hosts_str,
                                                      host_name.summary,
                                                      service.summary,
@@ -1341,7 +1341,7 @@ class _PathReportGenerator(_BaseReportGenerator):
                                                  host_name.domain_name.companies_str,
                                                  host_name.full_name,
                                                  host_name._in_scope,
-                                                 host_name.in_scope(CollectorType.host_name_service),
+                                                 host_name.in_scope(CollectorType.vhost_service),
                                                  hosts_str,
                                                  host_name.summary,
                                                  service.summary,
@@ -2166,7 +2166,7 @@ class _CredentialReportGenerator(_BaseReportGenerator):
                                              workspace.name,
                                              "vhost",
                                              None,
-                                             host_name.in_scope(CollectorType.host_name_service),
+                                             host_name.in_scope(CollectorType.vhost_service),
                                              service.address,
                                              service.address_summary,
                                              None,
@@ -2293,7 +2293,7 @@ class _AdditionalInfoReportGenerator(_BaseReportGenerator):
                                                  workspace.name,
                                                  "vhost",
                                                  None,
-                                                 host_name.in_scope(CollectorType.host_name_service),
+                                                 host_name.in_scope(CollectorType.vhost_service),
                                                  service.address,
                                                  service.address_summary,
                                                  ipv4_addresses,
@@ -2348,7 +2348,7 @@ class _AdditionalInfoReportGenerator(_BaseReportGenerator):
                                              workspace.name,
                                              "domain",
                                              None,
-                                             host_name.in_scope(CollectorType.host_name_service),
+                                             host_name.in_scope(CollectorType.vhost_service),
                                              host_name.full_name,
                                              None,
                                              None,

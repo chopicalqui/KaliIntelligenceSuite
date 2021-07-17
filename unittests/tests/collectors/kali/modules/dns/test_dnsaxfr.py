@@ -94,7 +94,7 @@ Received 723 bytes from 51.222.39.63#53 in 100 ms""".split(os.linesep)
                                               workspace_str=self._workspaces[0],
                                               command=["host", "-t", "axfr", "-p", "53", "megacorpone.com", "51.222.39.63"],
                                               collector_name_str=self._collector_name,
-                                              collector_name_type=CollectorType.service,
+                                              collector_name_type=CollectorType.host_service,
                                               service_port=53,
                                               scope=ScopeType.all,
                                               output_path=temp_dir)

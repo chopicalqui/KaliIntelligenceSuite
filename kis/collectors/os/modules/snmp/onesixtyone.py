@@ -92,7 +92,7 @@ class CollectorClass(BaseSnmpCollector, ServiceCollector):
                 collectors.extend(tmp)
             else:
                 for credential in service.credentials:
-                    if credential.complete and credential.type == CredentialType.Cleartext:
+                    if credential.complete and credential.type == CredentialType.cleartext:
                         tmp = self._get_commands(session,
                                                  service,
                                                  collector_name,

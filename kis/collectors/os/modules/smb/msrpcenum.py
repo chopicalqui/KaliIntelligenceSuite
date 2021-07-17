@@ -73,8 +73,8 @@ class CollectorClass(BaseSmbNmap, ServiceCollector):
                 arguments = self.create_credential_argument(username=self._user,
                                                             password=self._password,
                                                             domain=self._domain,
-                                                            credential_type=CredentialType.Hash if self._hashes else
-                                                            CredentialType.Cleartext)
+                                                            credential_type=CredentialType.hash if self._hashes else
+                                                            CredentialType.cleartext)
                 collectors = self._create_commands(session,
                                                    service,
                                                    collector_name,
