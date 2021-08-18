@@ -306,26 +306,27 @@ class ManageDatabase:
                     if not host_name:
                         raise ValueError("adding host name '{}' failed".format(host_name_str))
                 elif self._arguments.sharphound:
-                    with open(host_name, "rb") as file:
-                        json_object = json.loads(file.read())
-                        if "computers" in json_object and isinstance(json_object["computers"], list):
-                            source = self._domain_utils.add_source(session=session, name="sharphound")
-                            for item in json_object["computers"]:
-                                if "Properties" in item and "name" in item["Properties"]:
-                                    computer_name = item["Properties"]["name"]
-                                    host_name = self._domain_utils.add_host_name(session=session,
-                                                                                 workspace=workspace,
-                                                                                 name=computer_name,
-                                                                                 in_scope=in_scope,
-                                                                                 source=source)
-                                    if not host_name:
-                                        raise ValueError("adding host name '{}' failed".format(host_name))
-                                else:
-                                    raise KeyError("invalid sharphound computer file. file does not contain "
-                                                   "attribute 'Properties' and/or 'name'")
-                        else:
-                            raise KeyError("invalid sharphound computer file. file does not contain "
-                                           "attribute 'computers'")
+                    for host_name_str in self._get_items("HOSTNAME"):
+                        with open(host_name_str, "rb") as file:
+                            json_object = json.loads(file.read())
+                            if "computers" in json_object and isinstance(json_object["computers"], list):
+                                source = self._domain_utils.add_source(session=session, name="sharphound")
+                                for item in json_object["computers"]:
+                                    if "Properties" in item and "name" in item["Properties"]:
+                                        computer_name = item["Properties"]["name"]
+                                        host_name = self._domain_utils.add_host_name(session=session,
+                                                                                     workspace=workspace,
+                                                                                     name=computer_name,
+                                                                                     in_scope=in_scope,
+                                                                                     source=source)
+                                        if not host_name:
+                                            raise ValueError("adding host name '{}' failed".format(item))
+                                    else:
+                                        raise KeyError("invalid sharphound computer file. file does not contain "
+                                                       "attribute 'Properties' and/or 'name'")
+                            else:
+                                raise KeyError("invalid sharphound computer file. file does not contain "
+                                               "attribute 'computers'")
                 elif self._arguments.delete or self._arguments.Delete:
                     self._domain_utils.delete_host_name(session=session,
                                                         workspace=workspace,

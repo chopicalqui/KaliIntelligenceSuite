@@ -1025,7 +1025,7 @@ class BaseUtils:
         content_bytes = content.encode("utf-8")
         certificate = CertificateUtils(content_bytes)
         host_names = certificate.subject_alt_name
-        host_names += certificate.issuer_name
+        host_names.append(certificate.issuer_name)
         signature_algorithm = certificate.signature_asym_algorithm
         hash_algorithm = certificate.signature_hash_algorithm
         for host_name in host_names:
@@ -2079,6 +2079,7 @@ class CertificateUtils:
         try:
             ext = self._cert.extensions.get_extension_for_oid(x509.OID_SUBJECT_ALTERNATIVE_NAME)
             entries = ext.value.get_values_for_type(x509.DNSName)
+            entries = entries if isinstance(entries, list) else [entries]
         except:
             pass
         return entries

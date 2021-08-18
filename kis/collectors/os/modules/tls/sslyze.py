@@ -121,14 +121,7 @@ class CollectorClass(BaseTlsCollector, ServiceCollector, HostNameServiceCollecto
         if self.match_service_tls(service) and ((service.host and service.host.ipv4_address) or (
                 service.host_name and not service.host_name.resolves_to_in_scope_ipv6_address())):
             json_file = self.create_json_file_path(service=service)
-            os_command = [self._path_sslyze,
-                          '--sslv2',
-                          '--sslv3',
-                          '--tlsv1',
-                          '--tlsv1_1',
-                          '--tlsv1_2',
-                          '--tlsv1_3',
-                          '--certinfo']
+            os_command = [self._path_sslyze, '--regular']
             if RdpServiceDescriptor().match_nmap_service_name(service):
                 os_command.append("--starttls=rdp")
             elif LdapServiceDescriptor().match_nmap_service_name(service):
@@ -209,7 +202,7 @@ class CollectorClass(BaseTlsCollector, ServiceCollector, HostNameServiceCollecto
         code etc.
         """
         command.hide = True
-        if command.return_code != 0:
+        if command.return_code and command.return_code > 0:
             self._set_execution_failed(session=session, command=command)
         try:
             if command.json_output:

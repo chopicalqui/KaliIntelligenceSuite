@@ -159,6 +159,21 @@ class CollectorClass(BaseKisImportDomain, DomainCollector):
                                         command=command,
                                         source=source,
                                         report_item=report_item)
+                    self._add_host_name(session=session,
+                                        json_object=item,
+                                        path="links",
+                                        command=command,
+                                        source=source,
+                                        report_item=report_item)
+                    if "email" in item:
+                        for email in item["email"].split(","):
+                            email = email.strip()
+                            self.add_email(session=session,
+                                           command=command,
+                                           email=email,
+                                           source=source,
+                                           report_item=report_item,
+                                           verify=True)
                 if "dns" in json_object:
                     item = json_object["dns"]
                     # add A records
@@ -169,12 +184,15 @@ class CollectorClass(BaseKisImportDomain, DomainCollector):
                                            source=source,
                                            report_item=report_item)
                     # add MX records
-                    self._add_host_name(session=session,
-                                        json_object=item,
-                                        path="mx",
-                                        command=command,
-                                        source=source,
-                                        report_item=report_item)
+                    if "mx" in item:
+                        for mx in item["mx"]:
+                            mx = mx.split()[-1]
+                            self.add_host_name(session=session,
+                                               command=command,
+                                               host_name=mx,
+                                               source=source,
+                                               verify=True,
+                                               report_item=report_item)
                     # add NS records
                     self._add_host_name(session=session,
                                         json_object=item,

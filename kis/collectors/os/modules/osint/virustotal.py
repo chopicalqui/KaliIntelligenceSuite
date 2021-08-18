@@ -89,8 +89,10 @@ class CollectorClass(BaseKisImportDomain, DomainCollector):
         for json_object in command.json_output:
             if "subdomains" in json_object:
                 for item in json_object["subdomains"]:
-                    self.add_host_name(session=session,
-                                       command=command,
-                                       host_name=item,
-                                       source=source,
-                                       report_item=report_item)
+                    host_name = self.add_host_name(session=session,
+                                                   command=command,
+                                                   host_name=item,
+                                                   source=source,
+                                                   report_item=report_item)
+                    if not host_name:
+                        logger.debug("could not add host name '{}' to database due to invalid format".format(item))
