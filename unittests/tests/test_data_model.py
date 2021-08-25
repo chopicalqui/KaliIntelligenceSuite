@@ -595,20 +595,12 @@ class TestCommand(BaseDataModelTestCase):
                                         ipv4_network=ipv4_network,
                                         ex_message=None)
 
-    def test_success(self):
+    def test_success_service_host(self):
         self.init_db()
         # todo: update for new collector
         with self._engine.session_scope() as session:
-            host_name = self.create_hostname(session, workspace_str=self._workspaces[0])
             service_host = self.create_service(session, workspace_str=self._workspaces[0])
-            service_host_name = self.create_service(session,
-                                                    workspace_str=self._workspaces[0],
-                                                    host_name_str="www.test.com")
-            host = self.create_host(session, workspace_str=self._workspaces[0])
-            ipv4_network = self.create_network(session, workspace_str=self._workspaces[0])
             collector_name = self.create_collector_name(session)
-            email = self.create_email(session=session, workspace_str=self._workspaces[0], email_address="test@test.com")
-            company = self.create_company(session=session, workspace_str=self._workspaces[0], name_str="test llc")
             result = self._test_success(session,
                                         os_command=["sleep", "10"],
                                         collector_name=collector_name,
@@ -618,6 +610,15 @@ class TestCommand(BaseDataModelTestCase):
             self.assertEqual(service_host.host_id, result.host_id)
             self.assertEqual(service_host.id, result.id)
             self.assertEqual(service_host.workspace.id, result.workspace.id)
+
+    def test_success_service_host_name(self):
+        self.init_db()
+        # todo: update for new collector
+        with self._engine.session_scope() as session:
+            service_host_name = self.create_service(session,
+                                                    workspace_str=self._workspaces[0],
+                                                    host_name_str="www.test.com")
+            collector_name = self.create_collector_name(session)
             result = self._test_success(session,
                                         os_command=["sleep", "10"],
                                         collector_name=collector_name,
@@ -627,30 +628,66 @@ class TestCommand(BaseDataModelTestCase):
             self.assertEqual(service_host_name.host_name_id, result.host_name.id)
             self.assertEqual(service_host_name.id, result.id)
             self.assertEqual(service_host_name.host_name.domain_name.workspace.id, result.workspace_id)
-            self._test_success(session,
-                               os_command=["sleep", "11"],
-                               collector_name=collector_name,
-                               host=host)
+
+    def test_success_host(self):
+        self.init_db()
+        # todo: update for new collector
+        with self._engine.session_scope() as session:
+            host = self.create_host(session, workspace_str=self._workspaces[0])
+            collector_name = self.create_collector_name(session)
+            result = self._test_success(session,
+                                        os_command=["sleep", "11"],
+                                        collector_name=collector_name,
+                                        host=host)
             self.assertEqual(host.workspace.id, result.workspace_id)
-            self._test_success(session,
-                               os_command=["sleep", "11"],
-                               collector_name=collector_name,
-                               host_name=host_name)
+
+    def test_success_host_name(self):
+        self.init_db()
+        # todo: update for new collector
+        with self._engine.session_scope() as session:
+            host_name = self.create_hostname(session, workspace_str=self._workspaces[0])
+            collector_name = self.create_collector_name(session)
+            result = self._test_success(session,
+                                        os_command=["sleep", "11"],
+                                        collector_name=collector_name,
+                                        host_name=host_name)
             self.assertEqual(host_name.domain_name.workspace.id, result.workspace_id)
-            self._test_success(session,
-                               os_command=["sleep", "10"],
-                               collector_name=collector_name,
-                               ipv4_network=ipv4_network)
-            self.assertEqual(ipv4_network.workspace.id, result.workspace_id)
-            self._test_success(session,
-                               os_command=["sleep", "10"],
-                               collector_name=collector_name,
-                               email=email)
+
+    def test_success_network(self):
+        self.init_db()
+        # todo: update for new collector
+        with self._engine.session_scope() as session:
+            network = self.create_network(session, workspace_str=self._workspaces[0])
+            collector_name = self.create_collector_name(session)
+            result = self._test_success(session,
+                                        os_command=["sleep", "10"],
+                                        collector_name=collector_name,
+                                        ipv4_network=network)
+            self.assertEqual(network.workspace.id, result.workspace_id)
+
+    def test_success_email(self):
+        self.init_db()
+        # todo: update for new collector
+        with self._engine.session_scope() as session:
+            collector_name = self.create_collector_name(session)
+            email = self.create_email(session=session, workspace_str=self._workspaces[0], email_address="test@test.com")
+            result = self._test_success(session,
+                                        os_command=["sleep", "10"],
+                                        collector_name=collector_name,
+                                        email=email)
             self.assertEqual(email.host_name.domain_name.workspace.id, result.workspace_id)
-            self._test_success(session,
-                               os_command=["sleep", "10"],
-                               collector_name=collector_name,
-                               company=company)
+
+    def test_success_company(self):
+        self.init_db()
+        # todo: update for new collector
+        with self._engine.session_scope() as session:
+            collector_name = self.create_collector_name(session)
+            company = self.create_company(session=session, workspace_str=self._workspaces[0],
+                                          name_str="test llc")
+            result = self._test_success(session,
+                                        os_command=["sleep", "10"],
+                                        collector_name=collector_name,
+                                        company=company)
             self.assertEqual(company.workspace.id, result.workspace_id)
 
 

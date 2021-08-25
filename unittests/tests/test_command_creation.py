@@ -1021,8 +1021,7 @@ class TestSettingCommandComplete(BaseKisTestCase):
         with self._engine.session_scope() as session:
             self._create_test_data(session=session)
         # update pending commands
-        with self._engine.session_scope() as session:
-            self._engine.set_commands_incomplete(workspace=self._workspaces[0], collector_name=collector_name)
+        self._engine.set_commands_incomplete(workspace=self._workspaces[0], collector_name=collector_name)
         # check database
         with self._engine.session_scope() as session:
             results = {}

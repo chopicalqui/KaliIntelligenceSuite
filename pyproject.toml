@@ -1,0 +1,28 @@
+[tool.poetry]
+name = "kaliintelsuite"
+version = "0.1.0"
+description = "Kali Intelligence Suite (KIS) shall aid in the fast, autonomous, central, and comprehensive collection of intelligence by executing standard penetration testing tools. The collected data is internally stored in a structured manner to allow the fast identification and visualisation of the collected information."
+authors = ["Lukas Reiter <chopicalqui@protonmail.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+configparser = "^5.0.2"
+SQLAlchemy = "^1.4.23"
+psycopg2-binary = "^2.9.1"
+shodan = "^1.25.0"
+censys = "1.1.1"
+cryptography = "^3.4.8"
+passgen = "^1.1.1"
+dnsdumpster = "^0.8"
+openpyxl = "^3.0.7"
+psutil = "^5.8.0"
+pytest = "^6.2.4"
+pysqlcipher3 = "^1.0.4"
+pandas = "^1.3.2"
+
+[tool.poetry.dev-dependencies]
+pytest = "*"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

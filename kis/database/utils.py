@@ -129,42 +129,48 @@ class Engine:
         if rvalue != 0:
             raise subprocess.CalledProcessError("creating backup failed with return code {}".format(rvalue))
 
-    def set_commands_incomplete(self, workspace: str, collector_name: str=None) -> None:
+    def _set_commands_incomplete(self, query: sqlalchemy.orm.query.Query, collector_name: str = None) -> None:
+        """
+        This method sets all commands of the given query to incomplete.
+        """
+        for command in query.all():
+            if collector_name == command.collector_name.name or not collector_name:
+                command.status = CommandStatus.terminated
+
+    def set_commands_incomplete(self, workspace: str, collector_name: str = None) -> None:
         """
         This method sets all pending OS commands to status execution terminated
         :param command_name: If specified the status for all commands with the same command_name are update
         """
         with self.session_scope() as session: \
             # todo: update for new collector
-            commands_host = session.query(Command.id) \
-                .join((CollectorName, Command.collector_name)) \
-                .join((Host, Command.host)) \
-                .join((Workspace, Host.workspace)) \
-                .filter(Workspace.name == workspace, Command.status == CommandStatus.pending)
-            commands_host_name = session.query(Command.id) \
-                .join((CollectorName, Command.collector_name)) \
-                .join((HostName, Command.host_name)) \
-                .join((DomainName, HostName.domain_name)) \
-                .join((Workspace, DomainName.workspace)) \
-                .filter(Workspace.name == workspace, Command.status == CommandStatus.pending)
-            commands_ipv4_network = session.query(Command.id) \
-                .join((CollectorName, Command.collector_name)) \
-                .join((Network, Command.ipv4_network)) \
-                .join((Workspace, Network.workspace)) \
-                .filter(Workspace.name == workspace, Command.status == CommandStatus.pending)
-            commands_email = session.query(Command.id) \
-                .join((CollectorName, Command.collector_name)) \
-                .join((Email, Command.email)) \
-                .join((HostName, Email.host_name)) \
-                .join((DomainName, HostName.domain_name)) \
-                .join((Workspace, DomainName.workspace)) \
-                .filter(Workspace.name == workspace, Command.status == CommandStatus.pending)
-            command_ids = commands_host.union(commands_host_name) \
-                .union(commands_ipv4_network) \
-                .union(commands_email).all()
-            for command in session.query(Command).filter(Command.id.in_(command_ids)):
-                if collector_name == command.collector_name.name or not collector_name:
-                    command.status = CommandStatus.terminated
+            self._set_commands_incomplete(session.query(Command)
+                                          .join((CollectorName, Command.collector_name))
+                                          .join((Host, Command.host))
+                                          .join((Workspace, Host.workspace))
+                                          .filter(Workspace.name == workspace,
+                                                  Command.status == CommandStatus.pending), collector_name)
+            self._set_commands_incomplete(session.query(Command)
+                                          .join((CollectorName, Command.collector_name))
+                                          .join((HostName, Command.host_name))
+                                          .join((DomainName, HostName.domain_name))
+                                          .join((Workspace, DomainName.workspace))
+                                          .filter(Workspace.name == workspace,
+                                                  Command.status == CommandStatus.pending), collector_name)
+            self._set_commands_incomplete(session.query(Command)
+                                          .join((CollectorName, Command.collector_name))
+                                          .join((Network, Command.ipv4_network))
+                                          .join((Workspace, Network.workspace))
+                                          .filter(Workspace.name == workspace,
+                                                  Command.status == CommandStatus.pending), collector_name)
+            self._set_commands_incomplete(session.query(Command)
+                                          .join((CollectorName, Command.collector_name))
+                                          .join((Email, Command.email))
+                                          .join((HostName, Email.host_name))
+                                          .join((DomainName, HostName.domain_name))
+                                          .join((Workspace, DomainName.workspace))
+                                          .filter(Workspace.name == workspace,
+                                                  Command.status == CommandStatus.pending), collector_name)
 
     def delete_incomplete_commands(self, workspace: str) -> None:
         """This method resets all status that have not successfully completed to status pending"""

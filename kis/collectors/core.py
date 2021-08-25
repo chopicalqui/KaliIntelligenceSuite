@@ -1033,6 +1033,7 @@ class BaseUtils:
                                                     workspace=command.workspace,
                                                     item=host_name,
                                                     source=source,
+                                                    verify=True,
                                                     report_item=report_item)
             if host_name_object:
                 for company in certificate.organizations:
