@@ -158,12 +158,12 @@ $ sudo docker-compose run kaliintelsuite kismanage network -w $ws --add $network
 $ sudo docker-compose run kaliintelsuite kismanage scan -w $ws --nmap $nmap_paths
 $ sudo docker-compose run kaliintelsuite kiscollect -w $ws --debug --strict -t5 --anyservicenmap --certnmap \
 --certopenssl --dnsaxfrdomain --dnsaxfrservice --dnsnmap --finger --ftpfilelist --ftphydra --ftpnmap --httpchangeme \
---httpdavtest --httpgobuster --httphydra --httpkiterunner --httpmsfrobotstxt --httpnikto --httpnmap --httpntlmnmap \
---httpwhatweb --ikescan --imapnmap --ipmi --ldapnmap --ldapsearch --msrpcenum --mssqlhydra --mssqlnmap --mysqlhydra \
---mysqlnmap --nbtscan --nfsnmap --ntpq --onesixtyone --oraclesidguess --pgsqlhydra --pop3nmap --rdpnmap --rpcclient \
---rpcinfo --rpcnmap --showmount --smbclient --smbcme --smbfilelist --smbmap --smbnmap --smtpnmap --snmpcheck \
---snmphydra --snmpnmap --snmpwalk --sshchangeme --sshnmap --sslscan --sslyze --tlsnmap --telnetnmap --tftpnmap \
---vncnmap --x11nmap --httpburpsuitepro --autostart
+--httpdavtest --httpgobuster --httpgobustersmart --httphydra --httpkiterunner --httpmsfrobotstxt --httpnikto \
+--httpnmap --httpntlmnmap --httpwhatweb --ikescan --imapnmap --ipmi --ldapnmap --ldapsearch --msrpcenum --mssqlhydra \
+--mssqlnmap --mysqlhydra --mysqlnmap --nbtscan --nfsnmap --ntpq --onesixtyone --oraclesidguess --pgsqlhydra \
+--pop3nmap --rdpnmap --rpcclient --rpcinfo --rpcnmap --showmount --smbclient --smbcme --smbfilelist --smbmap \
+--smbnmap --smtpnmap --snmpcheck --snmphydra --snmpnmap --snmpwalk --sshchangeme --sshnmap --sslscan --sslyze \
+--tlsnmap --telnetnmap --tftpnmap --vncnmap --x11nmap --httpburpsuitepro --autostart
 
 review collected domain information and eventually add domains in scope
 $ sudo docker-compose run kaliintelsuite kisre--httpburpsuitepro port domain -w $ws --csv --scope outside | \
@@ -175,12 +175,12 @@ $ sudo docker-compose run kaliintelsuite kismanage domain -w $ws -s {all,strict}
 continue collection based on virtual hosts (might be useful in external penetration tests)
 $ sudo docker-compose run kaliintelsuite kiscollect -w $ws --debug --strict -t5 --anyservicenmap --certnmap \
 --certopenssl --dnsaxfrdomain --dnsaxfrservice --dnsnmap --finger --ftpfilelist --ftphydra --ftpnmap --httpchangeme \
---httpdavtest --httpgobuster --httphydra --httpkiterunner --httpmsfrobotstxt --httpnikto --httpnmap --httpntlmnmap \
---httpwhatweb --ikescan --imapnmap --ipmi --ldapnmap --ldapsearch --msrpcenum --mssqlhydra --mssqlnmap --mysqlhydra \
---mysqlnmap --nbtscan --nfsnmap --ntpq --onesixtyone --oraclesidguess --pgsqlhydra --pop3nmap --rdpnmap --rpcclient \
---rpcinfo --rpcnmap --showmount --smbclient --smbcme --smbfilelist --smbmap --smbnmap --smtpnmap --snmpcheck \
---snmphydra --snmpnmap --snmpwalk --sshchangeme --sshnmap --sslscan --sslyze --tlsnmap --telnetnmap --tftpnmap \
---vncnmap --x11nmap --httpburpsuitepro --vhost domain --autostart
+--httpdavtest --httpgobuster --httpgobustersmart --httphydra --httpkiterunner --httpmsfrobotstxt --httpnikto \
+--httpnmap --httpntlmnmap --httpwhatweb --ikescan --imapnmap --ipmi --ldapnmap --ldapsearch --msrpcenum --mssqlhydra \
+--mssqlnmap --mysqlhydra --mysqlnmap --nbtscan --nfsnmap --ntpq --onesixtyone --oraclesidguess --pgsqlhydra \
+--pop3nmap --rdpnmap --rpcclient --rpcinfo --rpcnmap --showmount --smbclient --smbcme --smbfilelist --smbmap \
+--smbnmap --smtpnmap --snmpcheck --snmphydra --snmpnmap --snmpwalk --sshchangeme --sshnmap --sslscan --sslyze \
+--tlsnmap --telnetnmap --tftpnmap --vncnmap --x11nmap --httpburpsuitepro --vhost domain --autostart
 
 collect screenshots with aquatone
 $ sudo docker-compose run kaliintelsuite kisreport path -w $ws --scope within --type http --csv | \

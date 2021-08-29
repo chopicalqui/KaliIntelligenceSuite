@@ -364,6 +364,7 @@ The column **User** specifies the user with which the respective operating syste
 | 41310    | tlsnmap                   | service, vhost  | Active   | IPv4, IPv6 | -       | root   |
 | 41400    | sslscan                   | service, vhost  | Active   | IPv4, IPv6 | -       | nobody |
 | 51100    | httpgobuster              | service, vhost  | Active   | IPv4, IPv6 | -       | nobody |
+| 51110    | httpgobustersmart         | service, vhost  | Active   | IPv4, IPv6 | -       | nobody |
 | 51150    | httpkiterunner            | service, vhost  | Active   | Ipv4       | -       | kali   |
 | 51200    | httpnmap                  | service, vhost  | Active   | IPv4, IPv6 | -       | root   |
 | 51205    | httpntlmnmap              | service, vhost  | Active   | IPv4, IPv6 | -       | root   |

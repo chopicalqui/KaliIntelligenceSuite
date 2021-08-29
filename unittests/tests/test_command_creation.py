@@ -1101,12 +1101,14 @@ class TestCreatingAllCommands(BaseKisTestCase):
             self._domain_utils.add_service_method(session=session,
                                                   name="PUT",
                                                   service=service)
+            service.nmap_product = "Apache"
             service = self._domain_utils.add_service(session=session,
                                                      port=port,
                                                      protocol_type=ProtocolType.tcp,
                                                      state=ServiceState.Open,
                                                      nmap_tunnel="ssl" if port == 443 else None,
                                                      host_name=host_name)
+            service.nmap_product = "Nginx"
             self._domain_utils.add_service_method(session=session,
                                                   name="PUT",
                                                   service=service)
