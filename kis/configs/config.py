@@ -24,7 +24,6 @@ import os
 import re
 import json
 import configparser
-import pwd
 from argparse import RawDescriptionHelpFormatter
 from operator import attrgetter
 from typing import List
@@ -49,6 +48,13 @@ class MissingApiCredentialsError(Exception):
 class BaseConfig:
     """This class implements common functionality to access configuration files."""
 
+    ENV_USER = "KIS_DB_USER"
+    ENV_PASSWORD_FILE = "KIS_DB_PASSWORD_FILE"
+    ENV_HOST = "KIS_DB_HOST"
+    ENV_PORT = "KIS_DB_PORT"
+    ENV_DB_NAME = "KIS_DB_NAME"
+    ENV_LOG_PATH = "KIS_LOG_PATH"
+
     def __init__(self, config_file: str):
         self._config_file = config_file
         self._repo_home = BaseConfig.get_repo_home()
@@ -62,7 +68,10 @@ class BaseConfig:
 
     @staticmethod
     def get_log_file() -> str:
-        return os.path.join(BaseConfig.get_script_home(), "kaliintelsuite.log")
+        path = BaseConfig.get_script_home()
+        if BaseConfig.ENV_LOG_PATH in os.environ:
+            path = os.environ[BaseConfig.ENV_LOG_PATH]
+        return os.path.join(path, "kaliintelsuite.log")
 
     @staticmethod
     def get_script_home() -> str:
@@ -85,7 +94,11 @@ class BaseConfig:
 
     def write(self) -> None:
         with open(self.full_path, "w") as file:
-            self._config.write(file)
+            self._config.write(file)\
+
+    @staticmethod
+    def is_docker():
+        return os.path.exists("/.dockerenv")
 
 
 class Database(BaseConfig):
@@ -100,28 +113,95 @@ class Database(BaseConfig):
         return self.get_config_str("production", "dialect")
 
     @property
+    def db_envs(self) -> dict:
+        result = {}
+        if self.is_docker():
+            result = {Database.ENV_PORT: self.env_port,
+                      Database.ENV_HOST: self.env_host,
+                      Database.ENV_DB_NAME: self.env_database,
+                      Database.ENV_USER: self.env_username,
+                      Database.ENV_PASSWORD_FILE: self.env_password_file}
+        return result
+
+    @property
+    def env_host(self) -> str:
+        result = None
+        if Database.ENV_HOST in os.environ:
+            result = os.environ[Database.ENV_HOST]
+        return result
+
+    @property
     def host(self) -> str:
-        return self.get_config_str("production", "host")
+        result = self.env_host
+        if not result:
+            result = self.get_config_str("production", "host")
+        return result
+
+    @property
+    def env_port(self) -> int:
+        result = None
+        if Database.ENV_PORT in os.environ:
+            result = int(os.environ[Database.ENV_PORT])
+        return result
 
     @property
     def port(self) -> int:
-        return self.get_config_int("production", "port")
+        result = self.env_port
+        if not result:
+            result = self.get_config_int("production", "port")
+        return result
+
+    @property
+    def env_username(self) -> str:
+        result = None
+        if Database.ENV_USER in os.environ:
+            result = os.environ[Database.ENV_USER]
+        return result
 
     @property
     def username(self) -> str:
-        return self.get_config_str("production", "username")
+        result = self.env_username
+        if not result:
+            result = self.get_config_str("production", "username")
+        return result
+
+    @property
+    def env_password_file(self) -> str:
+        result = None
+        if Database.ENV_PASSWORD_FILE in os.environ:
+            result = os.environ[Database.ENV_PASSWORD_FILE]
+        return result
 
     @property
     def password(self) -> str:
-        return self.get_config_str("production", "password")
+        password_file = self.env_password_file
+        if password_file:
+            with open(password_file, "r") as file:
+                content = file.readlines()
+            if len(content) != 1:
+                raise ValueError("the password file '{}' should only contain one line.".format(password_file))
+            result = content[0].strip()
+        else:
+            result = self.get_config_str("production", "password")
+        return result
 
     @password.setter
     def password(self, value: str) -> None:
         self._config["production"]["password"] = value
 
     @property
+    def env_database(self) -> str:
+        result = None
+        if Database.ENV_DB_NAME in os.environ:
+            result = os.environ[Database.ENV_DB_NAME]
+        return result
+
+    @property
     def production_database(self) -> str:
-        return self.get_config_str("production", "database")
+        result = self.env_database
+        if not result:
+            self.get_config_str("production", "database")
+        return result
 
     @property
     def test_database(self) -> str:
@@ -177,7 +257,6 @@ class Collector(BaseConfig):
         self._path_rpcclient = self.get_config_str("file_paths", "rpcclient")
         self._path_dig = self.get_config_str("file_paths", "dig")
         self._path_vncviewer = self.get_config_str("file_paths", "vncviewer")
-        self._path_rdesktop = self.get_config_str("file_paths", "rdesktop")
         self._path_sidguess = self.get_config_str("file_paths", "sidguess")
         self._path_ntpdate = self.get_config_str("file_paths", "ntpdate")
         self._path_ldapsearch = self.get_config_str("file_paths", "ldapsearch")
@@ -202,10 +281,12 @@ class Collector(BaseConfig):
         self._path_crackmapexec = self.get_config_str("file_paths", "crackmapexec")
         self._path_amass = self.get_config_str("file_paths", "amass")
         self._path_crobat = self.get_config_str("file_paths", "crobat")
+        self._path_kiterunner = self.get_config_str("file_paths", "kiterunner")
         self._eyewitness_proxy_ip = self.get_config_str("eyewitness", "proxy_ip")
         self._eyewitness_proxy_port = self.get_config_str("eyewitness", "proxy_port")
         self._wordlist_gobuster_dir = self.get_config_str("default_wordlists", "gobuster_dir")
         self._wordlist_gobuster_dns = self.get_config_str("default_wordlists", "gobuster_dns")
+        self._wordlist_kiterunner = self.get_config_str("default_wordlists", "kiterunner_file")
         self._ftp_default_credentials = self.get_config_str("default_wordlists", "ftp_default_credentials")
         self._mssql_default_credentials = self.get_config_str("default_wordlists", "mssql_default_credentials")
         self._mysql_default_credentials = self.get_config_str("default_wordlists", "mysql_default_credentials")

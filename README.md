@@ -9,7 +9,7 @@ by automatically:
  -  storing the collected data in a central rational database (see next section)
  -  providing an interface to query and analyze the gathered intelligence
 
-After the execution of each Kali Linux tools or querying APIs, KIS analyses the collected information and extracts
+After the execution of each Kali Linux tool or querying APIs, KIS analyses the collected information and extracts
 as well as reports interesting information like newly identified user credentials, hosts/domains, TCP/UDP services,
 HTTP directories, etc. The extracted information is then internally stored in different PostgreSql database tables,
 which enables the continuous, structured enhancement and re-use of the collected intelligence by subsequently
@@ -34,6 +34,10 @@ Additional features are:
  -  enables users to kill Kali commands via the KIS user interface in case they take too long
 
  -  access public APIs to enhance data with OSINT
+
+## Setup and Installation
+
+Refer to [INSTALL](INSTALL.md) for more information.
 
 ## KIS' Data and Collection Model
 
@@ -72,13 +76,13 @@ Scopes can be set on the following items by using the script `kismanage`:
       The following listing provides an example on how this scope type is set during the initial intel collection setup:
       ```bash
       # create a new workspace example
-      kali@kali: ~ $ kismanage workspace -a example
+      $ sudo docker-compose run kaliintelsuite kismanage workspace -a example
       # add the network 192.168.1.0/24 to workspace example and set the scope to all (default)
-      kali@kali: ~ $ kismanage network -w example -a 192.168.1.0/24
+      $ sudo docker-compose run kaliintelsuite kismanage network -w example -a 192.168.1.0/24
       # add new IP address 192.168.1.1 to workspace example. IP address is automatically in scope due to the network's scope all
-      kali@kali: ~ $ kismanage host -w example -a 192.168.1.1
+      $ sudo docker-compose run kaliintelsuite kismanage host -w example -a 192.168.1.1
       # verify the initial setup
-      kali@kali: ~ $ kisreport host -w example --csv | csvcut -c "Network","Network Scope","Address","Host In Scope" | csvlook
+      $ sudo docker-compose run kaliintelsuite kisreport host -w example --csv | csvcut -c "Network","Network Scope","Address","Host In Scope" | csvlook
       | Network        | Network Scope | Address     | Host In Scope |
       | -------------- | ------------- | ----------- | ------------- |
       | 192.168.1.0/24 | all           | 192.168.1.1 |          True |
@@ -94,13 +98,13 @@ Scopes can be set on the following items by using the script `kismanage`:
       The following listing provides an example on how this scope type is set during the initial intel collection setup:
       ```bash
       # create a new workspace example
-      kali@kali: ~ $ kismanage workspace -a example
+      $ sudo docker-compose run kaliintelsuite kismanage workspace -a example
       # add the network 192.168.1.0/24 to workspace example and set the scope to strict
-      kali@kali: ~ $ kismanage network -w example -a 192.168.1.0/24 -s strict
+      $ sudo docker-compose run kaliintelsuite kismanage network -w example -a 192.168.1.0/24 -s strict
       # add new IP address 192.168.1.1 to workspace example and set it in scope (default)
-      kali@kali: ~ $ kismanage host -w example -a 192.168.1.1
+      $ sudo docker-compose run kaliintelsuite kismanage host -w example -a 192.168.1.1
       # verify the initial setup
-      kali@kali: ~ $ kisreport host -w example --csv | csvcut -c "Network","Network Scope","Address","Host In Scope" | csvlook
+      $ sudo docker-compose run kaliintelsuite kisreport host -w example --csv | csvcut -c "Network","Network Scope","Address","Host In Scope" | csvlook
       | Network        | Network Scope | Address     | Host In Scope |
       | -------------- | ------------- | ----------- | ------------- |
       | 192.168.1.0/24 | strict        | 192.168.1.1 |          True |
@@ -124,14 +128,14 @@ Scopes can be set on the following items by using the script `kismanage`:
       The following listing provides an example on how this scope type is set during the initial intel collection setup:
       ```bash
       # create a new workspace example
-      kali@kali: ~ $ kismanage workspace -a example
+      $ sudo docker-compose run kaliintelsuite kismanage workspace -a example
       # add the second-level domain megacorpone.com to workspace example and set the scope to all (default)
-      kali@kali: ~ $ kismanage domain -w example -a megacorpone.com
+      $ sudo docker-compose run kaliintelsuite kismanage domain -w example -a megacorpone.com
       # add new host names to workspace example. The host names are automatically in scope due to the second-level 
       # domain's scope all
-      kali@kali: ~ $ kismanage hostname -w example -a www.megacorpone.com ftp.megacorpone.com
+      $ sudo docker-compose run kaliintelsuite kismanage hostname -w example -a www.megacorpone.com ftp.megacorpone.com
       # verify the initial setup
-      kali@kali: ~ $ kisreport domain -w example --csv | csvcut -c "Second-Level Domain","Second-Level Domain Scope","Host Name","Host Name In Scope" | csvlook
+      $ sudo docker-compose run kaliintelsuite kisreport domain -w example --csv | csvcut -c "Second-Level Domain","Second-Level Domain Scope","Host Name","Host Name In Scope" | csvlook
       | Second-Level Domain | Second-Level Domain Scope | Host Name           | Host Name In Scope |
       | ------------------- | ------------------------- | ------------------- | ------------------ |
       | megacorpone.com     | all                       | megacorpone.com     |               True |
@@ -148,13 +152,13 @@ Scopes can be set on the following items by using the script `kismanage`:
       The following listing provides an example on how this scope type is set during the initial intel collection setup:
       ```bash
       # create a new workspace example
-      kali@kali: ~ $ kismanage workspace -a example
+      $ sudo docker-compose run kaliintelsuite kismanage workspace -a example
       # add the second-level domain megacorpone.com to workspace example and set the scope to strict
-      kali@kali: ~ $ kismanage domain -w example -a megacorpone.com -s strict
+      $ sudo docker-compose run kaliintelsuite kismanage domain -w example -a megacorpone.com -s strict
       # add new host names to workspace example. They are automatically in scope due to kismanage's default value.
-      kali@kali: ~ $ kismanage hostname -w example -a www.megacorpone.com ftp.megacorpone.com
+      $ sudo docker-compose run kaliintelsuite kismanage hostname -w example -a www.megacorpone.com ftp.megacorpone.com
       # verify the initial setup
-      kali#kali: ~ $ kisreport domain -w example --csv | csvcut -c "Second-Level Domain","Second-Level Domain Scope","Host Name","Host Name In Scope" | csvlook
+      $ sudo docker-compose run kaliintelsuite kisreport domain -w example --csv | csvcut -c "Second-Level Domain","Second-Level Domain Scope","Host Name","Host Name In Scope" | csvlook
       | Second-Level Domain | Second-Level Domain Scope | Host Name           | Host Name In Scope |
       | ------------------- | ------------------------- | ------------------- | ------------------ |
       | megacorpone.com     | strict                    | megacorpone.com     |              False |
@@ -181,9 +185,9 @@ Scopes can be set on the following items by using the script `kismanage`:
    
      ```bash
      # create a new workspace example
-     kali@kali: ~ $ kismanage workspace -a example
+     $ sudo docker-compose run kaliintelsuite kismanage workspace -a example
      # add the second-level domain google.com to workspace example and set the scope to all (default)
-     kali@kali: ~ $ kismanage domain -w example -a google.com
+     $ sudo docker-compose run kaliintelsuite kismanage domain -w example -a google.com
      ```
      
      In this case, KIS is able to, among other things, enumerate any sub-level domains as well as resolve their 
@@ -192,7 +196,7 @@ Scopes can be set on the following items by using the script `kismanage`:
      
      ```bash
      # add the network 172.217.0.0/16 to workspace example and set the scope to all (default)
-     kali@kali: ~ $ kismanage network -w example -a 172.217.0.0/16
+     $ sudo docker-compose run kaliintelsuite kismanage network -w example -a 172.217.0.0/16
      ```
      
    * Example 2: Let's assume the second-level domain google.com together with all sub-level domains that resolve to 
@@ -201,9 +205,9 @@ Scopes can be set on the following items by using the script `kismanage`:
      
      ```bash
      # create a new workspace example
-     kali@kali: ~ $ kismanage workspace -a example
+     $ sudo docker-compose run kaliintelsuite kismanage workspace -a example
      # add the second-level domain google.com to workspace example and set the scope to all (default)
-     kali@kali: ~ $ kismanage domain -w example -a google.com
+     $ sudo docker-compose run kaliintelsuite kismanage domain -w example -a google.com
      ```
      
      In this case, KIS is able to, among other things, enumerate any sub-level domains as well as resolve their 
@@ -212,7 +216,7 @@ Scopes can be set on the following items by using the script `kismanage`:
      
      ```bash
      # add network 0.0.0.0/0 to workspace example and set the scope to all (default)
-     kali@kali: ~ $ kismanage network -w example -a 0.0.0.0/0
+     $ sudo docker-compose run kaliintelsuite kismanage network -w example -a 0.0.0.0/0
      ```
 
 
@@ -360,6 +364,7 @@ The column **User** specifies the user with which the respective operating syste
 | 41310    | tlsnmap                   | service, vhost  | Active   | IPv4, IPv6 | -       | root   |
 | 41400    | sslscan                   | service, vhost  | Active   | IPv4, IPv6 | -       | nobody |
 | 51100    | httpgobuster              | service, vhost  | Active   | IPv4, IPv6 | -       | nobody |
+| 51150    | httpkiterunner            | service, vhost  | Active   | Ipv4       | -       | kali   |
 | 51200    | httpnmap                  | service, vhost  | Active   | IPv4, IPv6 | -       | root   |
 | 51205    | httpntlmnmap              | service, vhost  | Active   | IPv4, IPv6 | -       | root   |
 | 61400    | rpcclient                 | service         | Active   | IPv4, IPv6 | -       | nobody |
@@ -379,67 +384,6 @@ The column **User** specifies the user with which the respective operating syste
 | 100100   | httpeyewitness            | service, vhost  | Active   | IPv4, IPv6 | 3600    | kali   |
 
 
-## Installing KIS
-
-Note that KIS is only tested on Kali Linux and it has the following minimum system requirements:
- - 2 CPUs
- - 4096 MB RAM
-
-In order to use KIS, the following configuration steps must be successfully accomplished beforehand:
-
- -  [mandatory] Clone the repository to a directory you prefer. Depending on your location preference, you might have
-    to execute this clone with root privileges.
-
-    ```bash
-    kali@kali: ~ $ sudo git clone https://github.com/chopicalqui/KaliIntelligenceSuite.git /opt/kaliintelsuite
-    ```
-
- -  [mandatory] Install required Python3 packages
-
-    ```bash
-    kali@kali: ~ $ sudo pip3 install -r /opt/kaliintelsuite/requirements.txt
-    ```
-
- -  [mandatory] Run the setup script: Use argument `--setup-dbg` instead of `--setup` to review the setup
-    OS commands first
-
-    ```bash
-    kali@kali: ~ $ sudo /opt/kaliintelsuite/kis/kismanage.py database --setup
-    ```
-
- - [optional] Setup connection to APIs: In order to access the APIs of censys.io, hunter.io, securitytrails.com, or
-   shodan.io, you must have an existing account for those services. Obtain the respective API keys and store them in
-   the configuration file `kis/configs/api.conf` sections `[censys]`, `[hunter]`, `[securitytrails]`, or `[shodan]`.
-   
- - [optional] Setup slurp (Amazon S3 bucket enumeration): Install slurp (https://github.com/0xbharath/slurp). Per 
-   default, the slurp executable and the permutation file should be located in the following locations:
-   
-   `/home/kali/go/bin/slurp`
-   `/home/kali/go/src/github.com/0xbharath/slurp/permutations.json`
-   
-   If, the slurp location is different, then update the file path in [collectors.config](kis/configs/collectors.config),
-   section `[file_paths]`, entry `slurp`. In addition, make sure that slurp's permutations file (`permutations.json`) is
-   correctly set in  [collectors.config](kis/configs/collectors.config), section `[default_wordlists]`,
-   entry `slurp_permutations_file`.
-
- - [mandatory] Check KIS setup to determine potential issues
-
-    ```bash
-    kali@kali: ~ $ sudo kismanage database --test
-    check os
-    Linux kali 5.8.0-kali2-amd64 #1 SMP Debian 5.8.10-1kali1 (2020-09-22) x86_64     [supported]
-    
-    check tools (see section 'file_paths' in: /opt/kaliintelsuite/kis/configs/collectors.config)
-    postgresql                                                                       [installed]
-    kiscollect                                                                       [installed]
-    kisreport                                                                        [installed]
-    enum4linux                                                                       [installed]
-    gobuster                                                                         [installed]
-    medusa                                                                           [installed]
-    [...]
-    ```
-    Review the above output; there should not be any red entries.
-
 ## Usage
 
 After the setup, the following KIS commands are available.
@@ -455,7 +399,7 @@ This script allows:
 
 Run the following command to obtain more information and examples:
 ```bash
-$ kismanage -h
+$ sudo docker-compose run kaliintelsuite kismanage -h
 ```
 
 ### kiscollect
@@ -464,7 +408,7 @@ This script implements a commandline interface to collect the intelligence.
 
 Run the following command to obtain more information and examples:
 ```bash
-$ kiscollect -h
+$ sudo docker-compose run kaliintelsuite kiscollect -h
 ```
 
 ### kisreport
@@ -473,14 +417,14 @@ This script allows the analysis of the collected data via various filtering opti
   - Character-separated values (CSV): Export of the collected intelligence in the structured CSV format. This allows
   further processing via tools like grep, csvcut, or Aquatone
   - Microsoft Excel: Export of all collected intelligence into a Microsoft Excel file.
-  - Text: Export of the collected raw text intelligence (e.g., text output of tool Nikto)
+  - Text: Export of the collected raw text intelligence (e.g., text output of tool Nikto).
   - Raw: Export of additionally collected files like JSON objects from APIs like Shodan.io, or certificate files.
 
 Run the following command to obtain more information and examples:
 ```bash
-$ kisreport -h
+$ sudo docker-compose run kaliintelsuite kisreport -h
 ```
-   
+
 ## Author
 
 **Lukas Reiter** ([@chopicalquy](https://twitter.com/chopicalquy)) - 

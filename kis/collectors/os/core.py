@@ -115,10 +115,11 @@ class BaseCommand(Thread):
     This class represents a base class for subclasses that implement some sort of OS command execution functionality.
     """
     def __init__(self, os_command: List[str],
-                 stdout = subprocess.STDOUT,
-                 stderr = subprocess.STDOUT,
+                 stdout=subprocess.STDOUT,
+                 stderr=subprocess.STDOUT,
                  username: str = None,
                  cwd: str = None,
+                 env: dict = None,
                  shell: bool = False):
         super().__init__(daemon=True)
         self._os_command = os_command
@@ -130,6 +131,10 @@ class BaseCommand(Thread):
         self._stop_time = None
         self._lock = Lock()
         self._pwd = None
+        self._env = {'PATH': os.environ["PATH"],
+                     'HOME': os.environ["HOME"]}
+        for key, value in env.items():
+            self._env[key] = str(value)
         if username:
             self._pwd = pwd.getpwnam(username)
             self._demote = demote(self._pwd.pw_uid, self._pwd.pw_gid)
@@ -348,13 +353,15 @@ class PopenCommand(BaseCommand):
         """This method starts the execution of the OS command."""
         with self._lock:
             try:
+                env = dict(self._env)
+                env['HOME'] = self._cwd
                 self._start_time = datetime.utcnow()
                 self._proc = subprocess.Popen(self.command,
                                               stdout=self._stdout,
                                               stderr=self._stderr,
                                               shell=False,
                                               cwd=self._cwd,
-                                              env={'PATH': os.environ["PATH"], 'HOME': self._cwd},
+                                              env=env,
                                               preexec_fn=self._demote)
                 self._return_code = self._proc.wait(self._timeout)
             except subprocess.TimeoutExpired:
@@ -438,7 +445,7 @@ class PopenCommandOpenSsl(PopenCommand):
                                               stderr=subprocess.PIPE,
                                               stdin=subprocess.PIPE,
                                               shell=False,
-                                              env={'PATH': os.environ["PATH"], 'HOME': os.environ["HOME"]},
+                                              env=self._env,
                                               cwd=self._cwd,
                                               preexec_fn=self._demote)
                 self._stderr_list = [item.decode("utf-8").strip() for item in iter(self._proc.stderr.readline, b'')]
@@ -497,7 +504,7 @@ class PopenCommandWithOutputQueue(PopenCommand):
                                           stderr=self._stderr,
                                           shell=self._shell,
                                           cwd=self._cwd,
-                                          env={'PATH': os.environ["PATH"], 'HOME': os.environ["HOME"]},
+                                          env=self._env,
                                           preexec_fn=self._demote)
             self._stdout_reader = StdoutReader(self._proc)
             self._stderr_reader = StderrReader(self._proc)
@@ -538,13 +545,14 @@ class RunCommand(BaseCommand):
     def run(self):
         """This method starts the execution of the OS command."""
         self._start_time = datetime.utcnow()
+
         self._completed_proc_info = subprocess.run(self.command,
                                                    stdout=self._stdout,
                                                    stderr=self._stderr,
                                                    shell=False,
                                                    cwd=self._cwd,
                                                    check=self._check,
-                                                   env={'PATH': os.environ["PATH"], 'HOME': os.environ["HOME"]},
+                                                   env=self._env,
                                                    preexec_fn=self._demote)
 
 

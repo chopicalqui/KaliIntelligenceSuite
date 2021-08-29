@@ -59,6 +59,10 @@ class Engine:
     def engine(self):
         return self._engine
 
+    @property
+    def config(self):
+        return self._config
+
     @contextmanager
     def session_scope(self):
         """Provide a transactional scope around a series of operations."""
@@ -227,7 +231,9 @@ class Engine:
                 # create database
                 subprocess.check_output("sudo -u postgres createdb {}".format(database), shell=True, cwd=temp)
                 # assign privileges to database
-                subprocess.check_output("sudo -u postgres psql -c 'grant all privileges on database {} to {}'".format(database, self._config.username), shell=True, cwd=temp)
+                subprocess.check_output("sudo -u postgres psql -c 'grant all privileges on database {} to {}'".format(database,
+                                                                                                                      self._config.username),
+                                        shell=True, cwd=temp)
 
     def drop(self):
         """This method drops all views and tables in the database."""
@@ -3031,7 +3037,7 @@ class Setup:
         os_info = os.uname()
         self._print("check os", throw_exception=throw_exception)
         os_info_str = " ".join([item for item in os_info])
-        if not os_info.nodename or os_info.nodename.lower() != "kali":
+        if not os_info.release and "-kali8-" in os_info.release:
             if throw_exception:
                 raise NotImplementedError("The used operating system is unspported.")
             self._print(os_info_str, "unsupported", FontColor.RED, throw_exception=throw_exception)
@@ -3046,6 +3052,8 @@ class Setup:
         self._check_exists("kisreport", throw_exception=throw_exception)
         # check tool paths
         for tool, path in collector_config.config.items("file_paths"):
+            if self._db_config.is_docker() and tool == "vncviewer":
+                continue
             self._check_exists(collector_config.get_config_str("file_paths", tool),
                                tool,
                                throw_exception=throw_exception)

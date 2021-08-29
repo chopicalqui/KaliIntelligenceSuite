@@ -1750,6 +1750,7 @@ class BaseCollector(config.Collector):
                                              host_name=host_name,
                                              email=email,
                                              company=company)
+        exec_user = "root" if self._engine.config.is_docker() else self.exec_user.pw_name
         return self._domain_utils.add_command(session=session,
                                               os_command=os_command,
                                               collector_name=collector_name,
@@ -1766,7 +1767,7 @@ class BaseCollector(config.Collector):
                                               input_file_2=input_file_2,
                                               binary_file=binary_file,
                                               working_directory=working_directory,
-                                              exec_user=self.exec_user.pw_name)
+                                              exec_user=exec_user)
 
     def verify_command_execution(self,
                                  session: Session,

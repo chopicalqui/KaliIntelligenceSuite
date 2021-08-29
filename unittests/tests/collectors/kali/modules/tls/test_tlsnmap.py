@@ -25,6 +25,7 @@ __version__ = 0.1
 import tempfile
 from database.model import CollectorType
 from database.model import TlsInfo
+from database.model import CipherSuite
 from database.model import TlsInfoCipherSuiteMapping
 from database.model import ScopeType
 from typing import List
@@ -524,5 +525,54 @@ class BaseTlsNmapCollectorTestCase(BaseNmapCollectorTestCase):
             self.assertEqual("Apache httpd 2.4.39 (Win64) OpenSSL/1.1.1b PHP/7.3.4",
                              tls_info[0].service.nmap_product_version)
             # TlsInfoCipherSuiteMapping
-            results = session.query(TlsInfoCipherSuiteMapping).count()
-            self.assertEqual(72, results)
+            results = {item.iana_name: None for item in session.query(CipherSuite)
+                .join(TlsInfoCipherSuiteMapping).all()}
+            results = list(results.keys())
+            results.sort()
+            self.assertListEqual(["TLS_DHE_RSA_WITH_AES_128_CBC_SHA",
+                                  "TLS_DHE_RSA_WITH_AES_128_CBC_SHA256",
+                                  "TLS_DHE_RSA_WITH_AES_128_CCM",
+                                  "TLS_DHE_RSA_WITH_AES_128_CCM_8",
+                                  "TLS_DHE_RSA_WITH_AES_128_GCM_SHA256",
+                                  "TLS_DHE_RSA_WITH_AES_256_CBC_SHA",
+                                  "TLS_DHE_RSA_WITH_AES_256_CBC_SHA256",
+                                  "TLS_DHE_RSA_WITH_AES_256_CCM",
+                                  "TLS_DHE_RSA_WITH_AES_256_CCM_8",
+                                  "TLS_DHE_RSA_WITH_AES_256_GCM_SHA384",
+                                  "TLS_DHE_RSA_WITH_ARIA_128_GCM_SHA256",
+                                  "TLS_DHE_RSA_WITH_ARIA_256_GCM_SHA384",
+                                  "TLS_DHE_RSA_WITH_CAMELLIA_128_CBC_SHA",
+                                  "TLS_DHE_RSA_WITH_CAMELLIA_128_CBC_SHA256",
+                                  "TLS_DHE_RSA_WITH_CAMELLIA_256_CBC_SHA",
+                                  "TLS_DHE_RSA_WITH_CAMELLIA_256_CBC_SHA256",
+                                  "TLS_DHE_RSA_WITH_CHACHA20_POLY1305_SHA256",
+                                  "TLS_DHE_RSA_WITH_SEED_CBC_SHA",
+                                  "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA",
+                                  "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256",
+                                  "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+                                  "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA",
+                                  "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384",
+                                  "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
+                                  "TLS_ECDHE_RSA_WITH_ARIA_128_GCM_SHA256",
+                                  "TLS_ECDHE_RSA_WITH_ARIA_256_GCM_SHA384",
+                                  "TLS_ECDHE_RSA_WITH_CAMELLIA_128_CBC_SHA256",
+                                  "TLS_ECDHE_RSA_WITH_CAMELLIA_256_CBC_SHA384",
+                                  "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256",
+                                  "TLS_RSA_WITH_AES_128_CBC_SHA",
+                                  "TLS_RSA_WITH_AES_128_CBC_SHA256",
+                                  "TLS_RSA_WITH_AES_128_CCM",
+                                  "TLS_RSA_WITH_AES_128_CCM_8",
+                                  "TLS_RSA_WITH_AES_128_GCM_SHA256",
+                                  "TLS_RSA_WITH_AES_256_CBC_SHA",
+                                  "TLS_RSA_WITH_AES_256_CBC_SHA256",
+                                  "TLS_RSA_WITH_AES_256_CCM",
+                                  "TLS_RSA_WITH_AES_256_CCM_8",
+                                  "TLS_RSA_WITH_AES_256_GCM_SHA384",
+                                  "TLS_RSA_WITH_ARIA_128_GCM_SHA256",
+                                  "TLS_RSA_WITH_ARIA_256_GCM_SHA384",
+                                  "TLS_RSA_WITH_CAMELLIA_128_CBC_SHA",
+                                  "TLS_RSA_WITH_CAMELLIA_128_CBC_SHA256",
+                                  "TLS_RSA_WITH_CAMELLIA_256_CBC_SHA",
+                                  "TLS_RSA_WITH_CAMELLIA_256_CBC_SHA256",
+                                  "TLS_RSA_WITH_IDEA_CBC_SHA",
+                                  "TLS_RSA_WITH_SEED_CBC_SHA"], results)

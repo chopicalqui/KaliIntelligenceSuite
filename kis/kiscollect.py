@@ -77,56 +77,60 @@ before you  start: specify a workspace $ws (e.g., ws=osint), the list of public 
 as their sub-domains $hostnames to investigate (e.g., domains=megacorpone.com and hostnames=www.megacorpone.com)
 
 import domains into database and execute collection
-$ kismanage workspace --add $ws
-$ kismanage domain -w $ws --add $domains
-$ kismanage hostname -w $ws --add $domains $hostnames
-$ sudo kiscollect -w $ws --debug --awsslurp --builtwith --censysdomain --certspotter --crtshdomain --dnsamasspassive \
---dnscrobatdomain --dnscrobattld --dnsdumpster --dnshostpublic --dnsspf --dnssublist3r --haveibeenbreach \
---haveibeenpaste --hostio --hunter --securitytrails --theharvester --virustotal --whoisdomain --whoishost --autostart
+$ sudo docker-compose run kaliintelsuite kismanage workspace --add $ws
+$ sudo docker-compose run kaliintelsuite kismanage domain -w $ws --add $domains
+$ sudo docker-compose run kaliintelsuite kismanage hostname -w $ws --add $domains $hostnames
+$ sudo docker-compose run kaliintelsuite kiscollect -w $ws --debug --awsslurp --builtwith --censysdomain \
+--certspotter --crtshdomain --dnsamasspassive --dnscrobatdomain --dnscrobattld --dnsdumpster --dnshostpublic \
+--dnsspf --dnssublist3r --haveibeenbreach --haveibeenpaste --hostio --hunter --securitytrails --theharvester \
+--virustotal --whoisdomain --whoishost --autostart
 
 review collected domain information and eventually add additional second-level domains and sub-domains in scope
-$ kisreport domain -w $ws --csv --scope outside | csvcut -c "Second-Level Domain (SLD)","Scope (SLD)","Companies (SLD)" \
-    | csvsort -c "Second-Level Domain (SLD)" | csvlook
+$ sudo docker-compose run kaliintelsuite kisreport domain -w $ws --csv --scope outside | \
+    csvcut -c "Second-Level Domain (SLD)","Scope (SLD)","Companies (SLD)" | \
+    csvsort -c "Second-Level Domain (SLD)" | csvlook
 $ domains=
-$ kismanage domain -w $ws -s {all,strict} $domains
+$ sudo docker-compose run kaliintelsuite kismanage domain -w $ws -s {all,strict} $domains
 $ hostnames=
-$ kismanage hostname -w $ws --add $domains $hostnames
+$ sudo docker-compose run kaliintelsuite kismanage hostname -w $ws --add $domains $hostnames
 
 search whois entries of out-of-scope domains for company information (e.g., email address, name servers, phone numbers)
 that indicate that domain belong to the target company. if they do, then add them in scope
-$ kisreport domain -w $ws --igrep "(($name)|($phone)|($nameserver))" -I whoisdomain --scope outside | csvlook
+$ sudo docker-compose run kaliintelsuite kisreport domain -w $ws --igrep "(($name)|($phone)|($nameserver))" \
+-I whoisdomain --scope outside | csvlook
 
 review collected network information and eventually add networks in scope
-$ kisreport network -w $ws --csv | csvlook
+$ sudo docker-compose run kaliintelsuite kisreport network -w $ws --csv | csvlook
 $ networks=
-$ kismanage network -w $ws -s {all,strict} $networks
+$ sudo docker-compose run kaliintelsuite kismanage network -w $ws -s {all,strict} $networks
 
 search whois entries of out-of-scope networks for company information (e.g., email address, name servers, phone numbers)
 that indicate that networks belong to the target company. if they do, then add them in scope
-$ kisreport network -w $ws --igrep "(($name)|($phone)|($nameserver))" -I whoisnetwork --scope outside | csvlook
+$ sudo docker-compose run kaliintelsuite kisreport network -w $ws --igrep "(($name)|($phone)|($nameserver))" \
+-I whoisnetwork --scope outside | csvlook
 
 review collected company information and eventually add companies in scope
-$ kisreport company -w $ws --csv | csvlook
+$ sudo docker-compose run kaliintelsuite kisreport company -w $ws --csv | csvlook
 $ companies=
-$ kismanage company -w $ws -s within $companies
+$ sudo docker-compose run kaliintelsuite kismanage company -w $ws -s within $companies
 
 continue collection with updated scope
-$ sudo kiscollect -w $ws --debug --awsslurp --builtwith --censysdomain --certspotter --crtshcompany --crtshdomain \
---dnsamasspassive --dnscrobatdomain --dnscrobatreversehost --dnscrobatreversenetwork --dnscrobattld --dnsdumpster \
---dnshostpublic --dnsreverselookup --dnsspf --dnssublist3r --haveibeenbreach --haveibeenpaste --hostio --hunter \
---reversewhois --securitytrails --shodanhost --shodannetwork --theharvester --virustotal --whoisdomain --whoishost \
---autostart
+$ sudo docker-compose run kaliintelsuite kiscollect -w $ws --debug --awsslurp --builtwith --censysdomain \
+--certspotter --crtshcompany --crtshdomain --dnsamasspassive --dnscrobatdomain --dnscrobatreversehost \
+--dnscrobatreversenetwork --dnscrobattld --dnsdumpster --dnshostpublic --dnsreverselookup --dnsspf --dnssublist3r \
+--haveibeenbreach --haveibeenpaste --hostio --hunter --reversewhois --securitytrails --shodanhost --shodannetwork \
+--theharvester --virustotal --whoisdomain --whoishost --autostart
 
 run the following command to obtain a list of all in-scope company names. review the items in column "Owns" and
 "Owns Scope". if column "Owns Scope" is not "all", then you might want to add the respective item in "Owns" in scope
 as well as it belongs to the in-scope company
-$ kisreport company -w $ws --csv --scope within | csvlook
+$ sudo docker-compose run kaliintelsuite kisreport company -w $ws --csv --scope within | csvlook
 
 obtain CSV list of identified host names
-$ kisreport domain -w $ws --csv | csvlook
+$ sudo docker-compose run kaliintelsuite kisreport domain -w $ws --csv | csvlook
 
 obtain CSV list of identified IPv4/IPv6 addresses
-$ kisreport host -w $ws --csv | csvlook
+$ sudo docker-compose run kaliintelsuite kisreport host -w $ws --csv | csvlook
 
 You might want to repeat the above steps until there are no new in-scope second-level domains.
 
@@ -139,59 +143,70 @@ davtest, or burp suite; obtain TLS information using sslscan, sslyze, and nmap. 
 previously executed nmap scans and a list of in-scope IPv4/IPv6 networks/addresses
 
 before you  start: specify a workspace $ws (e.g., ws=pentest), the paths to the nmap XML files 
-(e.g., nmap_paths=/tmp/scan1/*.xml /tmp/scan2/*.xml or nmap_paths=/tmp/scan1/nmap-tcp-all.xml 
-/tmp/scan1/nmap-udp-top100.xml) as well as a list of in-scope $networks (e.g., networks=192.168.0.0/24, 
+(e.g., nmap_paths=/kis/scan1/nmap.xml /kis/scan2/nmap.xml or nmap_paths=/kis/scan1/nmap-tcp-all.xml 
+/kis/scan1/nmap-udp-top100.xml) as well as a list of in-scope $networks (e.g., networks=192.168.0.0/24, 
 networks=192.168.1.0/24 192.168.1.0/24, networks=192.168.0.1, or networks=192.168.0.1 192.168.0.2)
 
+note that you have to copy the nmap scan results into the docker volume, folder scan1 before starting the import
+inside the Docker container from directory /kis:
+$ mkdir /var/lib/docker/volumes/kaliintelsuite_kis_data/_data/scan1
+$ cp *.xml /var/lib/docker/volumes/kaliintelsuite_kis_data/_data/scan1
+
 import nmap scan results as well as in-scope IPv4/IPv6 networks/addresses into database and execute collection
-$ kismanage workspace --add $ws
-$ kismanage network -w $ws --add $networks
-$ kismanage scan -w $ws --nmap $nmap_paths
-$ sudo kiscollect -w $ws --debug --strict -t5 --anyservicenmap --certnmap --certopenssl --dnsaxfrdomain \
---dnsaxfrservice --dnsnmap --finger --ftpfilelist --ftphydra --ftpnmap --httpchangeme --httpdavtest --httpgobuster \
---httphydra --httpmsfrobotstxt --httpnikto --httpnmap --httpntlmnmap --httpwhatweb --ikescan --imapnmap --ipmi \
---ldapnmap --ldapsearch --msrpcenum --mssqlhydra --mssqlnmap --mysqlhydra --mysqlnmap --nbtscan --nfsnmap --ntpq \
---onesixtyone --oraclesidguess --pgsqlhydra --pop3nmap --rdpnmap --rpcclient --rpcinfo --rpcnmap --showmount \
---smbclient --smbcme --smbfilelist --smbmap --smbnmap --smtpnmap --snmpcheck --snmphydra --snmpnmap --snmpwalk \
---sshchangeme --sshnmap --sslscan --sslyze --telnetnmap --tftpnmap --tlsnmap --vncnmap --x11nmap --autostart
+$ sudo docker-compose run kaliintelsuite kismanage workspace --add $ws
+$ sudo docker-compose run kaliintelsuite kismanage network -w $ws --add $networks
+$ sudo docker-compose run kaliintelsuite kismanage scan -w $ws --nmap $nmap_paths
+$ sudo docker-compose run kaliintelsuite kiscollect -w $ws --debug --strict -t5 --anyservicenmap --certnmap \
+--certopenssl --dnsaxfrdomain --dnsaxfrservice --dnsnmap --finger --ftpfilelist --ftphydra --ftpnmap --httpchangeme \
+--httpdavtest --httpgobuster --httphydra --httpkiterunner --httpmsfrobotstxt --httpnikto --httpnmap --httpntlmnmap \
+--httpwhatweb --ikescan --imapnmap --ipmi --ldapnmap --ldapsearch --msrpcenum --mssqlhydra --mssqlnmap --mysqlhydra \
+--mysqlnmap --nbtscan --nfsnmap --ntpq --onesixtyone --oraclesidguess --pgsqlhydra --pop3nmap --rdpnmap --rpcclient \
+--rpcinfo --rpcnmap --showmount --smbclient --smbcme --smbfilelist --smbmap --smbnmap --smtpnmap --snmpcheck \
+--snmphydra --snmpnmap --snmpwalk --sshchangeme --sshnmap --sslscan --sslyze --tlsnmap --telnetnmap --tftpnmap \
+--vncnmap --x11nmap --httpburpsuitepro --autostart
 
 review collected domain information and eventually add domains in scope
-$ kisreport domain -w $ws --csv --scope outside | csvcut -c "Second-Level Domain (SLD)","Scope (SLD)","Companies (SLD)" \
-    | csvsort -c "Second-Level Domain (SLD)" | csvlook
+$ sudo docker-compose run kaliintelsuite kisre--httpburpsuitepro port domain -w $ws --csv --scope outside | \
+    csvcut -c "Second-Level Domain (SLD)","Scope (SLD)","Companies (SLD)" | \
+    csvsort -c "Second-Level Domain (SLD)" | csvlook
 $ domains=
-$ kismanage domain -w $ws -s {all,strict} $domains
+$ sudo docker-compose run kaliintelsuite kismanage domain -w $ws -s {all,strict} $domains
 
 continue collection based on virtual hosts (might be useful in external penetration tests)
-$ sudo kiscollect -w $ws --debug --strict -t5 --anyservicenmap --certnmap --certopenssl --dnsaxfrdomain \
---dnsaxfrservice --dnsnmap --finger --ftpfilelist --ftphydra --ftpnmap --httpchangeme --httpdavtest --httpgobuster \
---httphydra --httpmsfrobotstxt --httpnikto --httpnmap --httpntlmnmap --httpwhatweb --ikescan --imapnmap --ipmi \
---ldapnmap --ldapsearch --msrpcenum --mssqlhydra --mssqlnmap --mysqlhydra --mysqlnmap --nbtscan --nfsnmap --ntpq \
---onesixtyone --oraclesidguess --pgsqlhydra --pop3nmap --rdpnmap --rpcclient --rpcinfo --rpcnmap --showmount \
---smbclient --smbcme --smbfilelist --smbmap --smbnmap --smtpnmap --snmpcheck --snmphydra --snmpnmap --snmpwalk \
---sshchangeme --sshnmap --sslscan --sslyze --telnetnmap --tftpnmap --tlsnmap --vncnmap --x11nmap --httpburpsuitepro \
---vhost domain --autostart
+$ sudo docker-compose run kaliintelsuite kiscollect -w $ws --debug --strict -t5 --anyservicenmap --certnmap \
+--certopenssl --dnsaxfrdomain --dnsaxfrservice --dnsnmap --finger --ftpfilelist --ftphydra --ftpnmap --httpchangeme \
+--httpdavtest --httpgobuster --httphydra --httpkiterunner --httpmsfrobotstxt --httpnikto --httpnmap --httpntlmnmap \
+--httpwhatweb --ikescan --imapnmap --ipmi --ldapnmap --ldapsearch --msrpcenum --mssqlhydra --mssqlnmap --mysqlhydra \
+--mysqlnmap --nbtscan --nfsnmap --ntpq --onesixtyone --oraclesidguess --pgsqlhydra --pop3nmap --rdpnmap --rpcclient \
+--rpcinfo --rpcnmap --showmount --smbclient --smbcme --smbfilelist --smbmap --smbnmap --smtpnmap --snmpcheck \
+--snmphydra --snmpnmap --snmpwalk --sshchangeme --sshnmap --sslscan --sslyze --tlsnmap --telnetnmap --tftpnmap \
+--vncnmap --x11nmap --httpburpsuitepro --vhost domain --autostart
 
 collect screenshots with aquatone
-$ kisreport path -w $ws --scope within --type Http --csv | csvcut -c "Full Path" | grep -v "Full Path" | aquatone -out aquatone
+$ sudo docker-compose run kaliintelsuite kisreport path -w $ws --scope within --type Http --csv | \
+    csvcut -c "Full Path" | grep -v "Full Path" | aquatone -out aquatone
 
 export collected information into microsoft excel
-$ kisreport excel /tmp/kis-scan-results.xlsx -w $ws
+$ sudo docker-compose run kaliintelsuite kisreport excel /kis/kis-scan-results.xlsx -w $ws
+
+copy the newly created microsoft excel file form the docker volume:
+$ cp /var/lib/docker/volumes/kaliintelsuite_kis_data/_data/kis-scan-results.xlsx .
 
 review scan results of all relevant commands (note that option --visibility hides commands whose output was fully 
 processed by KIS and therefore do not require manual inspection anymore)
-$ kisreport host -w $ws --text --visibility relevant | less -R
+$ sudo docker-compose run kaliintelsuite kisreport host -w $ws --text --visibility relevant | less -R
 
 review scan results of hosts with IPv4/IPv6 addresses $ip1 and $ip2
-$ kisreport host -w $ws --text --filter +$ip1 +$ip2
+$ sudo docker-compose run kaliintelsuite kisreport host -w $ws --text --filter +$ip1 +$ip2
 
 review scan results of all hosts except hosts with IPv4/IPv6 addresses $ip1 and $ip2
-$ kisreport host -w $ws --text --filter $ip1 $ip2
+$ sudo docker-compose run kaliintelsuite kisreport host -w $ws --text --filter $ip1 $ip2
 
 review scan results of collectors httpnikto and httpgobuster
-$ kisreport host -w $ws --text -I httpnikto httpgobuster
+$ sudo docker-compose run kaliintelsuite kisreport host -w $ws --text -I httpnikto httpgobuster
 
 review scan results of all collectors except httpnikto and httpgobuster
-$ kisreport host -w $ws --text -X httpnikto httpgobuster
+$ sudo docker-compose run kaliintelsuite kisreport host -w $ws --text -X httpnikto httpgobuster
 
 
 III. additional active intel gathering during external penetration test
@@ -201,17 +216,17 @@ In addition, to the tests in example I and II, the following commands can be exe
 # Add domains in scope and execute collection. Note that you might want to specify a DNS server to test for DNS
 # zone transfers
 $ dns_server=
-$ sudo kiscollect -w $ws --debug --strict -t5 --dnsamassactive --dnsaxfr --dnsdkim --dnsdmarc --dnsenum --dnsgobuster \
---dnshostpublic --dnsrecon --dnstakeover --httpsqlmap --smtpuserenum --vhostgobuster --dnshostpublic \
---dns-server $dns_server --autostart
+$ sudo docker-compose run kaliintelsuite kiscollect -w $ws --debug --strict -t5 --dnsamassactive --dnsaxfr \
+--dnsdkim --dnsdmarc --dnsenum --dnsgobuster --dnshostpublic --dnsrecon --dnstakeover --httpsqlmap --smtpuserenum \
+--vhostgobuster --dnshostpublic --dns-server $dns_server --autostart
 
 # Find additional domains using dnsgen and massdns
-$ kisreport domain -w $ws --csv --scope within | csvcut -c "Host Name (HN)" | sort -u | dnsgen - | massdns -r \
-/opt/lazydns/resolvers.txt -c 5 -t A -o S --flush 2> /dev/null
+$ sudo docker-compose run kaliintelsuite kisreport domain -w $ws --csv --scope within | \
+    csvcut -c "Host Name (HN)" | sort -u | dnsgen - | massdns -r /opt/lazydns/resolvers.txt -c 5 -t A -o S --flush 2> /dev/null
 
 # At the end, do final DNS lookup to ensure that all collected host names are resolved. This ensures that the data is 
 # complete for the final report
-$ sudo kiscollect -w $ws --debug --strict -t5 --dnshostpublic --autostart
+$ sudo docker-compose run kaliintelsuite kiscollect -w $ws --debug --strict -t5 --dnshostpublic --autostart
 
 Finally, you might want to re-run the entire process to collect further information.
 '''

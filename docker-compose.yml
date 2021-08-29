@@ -1,0 +1,39 @@
+version: "3.1"
+services:
+  db:
+    image: postgres:latest
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: kis
+      PGDATA: /var/lib/postgresql/data/pgdata
+      POSTGRES_USER: kis
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    secrets:
+      - db_password
+
+  kaliintelsuite:
+    depends_on:
+      - db
+    volumes:
+      - kis_config:/opt/kaliintelsuite/config/
+      - kis_data:/kis
+    environment:
+      KIS_DB_USER: kis
+      KIS_DB_PASSWORD_FILE: /run/secrets/db_password
+      KIS_DB_HOST: db
+      KIS_DB_PORT: 5432
+      KIS_DB_NAME: kis
+      KIS_LOG_PATH: /kis
+    secrets:
+      - db_password
+    build: .
+
+secrets:
+   db_password:
+     file: postgres.txt
+
+volumes:
+    db_data:
+    kis_config:
+    kis_data:

@@ -12,3 +12,5 @@ dist/
 Makefile
 tld.cache
 venv/
+postgres.txt
+poetry.lock

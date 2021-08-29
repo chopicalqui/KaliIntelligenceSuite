@@ -1016,6 +1016,7 @@ class CollectorConsumer(Thread):
                             current_collector.instance.execution_class(os_command,
                                                                        timeout=command_item.timeout,
                                                                        cwd=working_directory,
+                                                                       env=self._engine.config.db_envs,
                                                                        stdout=subprocess.PIPE,
                                                                        stderr=subprocess.PIPE,
                                                                        username=username)

@@ -363,7 +363,7 @@ this command does the following depending on the given subcommand:
                                           CollectorName.priority,
                                           func.count(Command.status).label("count")) \
                         .outerjoin((Command, CollectorName.commands)) \
-                        .filter(Workspace.id == workspace_id) \
+                        .filter(Command.workspace_id == workspace_id) \
                         .group_by(CollectorName.name,
                                   CollectorName.type,
                                   func.coalesce(Command.status, CommandStatus.pending.name),

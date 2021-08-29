@@ -139,11 +139,11 @@ class ManageDatabase:
         if os.geteuid() != 0:
             print("database commands must be executed as root", file=sys.stderr)
             sys.exit(1)
-        if self._arguments.backup:
+        if not BaseConfig.is_docker() and self._arguments.backup:
             engine.create_backup(args.backup)
-        elif self._arguments.restore:
+        elif not BaseConfig.is_docker() and self._arguments.restore:
             engine.restore_backup(args.restore)
-        elif self._arguments.setup or self._arguments.setup_dbg:
+        elif not BaseConfig.is_docker() and (self._arguments.setup or self._arguments.setup_dbg):
             debug = args.setup_dbg
             Setup(kis_scripts=ManageDatabase.KIS_SCRIPTS,
                   kali_packages=ManageDatabase.KALI_PACKAGES,
@@ -156,7 +156,10 @@ class ManageDatabase:
                   debug=True).test()
         else:
             if self._arguments.drop:
-                self._engine.recreate_database()
+                if BaseConfig.is_docker():
+                    self._engine.drop()
+                else:
+                    self._engine.recreate_database()
             if self._arguments.init:
                 self._engine.init(load_cipher_suites=True)
 
@@ -474,27 +477,32 @@ if __name__ == "__main__":
 
 - I. initialize the database for the first time
 
-$ kismanage database --init
+$ sudo docker-compose run kaliintelsuite kismanage database --init
 
-- II. create backup of the entire KIS database and store it in file $backup
+- IIa. create backup of the entire KIS database and store it in file $backup
 
-$ kismanage database --backup $backup
+$ sudo docker exec -t kaliintelsuite_db_1 pg_dumpall -c -U kis > $backup
 
+- IIb. restore the previously created KIS database from file $backup
+
+$ sudo docker-compose run kaliintelsuite kismanage database --drop
+$ cat $backup | sudo docker exec -i kaliintelsuite_db_1 psql -U kis -d kis
+      
 - III. drop existing database and restore KIS database backup, which is stored in file $backup
 
-$ kismanage database --drop --restore $backup
+$ sudo docker-compose run kaliintelsuite kismanage database --drop --restore $backup
 
 - IV. re-initialize KIS database
 
-$ kismanage database --drop --init
+$ sudo docker-compose run kaliintelsuite kismanage database --drop --init
 
 - V. list of existing workspaces
 
-$ kismanage -l
+$ sudo docker-compose run kaliintelsuite kismanage -l
 
 - IV. add new workspace $workspace
 
-$ kismanage workspace --add $workspace
+$ sudo docker-compose run kaliintelsuite kismanage workspace --add $workspace
 '''
     parser = KisImportArgumentParser(description=__doc__, formatter_class=SortingHelpFormatter, epilog=epilog)
     parser.add_argument("--debug",
@@ -525,23 +533,21 @@ $ kismanage workspace --add $workspace
                                         help="delete the given workspace WORKSPACE together with all associated "
                                              "information from KIS database (use with caution)")
     # setup database parser
-    parser_database.add_argument('-a', '--add',
-                                 action="store_true",
-                                 help="create the given workspace WORKSPACE in KIS database")
     parser_database.add_argument("--init",
                                  help="creates tables, views, functions, and triggers for the KIS database",
                                  action="store_true")
     parser_database.add_argument("--drop",
                                  help="drops tables, views, functions, and triggers in the KIS database",
                                  action="store_true")
-    parser_database.add_argument("--backup", metavar="FILE", type=str, help="writes database backup to FILE")
-    parser_database.add_argument("--restore", metavar="FILE", type=str, help="restores database backup from FILE")
-    parser_database.add_argument("--setup",
-                                 action="store_true",
-                                 help="run initial setup for KIS")
-    parser_database.add_argument("--setup-dbg",
-                                 action="store_true",
-                                 help="like --setup but just prints commands for initial setup for KIS")
+    if not BaseConfig.is_docker():
+        parser_database.add_argument("--backup", metavar="FILE", type=str, help="writes database backup to FILE")
+        parser_database.add_argument("--restore", metavar="FILE", type=str, help="restores database backup from FILE")
+        parser_database.add_argument("--setup",
+                                     action="store_true",
+                                     help="run initial setup for KIS")
+        parser_database.add_argument("--setup-dbg",
+                                     action="store_true",
+                                     help="like --setup but just prints commands for initial setup for KIS")
     parser_database.add_argument("--test",
                                  action="store_true",
                                  help="test the existing KIS setup")

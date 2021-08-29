@@ -1271,12 +1271,13 @@ class TestCreatingAllCommands(BaseKisTestCase):
         #             arguments[collector] = config["arguments"]
         with self._engine.session_scope() as session:
             for collector, values in self._collector_info.items():
+                print(collector)
                 actual_versions = {}
                 if specific_collector and specific_collector != collector:
                     continue
                 # this are collectors that should not have created a command as no API config is available for them
                 if collector in ["builtwith", "hostio", "censysdomain", "shodanhost" "securitytrails", "virustotal",
-                                   "hunter", "shodanhost", "censyshost", "httpburpsuitepro"]:
+                                 "hunter", "shodanhost", "censyshost", "httpburpsuitepro"]:
                     results = session.query(Command) \
                         .join(CollectorName) \
                         .join((Service, Command.service)) \
@@ -1388,18 +1389,26 @@ class TestCreatingAllCommands(BaseKisTestCase):
 
     def test_command_execution(self):
         """
-        This method reads all collectors listed in README.md and creates the commands in the database in order to
-        ensure that creation is successful. afterwards it performs certains checks to ensure that the specification in
-        the README.md (support of IPv4 and IPv6) meets the implementation
+        This method shall be used to debug the behaviour of a collector's command creation.
         """
         workspace = self._workspaces[0]
+        producer = CollectorProducer(engine=self._engine)
         # Set up database
         self._create_database(workspace=workspace,
-                              ipv4_network_str="127.0.0.1",
-                              ipv6_network_str="::1",
-                              ipv4_address_str="127.0.0.1",
-                              ipv6_address_str="::1",
-                              ipv4_host_name_str="localhost",
-                              ipv6_host_name_str="ip6-localhost",
+                              ipv4_network_str="1.1.1.0/24",
+                              ipv6_network_str="64:ff9b::/64",
+                              ipv4_address_str="1.1.1.1",
+                              ipv6_address_str="64:ff9b::1:1:1:1",
+                              ipv4_host_name_str="ipv4.test.com",
+                              ipv6_host_name_str="ipv6.test.com",
                               company_str="Test LLC")
-        # Create commands: manually run command and verify outputs
+        with tempfile.TemporaryDirectory() as temp_dir:
+            arguments = {"workspace": workspace,
+                         "output_dir": temp_dir,
+                         "vhost": "all",
+                         "wordlist_files": ["/usr/share/wordlists/dirb/common.txt"],
+                         "print_commands": True}
+            # Create commands: manually run command and verify outputs
+            # arguments["httpkiterunner"] = True
+            # producer.init(arguments)
+            # producer._create(debug=True)

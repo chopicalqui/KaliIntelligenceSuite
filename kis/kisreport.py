@@ -48,11 +48,12 @@ if __name__ == "__main__":
 
 the following command queries all structured information about all 
 positional arguments from workspace $ws and exports it to the 
-microsoft excel file /tmp/report.xlsx
+microsoft excel file /kis/report.xlsx. After the export, the file is 
+available at: /var/lib/docker/volumes/kaliintelsuite_kis_data/_data/
 
-the icrosoft excel file can then be used for further analyses or reporting
+the microsoft excel file can then be used for further analyses or reporting
 
-$ kisreport excel /tmp/report.xlsx -w $ws
+$ sudo docker-compose run kaliintelsuite kisreport excel /kis/report.xlsx -w $ws
 
 - II. obtain list of in-scope host names
 
@@ -60,12 +61,12 @@ the following command returns a unique list of in-scope host names from
 workspace $ws. the returned list could be used as input for other 
 external intelligence gathering tools
 
-$ kisreport domain -w $ws --csv --scope within | csvcut -c "Host Name"
+$ sudo docker-compose run kaliintelsuite kisreport domain -w $ws --csv --scope within | csvcut -c "Host Name"
 
 alternatively, you could query all second-level domains from workspace 
 $ws to identify those domains that are relevant for the assessment. 
 
-$ kisreport domain -w $ws --csv | csvcut -c "Second-Level Domain"
+$ sudo docker-compose run kaliintelsuite kisreport domain -w $ws --csv | csvcut -c "Second-Level Domain"
 
 the relevant domains can then be set in-scope using the script kismanage. 
 after setting them in-scope, it is possible to perform active intelligence 
@@ -80,56 +81,57 @@ intelligence gathering tools
 the following command returns a unique list of URLs, which could be used as 
 input for other external intelligence gathering tools (e.g., aquatone)
 
-$ kisreport path -w $ws --scope within --type Http --csv | csvcut -H -c 15 | sed -e 's/^"//' -e 's/"$//' | sort -u
+$ sudo docker-compose run kaliintelsuite kisreport path -w $ws --scope within --type Http --csv | \
+    csvcut -H -c 15 | sed -e 's/^"//' -e 's/"$//' | sort -u
 
 - IV. obtain all hosts/services where the collector http was executed
 
 the following command returns all IPv4/IPv6 addresses on which the collector  
 httpnikto was executed. the text output also includes the output of httpnikto
 
-$ kisreport host -w $ws --text -I httpnikto | less -R
+$ sudo docker-compose run kaliintelsuite kisreport host -w $ws --text -I httpnikto | less -R
 
 the following command returns all virtual hosts/services on which the 
 collector httpnikto was executed. the text output also includes the output of 
 httpnikto
 
-$ kisreport vhost -w $ws --text -I httpnikto | less -R
+$ sudo docker-compose run kaliintelsuite kisreport vhost -w $ws --text -I httpnikto | less -R
 
 - V. show all results for a specific IPv4 address or host name
 
 the following command returns all gathered information from workspace $ws 
 for IPv4 address $ip
 
-$ kisreport host -w $ws --text --filter +$ip | less -R
+$ sudo docker-compose run kaliintelsuite kisreport host -w $ws --text --filter +$ip | less -R
 
 the following command returns all gathered information from workspace $ws 
 for host name $hostname
 
-$ kisreport vhost -w $ws --text --filter +$hostname | less -R
+$ sudo docker-compose run kaliintelsuite kisreport vhost -w $ws --text --filter +$hostname | less -R
 
 - VI. search all collector raw outputs for a specific key word
 
 the following command searches all command outputs of $ws for the 
 keyword $keyword
 
-$ kisreport command -w $ws --text | grep $keyword
+$ sudo docker-compose run kaliintelsuite kisreport command -w $ws --text | grep $keyword
 
 the following command searches all httpnikto outputs of $ws for the 
 keyword $keyword
 
-$ kisreport command -w $ws --text -I httpnikto | grep $keyword
+$ sudo docker-compose run kaliintelsuite kisreport command -w $ws --text -I httpnikto | grep $keyword
 
 - VII. export raw scan results
 
 the following command exports all screenshots located in workspace $ws and
 taken by collector httpeyewitness to the output directory $outdir
 
-$ kisreport file -w $ws --type screenshot -I httpeyewitness -o $outdir
+$ sudo docker-compose run kaliintelsuite kisreport file -w $ws --type screenshot -I httpeyewitness -o $outdir
 
 the following command exports all raw xml scan files of collector tcpnmap located 
 in workspace $ws to the output directory $outdir
 
-$ kisreport file -w $ws --type xml -I tcpnmap -o $outdir
+$ sudo docker-compose run kaliintelsuite kisreport file -w $ws --type xml -I tcpnmap -o $outdir
 '''
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=SortingHelpFormatter, epilog=epilog)
     parser.add_argument("--nocolor", action="store_true", help="disable colored output")
