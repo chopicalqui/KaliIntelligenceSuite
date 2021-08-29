@@ -82,10 +82,10 @@ Scopes can be set on the following items by using the script `kismanage`:
       # add new IP address 192.168.1.1 to workspace example. IP address is automatically in scope due to the network's scope all
       $ sudo docker-compose run kaliintelsuite kismanage host -w example -a 192.168.1.1
       # verify the initial setup
-      $ sudo docker-compose run kaliintelsuite kisreport host -w example --csv | csvcut -c "Network","Network Scope","Address","Host In Scope" | csvlook
-      | Network        | Network Scope | Address     | Host In Scope |
-      | -------------- | ------------- | ----------- | ------------- |
-      | 192.168.1.0/24 | all           | 192.168.1.1 |          True |
+      $ sudo docker-compose run kaliintelsuite kisreport host -w example --csv | csvcut -c "Network (NW)","Scope (NW)","IP Address (IP)","In Scope (IP)" | csvlook
+      | Network (NW)   | Scope (NW)    | IP Address (IP) | "In Scope (IP)" |
+      | -------------- | ------------- | --------------- | --------------- |
+      | 192.168.1.0/24 | all           | 192.168.1.1     |            True |
       ```
     * `strict`: Sets the given IP networks' (e.g., 192.168.1.0/24) scope to `strict`. In contrast to type `all`, the
     network itself is not in scope and IP addresses within this network range (e.g., 192.168.1.1) are not automatically 
@@ -104,10 +104,10 @@ Scopes can be set on the following items by using the script `kismanage`:
       # add new IP address 192.168.1.1 to workspace example and set it in scope (default)
       $ sudo docker-compose run kaliintelsuite kismanage host -w example -a 192.168.1.1
       # verify the initial setup
-      $ sudo docker-compose run kaliintelsuite kisreport host -w example --csv | csvcut -c "Network","Network Scope","Address","Host In Scope" | csvlook
-      | Network        | Network Scope | Address     | Host In Scope |
-      | -------------- | ------------- | ----------- | ------------- |
-      | 192.168.1.0/24 | strict        | 192.168.1.1 |          True |
+      $ sudo docker-compose run kaliintelsuite kisreport host -w example --csv | csvcut -c "Network (NW)","Scope (NW)","IP Address (IP)","In Scope (IP)" | csvlook
+      | Network (NW)   | Scope (NW)    | IP Address (IP) | "In Scope (IP)" |
+      | -------------- | ------------- | --------------- | --------------- |
+      | 192.168.1.0/24 | strict        | 192.168.1.1     |            True |
       ```
     * `exclude`: Sets the given IP network (e.g., 192.168.1.0/24) together with all IP addresses (e.g., 192.168.1.1) 
     that are within this network range out of scope. As a result, KIS does not execute any active and active* 
@@ -135,12 +135,12 @@ Scopes can be set on the following items by using the script `kismanage`:
       # domain's scope all
       $ sudo docker-compose run kaliintelsuite kismanage hostname -w example -a www.megacorpone.com ftp.megacorpone.com
       # verify the initial setup
-      $ sudo docker-compose run kaliintelsuite kisreport domain -w example --csv | csvcut -c "Second-Level Domain","Second-Level Domain Scope","Host Name","Host Name In Scope" | csvlook
-      | Second-Level Domain | Second-Level Domain Scope | Host Name           | Host Name In Scope |
-      | ------------------- | ------------------------- | ------------------- | ------------------ |
-      | megacorpone.com     | all                       | megacorpone.com     |               True |
-      | megacorpone.com     | all                       | www.megacorpone.com |               True |
-      | megacorpone.com     | all                       | ftp.megacorpone.com |               True |
+      $ sudo docker-compose run kaliintelsuite kisreport domain -w example --csv | csvcut -c "Second-Level Domain (SLD)","Scope (SLD)","Host Name (HN)","In Scope (HN)" | csvlook
+      | Second-Level Domain (SLD) | Scope (SLD) | Host Name (HN)      | In Scope (HN) |
+      | ------------------------- | ----------- | ------------------- | ------------- |
+      | megacorpone.com           | all         | megacorpone.com     |          True |
+      | megacorpone.com           | all         | www.megacorpone.com |          True |
+      | megacorpone.com           | all         | ftp.megacorpone.com |          True |
       ```
     * `strict`: Sets the given second-level domains (e.g., megacorpone.com) in scope. In contrast to type `all`, any 
     sub-level domains (e.g., www.megacorpone.com) are not automatically in scope, unless they are explicitly added.
@@ -158,13 +158,13 @@ Scopes can be set on the following items by using the script `kismanage`:
       # add new host names to workspace example. They are automatically in scope due to kismanage's default value.
       $ sudo docker-compose run kaliintelsuite kismanage hostname -w example -a www.megacorpone.com ftp.megacorpone.com
       # verify the initial setup
-      $ sudo docker-compose run kaliintelsuite kisreport domain -w example --csv | csvcut -c "Second-Level Domain","Second-Level Domain Scope","Host Name","Host Name In Scope" | csvlook
-      | Second-Level Domain | Second-Level Domain Scope | Host Name           | Host Name In Scope |
-      | ------------------- | ------------------------- | ------------------- | ------------------ |
-      | megacorpone.com     | strict                    | megacorpone.com     |              False |
-      | megacorpone.com     | strict                    | www.megacorpone.com |               True |
-      | megacorpone.com     | strict                    | ftp.megacorpone.com |               True |
-      # Note that KIS treates the second-level domain also as a host name. As it has not been explicitly put in scope, it
+      $ sudo docker-compose run kaliintelsuite kisreport domain -w example --csv | csvcut -c "Second-Level Domain (SLD)","Scope (SLD)","Host Name (HN)","In Scope (HN)" | csvlook
+      | Second-Level Domain (SLD) | Scope (SLD) | Host Name (HN)      | In Scope (HN) |
+      | ------------------------- | ----------- | ------------------- | ------------- |
+      | megacorpone.com           | strict      | megacorpone.com     |         False |
+      | megacorpone.com           | strict      | www.megacorpone.com |          True |
+      | megacorpone.com           | strict      | ftp.megacorpone.com |          True |
+      # Note that KIS treats the second-level domain also as a host name. As it has not been explicitly put in scope, it
       # is still out of scope.
       ```
     * `exclude`: Sets the given second-level domains (e.g., megacorpone.com) together with all sub-level domains 

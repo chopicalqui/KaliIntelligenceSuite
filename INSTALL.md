@@ -23,13 +23,13 @@ In order to use KIS in a Docker environment, follow the following configuration 
     This file is used by [docker-compose.yml](docker-compose.yml) to set the password for the PostgresSQL user.
 
  - **[optional]** Specify your API keys of Burp Suite Professional, censys.io, hunter.io, etc. in
-   the respective sections of the configuration file `/opt/kaliintelsuite/kis/configs/api.config`.
+   the respective sections of the configuration file [api.config](kis/configs/api.config).
 
  - **[mandatory]** Navigate to the local KIS Git repository, pull/build the Docker images, and launch the Docker
    containers postgres and kaliintelsuite:
 
     ```bash
-    cd /opt/smartfilehunter
+    cd /opt/kaliintelsuite
     sudo docker-compose run -d
     ```
 
@@ -50,7 +50,7 @@ In order to use KIS in a Docker environment, follow the following configuration 
     [...]
     ```
 
-    Review the commands's output; there should not be any red entries marked as `[missing]` or `[unsupported]`.
+    Review the command's output; there should not be any red entries marked as `[missing]` or `[unsupported]`.
 
  - **[optional]** Remove unused Docker data to free up space:
 
@@ -61,7 +61,7 @@ In order to use KIS in a Docker environment, follow the following configuration 
 ## Manual Installation (not officially supported)
 
 This setup requires an official
-(Kali Linux)[https://www.kali.org/docs/introduction/download-official-kali-linux-images/] release with the following
+[Kali Linux](https://www.kali.org/docs/introduction/download-official-kali-linux-images/) release with the following
 minimum system requirements:
  - 2 CPUs
  - 4096 MB RAM
@@ -92,7 +92,7 @@ In order to manually install KIS, the following configuration steps must be exec
     Use argument `--setup-dbg` instead of `--setup` to review the setup OS commands first.
 
  - **[optional]** Specify your API keys of Burp Suite Professional, censys.io, hunter.io, etc. in
-   the respective sections of the configuration file `/opt/kaliintelsuite/kis/configs/api.config`.
+   the respective sections of the configuration file [api.config](kis/configs/api.config).
 
  - **[optional]** Manually install Aquatone, Crobat, Kiterunner, and Slurp as they are not part of the Kali Linux
    distribution (refer to the [Dockerfile](Dockerfile) for additional information):
@@ -114,4 +114,4 @@ In order to manually install KIS, the following configuration steps must be exec
     [...]
     ```
 
-    Review the commands's output; there should not be any red entries marked as `[missing]` or `[unsupported]`.
+    Review the command's output; there should not be any red entries marked as `[missing]` or `[unsupported]`.
