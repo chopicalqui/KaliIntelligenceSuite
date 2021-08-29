@@ -61,12 +61,14 @@ the following command returns a unique list of in-scope host names from
 workspace $ws. the returned list could be used as input for other 
 external intelligence gathering tools
 
-$ sudo docker-compose run kaliintelsuite kisreport domain -w $ws --csv --scope within | csvcut -c "Host Name"
+$ sudo docker-compose run kaliintelsuite kisreport domain -w $ws --csv --scope within | csvcut -c "Host Name (HN)" \
+| csvlook | sort -u
 
 alternatively, you could query all second-level domains from workspace 
-$ws to identify those domains that are relevant for the assessment. 
+$ws to manually identify those domains that are relevant for the assessment.
 
-$ sudo docker-compose run kaliintelsuite kisreport domain -w $ws --csv | csvcut -c "Second-Level Domain"
+$ sudo docker-compose run kaliintelsuite kisreport domain -w $ws --csv | csvcut -c "Second-Level Domain (SLD)" \
+| csvlook | sort -u
 
 the relevant domains can then be set in-scope using the script kismanage. 
 after setting them in-scope, it is possible to perform active intelligence 
@@ -81,8 +83,8 @@ intelligence gathering tools
 the following command returns a unique list of URLs, which could be used as 
 input for other external intelligence gathering tools (e.g., aquatone)
 
-$ sudo docker-compose run kaliintelsuite kisreport path -w $ws --scope within --type Http --csv | \
-    csvcut -H -c 15 | sed -e 's/^"//' -e 's/"$//' | sort -u
+$ sudo docker-compose run kaliintelsuite kisreport path -w $ws --scope within --type http --csv | \
+csvcut -c "Full Path" | grep -v "Full Path"
 
 - IV. obtain all hosts/services where the collector http was executed
 

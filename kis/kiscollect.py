@@ -87,8 +87,8 @@ $ sudo docker-compose run kaliintelsuite kiscollect -w $ws --debug --awsslurp --
 
 review collected domain information and eventually add additional second-level domains and sub-domains in scope
 $ sudo docker-compose run kaliintelsuite kisreport domain -w $ws --csv --scope outside | \
-    csvcut -c "Second-Level Domain (SLD)","Scope (SLD)","Companies (SLD)" | \
-    csvsort -c "Second-Level Domain (SLD)" | csvlook
+csvcut -c "Second-Level Domain (SLD)","Scope (SLD)","Companies (SLD)" | \
+csvsort -c "Second-Level Domain (SLD)" | csvlook
 $ domains=
 $ sudo docker-compose run kaliintelsuite kismanage domain -w $ws -s {all,strict} $domains
 $ hostnames=
@@ -167,8 +167,8 @@ $ sudo docker-compose run kaliintelsuite kiscollect -w $ws --debug --strict -t5 
 
 review collected domain information and eventually add domains in scope
 $ sudo docker-compose run kaliintelsuite kisre--httpburpsuitepro port domain -w $ws --csv --scope outside | \
-    csvcut -c "Second-Level Domain (SLD)","Scope (SLD)","Companies (SLD)" | \
-    csvsort -c "Second-Level Domain (SLD)" | csvlook
+csvcut -c "Second-Level Domain (SLD)","Scope (SLD)","Companies (SLD)" | \
+csvsort -c "Second-Level Domain (SLD)" | csvlook
 $ domains=
 $ sudo docker-compose run kaliintelsuite kismanage domain -w $ws -s {all,strict} $domains
 
@@ -183,8 +183,8 @@ $ sudo docker-compose run kaliintelsuite kiscollect -w $ws --debug --strict -t5 
 --vncnmap --x11nmap --httpburpsuitepro --vhost domain --autostart
 
 collect screenshots with aquatone
-$ sudo docker-compose run kaliintelsuite kisreport path -w $ws --scope within --type Http --csv | \
-    csvcut -c "Full Path" | grep -v "Full Path" | aquatone -out aquatone
+$ sudo docker-compose run kaliintelsuite kisreport path -w $ws --scope within --type http --csv | \
+csvcut -c "Full Path" | grep -v "Full Path" | aquatone -out aquatone
 
 export collected information into microsoft excel
 $ sudo docker-compose run kaliintelsuite kisreport excel /kis/kis-scan-results.xlsx -w $ws
@@ -222,7 +222,7 @@ $ sudo docker-compose run kaliintelsuite kiscollect -w $ws --debug --strict -t5 
 
 # Find additional domains using dnsgen and massdns
 $ sudo docker-compose run kaliintelsuite kisreport domain -w $ws --csv --scope within | \
-    csvcut -c "Host Name (HN)" | sort -u | dnsgen - | massdns -r /opt/lazydns/resolvers.txt -c 5 -t A -o S --flush 2> /dev/null
+csvcut -c "Host Name (HN)" | sort -u | dnsgen - | massdns -r /opt/lazydns/resolvers.txt -c 5 -t A -o S --flush 2> /dev/null
 
 # At the end, do final DNS lookup to ensure that all collected host names are resolved. This ensures that the data is 
 # complete for the final report
