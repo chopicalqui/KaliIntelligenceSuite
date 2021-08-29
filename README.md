@@ -262,6 +262,7 @@ The column **User** specifies the user with which the respective operating syste
 | -        | rdphydra                  | service         | Active   | IPv4, IPv6 | -       | nobody |
 | -        | smbhydra                  | service         | Active   | IPv4, IPv6 | -       | nobody |
 | -        | smbmedusa                 | service         | Active   | IPv4       | -       | nobody |
+| -        | smbmsflogin               | service         | Active   | IPv4, IPv6 | -       | root   |
 | -        | sshhydra                  | service         | Active   | IPv4, IPv6 | -       | nobody |
 | 125      | builtwith                 | domain          | Active*  | -          | -       | nobody |
 | 127      | hostio                    | domain          | Active*  | -          | -       | nobody |
