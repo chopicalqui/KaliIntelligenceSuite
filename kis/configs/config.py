@@ -200,7 +200,7 @@ class Database(BaseConfig):
     def production_database(self) -> str:
         result = self.env_database
         if not result:
-            self.get_config_str("production", "database")
+            result = self.get_config_str("production", "database")
         return result
 
     @property

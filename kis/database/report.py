@@ -3169,8 +3169,9 @@ class ReportGenerator:
         This method runs the desired report
         :return:
         """
-        if self._args.module in self._generators:
-            self._generators[self._args.module](self._args, self._session, self._workspaces).export()
+        module = self._args.module.replace("-", "")
+        if module in self._generators:
+            self._generators[module](self._args, self._session, self._workspaces).export()
         elif self._args.module == "excel":
             if os.path.exists(self._args.FILE):
                 os.unlink(self._args.FILE)
