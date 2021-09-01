@@ -344,6 +344,8 @@ The column **User** specifies the user with which the respective operating syste
 | 11600    | sshchangeme               | service         | Active   | IPv4, IPv6 | -       | kali   |
 | 11610    | httpchangeme              | service, vhost  | Active   | IPv4, IPv6 | -       | kali   |
 | 11700    | ipmi                      | service         | Active   | IPv4, IPv6 | -       | root   |
+| 11750    | rmiregistrymsfgather      | service         | Active   | IPv4, IPv6 | -       | root   |
+| 11760    | rmiregistrynmap           | service         | Active   | IPv4, IPv6 | -       | root   |
 | 12100    | ftpfilelist               | service         | Active   | IPv4, IPv6 | -       | nobody |
 | 13000    | showmount                 | service         | Active   | IPv4, IPv6 | 300     | nobody |
 | 13090    | smbcme                    | service         | Active   | IPv4, IPv6 | -       | kali   |

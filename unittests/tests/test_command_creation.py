@@ -1199,7 +1199,7 @@ class TestCreatingAllCommands(BaseKisTestCase):
                                            name=company_str,
                                            network=ipv4_network,
                                            verify=False)
-            for port in [21, 22, 23, 25, 53, 79, 80, 69, 110, 111, 123, 137, 143, 161, 389, 443, 445, 500, 623,
+            for port in [21, 22, 23, 25, 53, 79, 80, 69, 110, 111, 123, 137, 143, 161, 389, 443, 445, 500, 623, 1099,
                          1300, 1433, 1521, 2049, 3306, 3389, 3478, 5060, 5432, 5900, 6000]:
                 self._add_service(session=session,
                                   host=ipv4_host,
