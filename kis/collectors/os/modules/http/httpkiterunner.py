@@ -32,6 +32,7 @@ from collectors.os.modules.core import ServiceCollector
 from collectors.os.modules.http.core import BaseHttpCollector
 from collectors.os.modules.core import BaseCollector
 from collectors.os.modules.core import HostNameServiceCollector
+from collectors.os.core import PopenCommandWithoutStderr
 from collectors.os.core import PopenCommand
 from database.model import Service
 from database.model import Command
@@ -49,6 +50,7 @@ class CollectorClass(BaseHttpCollector, ServiceCollector, HostNameServiceCollect
     def __init__(self, **kwargs):
         super().__init__(priority=51150,
                          exec_user="kali",
+                         execution_class=PopenCommandWithoutStderr,
                          timeout=0,
                          **kwargs)
         self._result_re = re.compile("^(?P<method>\w+)\s+(?P<status>\d+)\s+\[\s*(?P<size>\d+),.+?\]\s+(?P<url>.+?)\s.*$")

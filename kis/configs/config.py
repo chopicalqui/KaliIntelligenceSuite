@@ -292,14 +292,14 @@ class Collector(BaseConfig):
         self._mysql_default_credentials = self.get_config_str("default_wordlists", "mysql_default_credentials")
         self._pgsql_default_credentials = self.get_config_str("default_wordlists", "pgsql_default_credentials")
         self._snmp_default_credentials = self.get_config_str("default_wordlists", "snmp_default_credentials")
+        self._vnc_default_credentials = self.get_config_str("default_wordlists", "vnc_default_credentials")
+        self._http_default_passwords = self.get_config_str("default_wordlists", "http_default_passwords")
+        self._apache_tomcat_default_passwords = self.get_config_str("default_wordlists",
+                                                                    "apache_tomcat_default_passwords")
         self._slurp_permutations_file = self.get_config_str("default_wordlists", "slurp_permutations_file")
         self._sidguess_default_wordlist = self.get_config_str("default_wordlists", "sidguess_default")
         self._apache_tomcat_default_users = self.get_config_str("default_wordlists", "apache_tomcat_default_users")
-        self._apache_tomcat_default_passwords = \
-            self.get_config_str("default_wordlists", "apache_tomcat_default_passwords")
         self._http_default_users = self.get_config_str("default_wordlists", "http_default_users")
-        self._http_default_passwords = \
-            self.get_config_str("default_wordlists", "http_default_passwords")
         self._webserver_apache = self.get_config_str("default_wordlists", "webserver_apache")
         self._webserver_apache_tomcat = self.get_config_str("default_wordlists", "webserver_apache_tomcat")
         self._webserver_microsoft_iis = self.get_config_str("default_wordlists", "webserver_microsoft_iis")

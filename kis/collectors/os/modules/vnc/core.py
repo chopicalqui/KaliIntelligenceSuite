@@ -26,6 +26,7 @@ from typing import List
 from collectors.os.modules.core import BaseCollector
 from collectors.os.modules.core import BaseHydra
 from collectors.os.modules.core import BaseNmap
+from collectors.os.modules.core import BaseMsfConsole
 from collectors.os.modules.core import BaseEyeWitness
 from collectors.os.modules.core import ServiceDescriptorBase
 from collectors.os.modules.core import BaseExtraServiceInfoExtraction
@@ -79,7 +80,7 @@ class BaseVncEyewitness(BaseEyeWitness):
 
 class BaseVncNmap(BaseNmap):
     """
-    This class implements basic functionality for SNMP collectors that use Nmap.
+    This class implements basic functionality for VNC collectors that use Nmap.
     """
     def __init__(self, priority, timeout, nmap_xml_extractor_classes: List[BaseExtraServiceInfoExtraction], **kwargs):
         super().__init__(priority=priority,
@@ -88,3 +89,15 @@ class BaseVncNmap(BaseNmap):
                          service_descriptors=VncServiceDescriptor(),
                          **kwargs)
 
+
+class BaseVncMsfConsole(BaseMsfConsole):
+    """
+    This class implements basic functionality for VNC collectors that use msfconsole.
+    """
+    def __init__(self, priority,
+                 timeout,
+                 **kwargs):
+        super().__init__(priority=priority,
+                         timeout=timeout,
+                         service_descriptors=VncServiceDescriptor(),
+                         **kwargs)
