@@ -180,7 +180,7 @@ $ sudo docker-compose run kaliintelsuite kiscollect -w $ws --debug --strict -t5 
 --mssqlnmap --mysqlhydra --mysqlnmap --nbtscan --nfsnmap --ntpq --onesixtyone --oraclesidguess --pgsqlhydra \
 --pop3nmap --rdpnmap --rpcclient --rpcinfo --rpcnmap --showmount --smbclient --smbcme --smbfilelist --smbmap \
 --smbnmap --smtpnmap --snmpcheck --snmphydra --snmpnmap --snmpwalk --sshchangeme --sshnmap --sslscan --sslyze \
---tlsnmap --telnetnmap --tftpnmap --vncnmap --x11nmap --httpburpsuitepro --vhost domain --autostart
+--tlsnmap --telnetnmap --tftpnmap --vncnmap --x11nmap --httpburpsuitepro --vhost domain --tld --autostart
 
 collect screenshots with aquatone
 $ sudo docker-compose run kaliintelsuite kisreport path -w $ws --scope within --type http --csv | \
@@ -250,6 +250,11 @@ Finally, you might want to re-run the entire process to collect further informat
                                  "HTTP(S) service intelligence gathering is performed on all known in-scope host "
                                  "names. use choice 'domain' if you want to collect intel just on the host names or "
                                  "use choice 'all' to collect intel based on both - IPv4/IPv6 addresses and host names")
+        ogroup.add_argument("--tld",
+                            action="store_true",
+                            help="usually vhost collectors like httpgobuster do not create commands for "
+                                 "top-level domains (TLDs), if they resolve to an in-scope IP address. use this "
+                                 "argument to use TLDs as well")
         ogroup.add_argument("--debug",
                             action="store_true",
                             help="prints extra information to log file")

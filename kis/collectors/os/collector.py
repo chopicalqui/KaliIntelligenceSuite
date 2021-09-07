@@ -879,6 +879,7 @@ class CollectorConsumer(Thread):
         self._current_start_time = None
         self._current_username = None
         self._consumer_status_lock = Lock()
+        self._current_process_lock = Lock()
         self._current_process = None
         self._delay = producer_thread.delay
         self._consoles = producer_thread.consoles
@@ -901,6 +902,16 @@ class CollectorConsumer(Thread):
                                                                        duration,
                                                                        current_service,
                                                                        current_host)
+
+    @property
+    def current_process(self):
+        with self._current_process_lock:
+            return self._current_process
+
+    @current_process.setter
+    def current_process(self, value):
+        with self._current_process_lock:
+            self._current_process = value
 
     @property
     def thread_str(self) -> str:
@@ -928,21 +939,23 @@ class CollectorConsumer(Thread):
         This method kills the currently running OS command.using SIGTERM
         :return:
         """
-        if self._current_process:
-            self._current_process.kill()
+        with self._current_process_lock:
+            if self._current_process:
+                self._current_process.kill()
 
     def terminate_current_command(self) -> None:
         """
         This method kills the currently running OS command.using SIGKILL
         :return:
         """
-        if self._current_process:
-            self._current_process.terminate()
+        with self._current_process_lock:
+            if self._current_process:
+                self._current_process.terminate()
 
     def run(self):
         while self._producer_thread.collection_status == CollectionStatus.running:
             try:
-                self._current_process = None
+                self.current_process = None
                 command_item = self._commands_queue.get()
                 # Check maximum number of threads
                 if 0 < self._producer_thread.current_collector.instance.max_threads >= self._id or \
@@ -1012,7 +1025,7 @@ class CollectorConsumer(Thread):
                     if not self._producer_thread.print_commands and os_command:
                         self.current_os_command = os_command_str
                         # Now we run the process
-                        self._current_process = self._producer_thread.\
+                        self.current_process = self._producer_thread.\
                             current_collector.instance.execution_class(os_command,
                                                                        timeout=command_item.timeout,
                                                                        cwd=working_directory,
@@ -1020,20 +1033,21 @@ class CollectorConsumer(Thread):
                                                                        stdout=subprocess.PIPE,
                                                                        stderr=subprocess.PIPE,
                                                                        username=username)
-                        self._current_process.start()
-                        if not self._current_process.killed:
-                            self._current_process.stop_time = datetime.utcnow()
+                        self.current_process.start()
+                        self.current_process.join()
+                        if not self.current_process.killed:
+                            self.current_process.stop_time = datetime.utcnow()
                             status_id = CommandStatus.completed
                         else:
                             self.terminate_current_command()
-                            self._current_process.stop_time = datetime.utcnow()
+                            self.current_process.stop_time = datetime.utcnow()
                             status_id = CommandStatus.terminated
                         # Now we store the command's results in the database
                         try:
                             self._producer_thread.current_collector.instance.process_command_results(self._engine,
                                                                                                      command_item.command_id,
                                                                                                      status_id,
-                                                                                                     self._current_process,
+                                                                                                     self.current_process,
                                                                                                      listeners=self._consoles)
                         except sqlalchemy.orm.exc.NoResultFound as ex:
                             print("no command with ID {} found".format(command_item.command_id))
@@ -1045,7 +1059,7 @@ class CollectorConsumer(Thread):
                             self._producer_thread.log_exception(ex)
                         except Exception as ex:
                             self._producer_thread.log_exception(ex)
-                        self._current_process.close()
+                        self.current_process.close()
                         self.current_os_command = None
                     with self._consumer_status_lock:
                         self._current_host = None

@@ -114,9 +114,9 @@ class TestDelayMethods(unittest.TestCase):
         self.assertTrue(1 <= Delay(1, 3, False, False).sleep_time <= 3)
 
 
-class TestExecutionThreadTimeoutTermination(BaseKisTestCase):
+class TestCommandExecution(BaseKisTestCase):
     """
-
+    This class tests OS command executions via library collectors.os.core
     """
 
     def __init__(self, test_name: str):
@@ -126,10 +126,75 @@ class TestExecutionThreadTimeoutTermination(BaseKisTestCase):
         process = PopenCommand(os_command=["sleep", "10"],
                                cwd="/tmp",
                                timeout=1,
+                               stdout=subprocess.DEVNULL,
+                               stderr=subprocess.DEVNULL)
+        process.start()
+        process.join()
+        self.assertIsNone(process.stdout_list)
+        self.assertIsNone(process.stderr_list)
+        self.assertTrue(process.killed)
+
+    def test_stdout_queue_only(self):
+        """
+        This unittest checks whether PopenCommand correctly reads the entire subprocess.PIPE data for stdout only.
+        """
+        iterations = 5
+        process = PopenCommand(os_command=["python3",
+                                           "-c",
+                                           "import sys; import time; [str(time.sleep(1)) + str(print(item, file=sys.stdout)) + str(time.sleep(1)) for item in range(0, {})]; time.sleep(5)".format(iterations)],
+                               cwd="/tmp",
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.DEVNULL)
+        process.start()
+        process.join()
+        self.assertEqual(0, process.return_code)
+        self.assertIsNone(process.stderr_list)
+        self.assertIsNotNone(process.stdout_list)
+        self.assertEqual(iterations, len(process.stdout_list))
+        for i in range(0, iterations):
+            self.assertEqual(str(i), process.stdout_list[i])
+
+    def test_stderr_queue_only(self):
+        """
+        This unittest checks whether PopenCommand correctly reads the entire subprocess.PIPE data for stderr only.
+        """
+        iterations = 5
+        process = PopenCommand(os_command=["python3",
+                                           "-c",
+                                           "import sys; import time; [str(time.sleep(1)) + str(print(item, file=sys.stderr)) + str(time.sleep(1)) for item in range(0, {})]; time.sleep(5)".format(iterations)],
+                               cwd="/tmp",
+                               stdout=subprocess.DEVNULL,
+                               stderr=subprocess.PIPE)
+        process.start()
+        process.join()
+        self.assertEqual(0, process.return_code)
+        self.assertIsNone(process.stdout_list)
+        self.assertIsNotNone(process.stderr_list)
+        self.assertEqual(iterations, len(process.stderr_list))
+        for i in range(0, iterations):
+            self.assertEqual(str(i), process.stderr_list[i])
+
+    def test_stdout_and_stderr_queue(self):
+        """
+        This unittest checks whether PopenCommand correctly reads the entire subprocess.PIPE data for stdout and stderr.
+        """
+        iterations = 5
+        process = PopenCommand(os_command=["python3",
+                                           "-c",
+                                           "import sys; import time; [str(time.sleep(1)) + str(print(item, file=sys.stdout)) + str(print(item, file=sys.stderr)) + str(time.sleep(1)) for item in range(0, {})]; time.sleep(5)".format(iterations)],
+                               cwd="/tmp",
                                stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE)
         process.start()
-        self.assertTrue(process.killed)
+        process.join()
+        self.assertEqual(0, process.return_code)
+        self.assertIsNotNone(process.stdout_list)
+        self.assertIsNotNone(process.stderr_list)
+        self.assertEqual(iterations, len(process.stdout_list))
+        self.assertEqual(iterations, len(process.stderr_list))
+        for i in range(0, iterations):
+            self.assertEqual(str(i), process.stdout_list[i])
+            self.assertEqual(str(i), process.stderr_list[i])
 
 
 class TestDatabaseVerificationMethods(BaseKisTestCase):

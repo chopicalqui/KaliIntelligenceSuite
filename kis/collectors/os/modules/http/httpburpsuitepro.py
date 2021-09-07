@@ -92,7 +92,8 @@ class CollectorClass(BaseKisImport, HostCollector, DomainCollector):
         collectors = []
         paths = []
         # Only submit vhosts to burp, if user specified vhost processing
-        if self._vhost and (self._vhost == VhostChoice.all or self._vhost == VhostChoice.domain):
+        if self._vhost and (self._vhost == VhostChoice.all or self._vhost == VhostChoice.domain) and \
+                (host_name.name or self._scan_tld):
             # Identify HTTP services
             descriptor = HttpServiceDescriptor()
             for service in host_name.services:

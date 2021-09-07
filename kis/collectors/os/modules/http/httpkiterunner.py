@@ -32,7 +32,6 @@ from collectors.os.modules.core import ServiceCollector
 from collectors.os.modules.http.core import BaseHttpCollector
 from collectors.os.modules.core import BaseCollector
 from collectors.os.modules.core import HostNameServiceCollector
-from collectors.os.core import PopenCommandWithoutStderr
 from collectors.os.core import PopenCommand
 from database.model import Service
 from database.model import Command
@@ -50,7 +49,6 @@ class CollectorClass(BaseHttpCollector, ServiceCollector, HostNameServiceCollect
     def __init__(self, **kwargs):
         super().__init__(priority=51150,
                          exec_user="kali",
-                         execution_class=PopenCommandWithoutStderr,
                          timeout=0,
                          **kwargs)
         self._result_re = re.compile("^(?P<method>\w+)\s+(?P<status>\d+)\s+\[\s*(?P<size>\d+),.+?\]\s+(?P<url>.+?)\s.*$")
@@ -105,8 +103,8 @@ class CollectorClass(BaseHttpCollector, ServiceCollector, HostNameServiceCollect
         """
         collectors = []
         command = self._path_kiterunner
-        # Kiterunner does not support IPv6. Therefore, we are check for 'not service.host_name.resolves_to_in_scope_ipv6_address()'
-        if service.host_name.name and self.match_nmap_service_name(service) and \
+        # Kiterunner does not support IPv6. Therefore, we are checking for 'not service.host_name.resolves_to_in_scope_ipv6_address()'
+        if (service.host_name.name or self._scan_tld) and self.match_nmap_service_name(service) and \
                 not service.host_name.resolves_to_in_scope_ipv6_address():
             tmp = self._get_commands(session, service, collector_name, command)
             collectors.extend(tmp)
@@ -158,6 +156,7 @@ class CollectorClass(BaseHttpCollector, ServiceCollector, HostNameServiceCollect
             self._set_execution_failed(session, command)
         else:
             command.hide = True
+        command.stderr_output = []
         for line in command.stdout_output:
             line = line.strip()
             match = self._result_re.match(line)

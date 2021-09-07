@@ -108,18 +108,19 @@ class CollectorClass(BaseTlsCollector, ServiceCollector, HostNameServiceCollecto
         :return: List of Collector instances that shall be processed.
         """
         result = []
-        # resolve host name to IPv4 address
-        if service.host_name.resolves_to_in_scope_ipv4_address():
-            result = self._create_command(session=session,
-                                          service=service,
-                                          collector_name=collector_name,
-                                          ipv6=False)
-        # resolve host name to IPv6 address
-        if service.host_name.resolves_to_in_scope_ipv6_address():
-            result = self._create_command(session=session,
-                                          service=service,
-                                          collector_name=collector_name,
-                                          ipv6=True)
+        if service.host_name.name or self._scan_tld:
+            # resolve host name to IPv4 address
+            if service.host_name.resolves_to_in_scope_ipv4_address():
+                result = self._create_command(session=session,
+                                              service=service,
+                                              collector_name=collector_name,
+                                              ipv6=False)
+            # resolve host name to IPv6 address
+            if service.host_name.resolves_to_in_scope_ipv6_address():
+                result = self._create_command(session=session,
+                                              service=service,
+                                              collector_name=collector_name,
+                                              ipv6=True)
         return result
 
     def create_service_commands(self,

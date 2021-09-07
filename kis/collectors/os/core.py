@@ -27,7 +27,6 @@ import os
 import time
 import logging
 import pwd
-import traceback
 from threading import Thread
 from threading import Lock
 from typing import List
@@ -53,16 +52,25 @@ class OutputReader(Thread):
         """
         :param proc: Process instance created by method subprocess.Popen
         """
-        Thread.__init__(self)
+        Thread.__init__(self, daemon=True)
         self._proc = proc
-        self._out_queue = queue.Queue()
+        self._list_lock = Lock()
+        self._output = []
 
     @property
-    def out_queue(self):
+    def output(self) -> list:
         """
         :return: queue.Queue instance which holds the STDOUT or STDERR output of the process
         """
-        return self._out_queue
+        with self._list_lock:
+            return list(self._output)
+
+    def append(self, value: str):
+        """
+        This method adds a new line to the output list.
+        """
+        with self._list_lock:
+            self._output.append(value)
 
     def run(self):
         raise NotImplementedError("Method not implemented!")
@@ -84,9 +92,8 @@ class StdoutReader(OutputReader):
         Method reads the content of STDOUT as long as the process is active.
         :return: None
         """
-        while self._proc.poll() is None:
-            for line in iter(self._proc.stdout.readline, b''):
-                self._out_queue.put(line.decode().strip())
+        for line in iter(self._proc.stdout.readline, b''):
+            self.append(line.decode().rstrip())
 
 
 class StderrReader(OutputReader):
@@ -105,9 +112,8 @@ class StderrReader(OutputReader):
         Method reads the content of STDERR as long as the process is active.
         :return: None
         """
-        while self._proc.poll() is None:
-            for line in iter(self._proc.stderr.readline, b''):
-                self._out_queue.put(line.decode().rstrip())
+        for line in iter(self._proc.stderr.readline, b''):
+            self.append(line.decode().rstrip())
 
 
 class BaseCommand(Thread):
@@ -115,8 +121,8 @@ class BaseCommand(Thread):
     This class represents a base class for subclasses that implement some sort of OS command execution functionality.
     """
     def __init__(self, os_command: List[str],
-                 stdout=subprocess.STDOUT,
-                 stderr=subprocess.STDOUT,
+                 stdout: int = subprocess.STDOUT,
+                 stderr: int = subprocess.STDOUT,
                  username: str = None,
                  cwd: str = None,
                  env: dict = None,
@@ -133,7 +139,7 @@ class BaseCommand(Thread):
         self._pwd = None
         self._env = {'PATH': os.environ["PATH"],
                      'HOME': os.environ["HOME"]}
-        for key, value in env.items():
+        for key, value in self._env.items():
             self._env[key] = str(value)
         if username:
             self._pwd = pwd.getpwnam(username)
@@ -219,8 +225,8 @@ class PopenCommand(BaseCommand):
     finish) must be implemented in the actual Python script.
     """
     def __init__(self, os_command: List[str],
-                 stdout = subprocess.STDOUT,
-                 stderr = subprocess.STDOUT,
+                 stdout: int = subprocess.PIPE,
+                 stderr: int = subprocess.PIPE,
                  cwd: str = None,
                  timeout: int = None,
                  **kwargs):
@@ -229,6 +235,10 @@ class PopenCommand(BaseCommand):
         self._return_code = None
         self._killed = False
         self._timeout = timeout if timeout and timeout > 0 else None
+        self._stdout_reader_lock = Lock()
+        self._stderr_reader_lock = Lock()
+        self._stdout_reader = None
+        self._stderr_reader = None
 
     @property
     def proc(self):
@@ -239,48 +249,26 @@ class PopenCommand(BaseCommand):
             return self._proc
 
     @property
-    def stdout_str(self) -> str:
+    def stdout_list(self) -> list:
         """
-        :return: Returns the current content of the stdout buffer as string
+        :return: Returns the standard output of the executed command or None.
         """
-        return_value = ""
-        if self._proc and self._proc.stdout:
-            for line in iter(self._proc.stdout.readline, b''):
-                return_value += line.decode("utf-8", "ignore")
-        return return_value
+        result = None
+        with self._stdout_reader_lock:
+            if self._stdout_reader:
+                result = self._stdout_reader.output
+        return result
 
     @property
-    def stdout_list(self) -> List[str]:
+    def stderr_list(self) -> list:
         """
-        :return: Returns the current content of the stdout buffer as a list of strings
+        :return: Returns the standard output of the executed command or None.
         """
-        return_value = []
-        if self._proc and self._proc.stdout:
-            for line in iter(self._proc.stdout.readline, b''):
-                return_value.append(line.decode("utf-8", "ignore").rstrip())
-        return return_value
-
-    @property
-    def stderr_str(self) -> str:
-        """
-        :return: Returns the current content of the stderr buffer as string
-        """
-        return_value = ""
-        if self._proc and self._proc.stderr:
-            for line in iter(self._proc.stderr.readline, b''):
-                return_value += line.decode("utf-8", "ignore")
-        return return_value
-
-    @property
-    def stderr_list(self) -> List[str]:
-        """
-        :return: Returns the current content of the stderr buffer as a list of strings
-        """
-        return_value = []
-        if self._proc and self._proc.stderr:
-            for line in iter(self._proc.stderr.readline, b''):
-                return_value.append(line.decode("utf-8", "ignore").rstrip())
-        return return_value
+        result = None
+        with self._stderr_reader_lock:
+            if self._stderr_reader:
+                result = self._stderr_reader.output
+        return result
 
     @property
     def pid(self) -> int:
@@ -363,16 +351,29 @@ class PopenCommand(BaseCommand):
                                               cwd=self._cwd,
                                               env=env,
                                               preexec_fn=self._demote)
+                if self._stdout == subprocess.PIPE:
+                    with self._stdout_reader_lock:
+                        self._stdout_reader = StdoutReader(self._proc)
+                    self._stdout_reader.start()
+                if self._stderr == subprocess.PIPE:
+                    with self._stderr_reader_lock:
+                        self._stderr_reader = StderrReader(self._proc)
+                    self._stderr_reader.start()
                 self._return_code = self._proc.wait(self._timeout)
             except subprocess.TimeoutExpired:
                 self._killed = True
+            if self._stdout == subprocess.PIPE:
+                self._stdout_reader.join()
+            if self._stderr == subprocess.PIPE:
+                self._stderr_reader.join()
 
     def close(self) -> None:
-        if self._proc:
-            if self._proc.stdout:
-                self._proc.stdout.close()
-            if self._proc.stderr:
-                self._proc.stderr.close()
+        with self._lock:
+            if self._proc:
+                if self._proc.stdout:
+                    self._proc.stdout.close()
+                if self._proc.stderr:
+                    self._proc.stderr.close()
 
 
 class PopenCommandWithoutStderr(PopenCommand):
@@ -383,8 +384,8 @@ class PopenCommandWithoutStderr(PopenCommand):
     """
 
     def __init__(self, os_command: List[str],
-                 stdout=subprocess.STDOUT,
-                 stderr=subprocess.STDOUT,
+                 stdout: int = subprocess.STDOUT,
+                 stderr: int = subprocess.STDOUT,
                  **kwargs):
         super().__init__(os_command=os_command,
                          stdout=stdout,
@@ -398,10 +399,6 @@ class PopenCommandWithoutStderr(PopenCommand):
         """
         return []
 
-    def close(self) -> None:
-        if self._proc and self._proc.stdout:
-            self._proc.stdout.close()
-
 
 class PopenCommandOpenSsl(PopenCommand):
     """
@@ -411,8 +408,8 @@ class PopenCommandOpenSsl(PopenCommand):
     """
 
     def __init__(self, os_command: List[str],
-                 stdout=subprocess.PIPE,
-                 stderr=subprocess.PIPE,
+                 stdout: int = subprocess.PIPE,
+                 stderr: int = subprocess.PIPE,
                  **kwargs):
         super().__init__(os_command=os_command,
                          stdout=stdout,
@@ -472,8 +469,8 @@ class PopenCommandWithOutputQueue(PopenCommand):
     """
 
     def __init__(self, os_command: List[str],
-                 stdout = subprocess.PIPE,
-                 stderr = subprocess.PIPE,
+                 stdout: int = subprocess.PIPE,
+                 stderr: int = subprocess.PIPE,
                  cwd: str = None,
                  shell: bool = None,
                  **kwargs) -> None:
@@ -520,8 +517,8 @@ class RunCommand(BaseCommand):
     """
 
     def __init__(self, os_command: List[str],
-                 stdout = subprocess.STDOUT,
-                 stderr = subprocess.STDOUT,
+                 stdout: int = subprocess.STDOUT,
+                 stderr: int = subprocess.STDOUT,
                  cwd: str = None,
                  shell: bool = None,
                  check: bool = False,

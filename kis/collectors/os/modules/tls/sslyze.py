@@ -98,7 +98,7 @@ class CollectorClass(BaseTlsCollector, ServiceCollector, HostNameServiceCollecto
         :return: List of Collector instances that shall be processed.
         """
         result = []
-        if service.host_name.name:
+        if service.host_name.name or self._scan_tld:
             result = self.create_service_commands(session, service, collector_name)
         return result
 

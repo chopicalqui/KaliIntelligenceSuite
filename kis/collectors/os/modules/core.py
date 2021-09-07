@@ -374,6 +374,7 @@ class BaseCollector(config.Collector):
                  analyze: bool = False,
                  ignore: bool = True,
                  vhost: str = None,
+                 tld: bool = False,
                  execution_class: PopenCommand = PopenCommand,
                  exec_user: str = "nobody",
                  **kwargs):
@@ -456,6 +457,7 @@ class BaseCollector(config.Collector):
                 self._vhost = VhostChoice[vhost]
         else:
             self._vhost = None
+        self._scan_tld = tld
         tmp = self.get_commandline_argument_value("wordlist_files")
         self._wordlist_files = tmp if tmp else []
         self._print_commands = print_commands

@@ -30,7 +30,6 @@ from unittests.tests.collectors.core import CollectorProducerTestSuite
 from unittests.tests.collectors.kali.modules.core import BaseKaliCollectorTestCase
 from collectors.os.modules.vnc.vncmsfnoneauth import CollectorClass as VncMsfNoneAuth
 from database.model import Credentials
-from database.model import CredentialType
 from database.model import ScopeType
 from database.model import CollectorType
 

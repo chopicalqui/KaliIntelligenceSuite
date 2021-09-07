@@ -33,6 +33,12 @@ In order to use KIS in a Docker environment, follow the following configuration 
     sudo docker-compose run -d
     ```
 
+ - **[mandatory]** Initialize the database.
+
+    ```bash
+    sudo docker-compose run kaliintelsuite kismanage database --init --drop
+    ```
+
  - **[optional]** Check KIS setup to determine potential issues:
 
     ```bash

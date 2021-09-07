@@ -53,6 +53,8 @@ class InvalidInputException(Exception):
 class ThreadArgumentEnum(enum.Enum):
     add = enum.auto()
     command = enum.auto()
+    stderr = enum.auto()
+    stdout = enum.auto()
 
 
 class CollectorArgumentEnum(enum.Enum):
@@ -184,15 +186,34 @@ class KisCollectConsole(BaseKisKollectConsole):
                     tmp.append(argument)
                 else:
                     raise InvalidInputException("argument '{}' must be a valid thread ID. run the following "
-                                                "command to obtain list of valid IDs: stats threads.".format(item))
+                                                "command to obtain list of valid IDs: "
+                                                "{}".format(item, KisConsoleConsoleCommand.thread.name))
             result = tmp
         # Verify thread command
         elif command == KisConsoleConsoleCommand.thread:
             if len(result) > 0:
                 if result[0] not in [item.name for item in ThreadArgumentEnum]:
                     raise InvalidInputException("subcommand '{}' is invalid for current command".format(result[0]))
-                result = [ThreadArgumentEnum[result[0]]]
-                result += result[1:]
+                subcommand = ThreadArgumentEnum[result[0]]
+                if subcommand in [ThreadArgumentEnum.stdout, ThreadArgumentEnum.stderr]:
+                    if len(result) != 2:
+                        raise InvalidInputException("subcommand '{}' requires one argument. run the following "
+                                                    "command to obtain a list of valid IDs: "
+                                                    "{}".format(subcommand.name, KisConsoleConsoleCommand.thread.name))
+                    elif not result[1].isnumeric():
+                        raise InvalidInputException("the subcommand's argument ({}) is not a number. run the following "
+                                                    "command to obtain a list of valid IDs: "
+                                                    "{}".format(result[1], KisConsoleConsoleCommand.thread.name))
+                    thread_id = int(result[1]) - 1
+                    if thread_id < 0 or thread_id >= len(self._consumer_threads):
+                        raise InvalidInputException("argument '{}' must be a valid thread ID. run the following "
+                                                    "command to obtain list of valid IDs: "
+                                                    "{}".format(subcommand.name, KisConsoleConsoleCommand.thread.name))
+                    result = [subcommand]
+                    result.append(thread_id)
+                else:
+                    result = [subcommand]
+                    result += result[1:]
         # Verify collector command
         elif command == KisConsoleConsoleCommand.collector:
             if len(result) > 0:
@@ -314,10 +335,14 @@ terminate the running thread of ID so that it can grep the next task. this is us
 this command does the following depending on the given subcommand:
 - if no subcommand is given, then it print statistics about all current worker threads.
 - {}: display the command that is currently executed by all threads.
-- {}: add a new worker thread.""".format(KisConsoleConsoleCommand.thread.name,
-                                         "|".join([item.name for item in ThreadArgumentEnum]),
-                                         ThreadArgumentEnum.command.name,
-                                         ThreadArgumentEnum.add.name))
+- {}: add a new worker thread.
+- {} TID: print current stdout of thread with ID TID.
+- {} TID: print current stderr of thread with ID TID.""".format(KisConsoleConsoleCommand.thread.name,
+                                                                "|".join([item.name for item in ThreadArgumentEnum]),
+                                                                ThreadArgumentEnum.command.name,
+                                                                ThreadArgumentEnum.add.name,
+                                                                ThreadArgumentEnum.stdout.name,
+                                                                ThreadArgumentEnum.stderr.name))
 
     def do_thread(self, input: str):
         try:
@@ -335,6 +360,18 @@ this command does the following depending on the given subcommand:
                     print("{}: {}".format(item.thread_str, command if command else "n/a"))
             elif arguments[0] == ThreadArgumentEnum.add:
                 self._producer_thread.add_consumer_thread()
+            elif arguments[0] in [ThreadArgumentEnum.stdout, ThreadArgumentEnum.stderr]:
+                current_process = self._consumer_threads[arguments[1]].current_process
+                if current_process:
+                    output = current_process.stdout_list if arguments[0] == ThreadArgumentEnum.stdout \
+                        else current_process.stderr_list
+                    if output is not None:
+                        for line in output:
+                            print(line)
+                    else:
+                        print("process not initialized.")
+                else:
+                    print("process not initialized.")
         except Exception as ex:
             print(str(ex))
 
@@ -386,7 +423,7 @@ this command does the following depending on the given subcommand:
             elif arguments[0] == CollectorArgumentEnum.remaining:
                 for item in self._producer_thread.remaining_collectors:
                     print(item)
-        except Exception as ex:
+        except Exception:
             traceback.print_exc(file=sys.stderr)
 
     do_EOF = do_exit
