@@ -24,12 +24,12 @@ __version__ = 0.1
 
 import unittest
 import tempfile
-import time
 import subprocess
 from urllib.parse import urlparse
 from typing import List
 from typing import Dict
 from unittests.tests.core import BaseKisTestCase
+from configs.config import DomainConfig
 from database.model import Workspace
 from database.model import Host
 from database.model import Service
@@ -342,6 +342,87 @@ class TestDatabaseVerificationMethods(BaseKisTestCase):
         self.assertEqual("Test LP.", self._domain_utils.is_verified_company_name("Test LP.."))
         self.assertEqual("Test Corporation", self._domain_utils.is_verified_company_name("Test Corporation"))
         self.assertEqual("Test Corporation", self._domain_utils.is_verified_company_name("Test Corporation (random)"))
+
+
+class TestEnvironmentIdentification(BaseKisTestCase):
+    """
+    This test case tests the fuzzy logic to determine the environment based on the hostname.
+    """
+
+    def __init__(self, test_name: str):
+        super().__init__(test_name)
+        self._domain_config = DomainConfig()
+
+    def _test_environment(self, value: str, environment: str):
+        self.assertEqual(environment,
+                         self._domain_config.get_environment(HostName(name="{}-www".format(value),
+                                                                      domain_name=DomainName(name="localhost.com"))))
+        self.assertEqual(environment,
+                         self._domain_config.get_environment(HostName(name="{}.www".format(value),
+                                                                      domain_name=DomainName(name="localhost.com"))))
+        self.assertEqual(environment,
+                         self._domain_config.get_environment(HostName(name="www-{}".format(value),
+                                                                      domain_name=DomainName(name="localhost.com"))))
+        self.assertEqual(environment,
+                         self._domain_config.get_environment(HostName(name="www.{}".format(value),
+                                                                      domain_name=DomainName(name="localhost.com"))))
+        self.assertEqual(environment,
+                         self._domain_config.get_environment(HostName(name="www-{}-1".format(value),
+                                                                      domain_name=DomainName(name="localhost.com"))))
+        self.assertEqual(environment,
+                         self._domain_config.get_environment(HostName(name="www.{}.1".format(value),
+                                                                      domain_name=DomainName(name="localhost.com"))))
+        self.assertEqual("Production",
+                         self._domain_config.get_environment(HostName(name="www.{}1".format(value),
+                                                                      domain_name=DomainName(name="localhost.com"))))
+        self.assertEqual("Production",
+                         self._domain_config.get_environment(HostName(name="www-{}1".format(value),
+                                                                      domain_name=DomainName(name="localhost.com"))))
+        self.assertEqual("Production",
+                         self._domain_config.get_environment(HostName(name="www{}.1".format(value),
+                                                                      domain_name=DomainName(name="localhost.com"))))
+        self.assertEqual("Production",
+                         self._domain_config.get_environment(HostName(name="www{}-1",
+                                                                      domain_name=DomainName(name="localhost.com"))))
+
+    def test_dev_environment(self):
+        environment = "Development"
+        self._test_environment(value="d", environment=environment)
+        self._test_environment(value="dev", environment=environment)
+        self._test_environment(value="devel", environment=environment)
+        self._test_environment(value="development", environment=environment)
+
+    def test_quality_environment(self):
+        environment = "Quality"
+        self._test_environment(value="q", environment=environment)
+        self._test_environment(value="qa", environment=environment)
+        self._test_environment(value="qual", environment=environment)
+        self._test_environment(value="quality", environment=environment)
+
+    def test_staging_environment(self):
+        environment = "Staging"
+        self._test_environment(value="s", environment=environment)
+        self._test_environment(value="stg", environment=environment)
+        self._test_environment(value="staging", environment=environment)
+
+    def test_test_environment(self):
+        environment = "Test"
+        self._test_environment(value="t", environment=environment)
+        self._test_environment(value="test", environment=environment)
+
+    def test_integration_environment(self):
+        environment = "Integration"
+        self._test_environment(value="i", environment=environment)
+        self._test_environment(value="int", environment=environment)
+        self._test_environment(value="integration", environment=environment)
+
+    def test_uat_environment(self):
+        environment = "User Acceptance"
+        self._test_environment(value="uat", environment=environment)
+
+    def test_pre_production_environment(self):
+        environment = "Pre-Production"
+        self._test_environment(value="pre", environment=environment)
 
 
 class TestAddHost(BaseKisTestCase):

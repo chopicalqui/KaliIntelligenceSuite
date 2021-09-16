@@ -50,7 +50,15 @@ class Engine:
 
     def __init__(self, production: bool = True):
         self.production = production
-        self._config = config.Database(production)
+
+    @property
+    def production(self) -> bool:
+        return self._production
+
+    @production.setter
+    def production(self, value) -> bool:
+        self._production = value
+        self._config = config.Database(self._production)
         self._engine = create_engine(self._config.connection_string)
         self._session_factory = sessionmaker(bind=self._engine)
         self._Session = scoped_session(self._session_factory)
@@ -2912,6 +2920,16 @@ class Engine:
                                     enc_algorithm=SymmetricAlgorithm.rc4_128, enc_algorithm_bits=128,
                                     aead=False, hash_algorithm=HashAlgorithm.md5,
                                     security=CipherSuiteSecurity.weak))
+            session.add(CipherSuite(iana_name='TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256',
+                                    openssl_name='ECDHE-RSA-CHACHA20-POLY1305',
+                                    gnutls_name='TLS_ECDHE_RSA_CHACHA20_POLY1305',
+                                    byte_1=0xCC, byte_2=0xA8,
+                                    protocol_version=CipherSuiteProtocolVersion.tls,
+                                    kex_algorithm=KeyExchangeAlgorithm.ecdhe,
+                                    auth_algorithm=AuthenticationAlgorithm.rsa,
+                                    enc_algorithm=SymmetricAlgorithm.chacha20_poly1305, enc_algorithm_bits=168,
+                                    aead=False, hash_algorithm=HashAlgorithm.sha256,
+                                    security=CipherSuiteSecurity.secure))
 
 
 class Setup:

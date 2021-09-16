@@ -26,6 +26,8 @@ import unittest
 import argparse
 import socket
 import os
+import enum
+import subprocess
 from typing import List
 from database.model import Workspace
 from database.model import Host
@@ -987,7 +989,7 @@ class BaseKisTestCase(unittest.TestCase):
         self.assertEqual(0, session.query(CertInfo).count())
         self.assertEqual(0, session.query(TlsInfo).count())
         self.assertEqual(0, session.query(TlsInfoCipherSuiteMapping).count())
-        self.assertEqual(344, session.query(CipherSuite).count())
+        self.assertEqual(345, session.query(CipherSuite).count())
 
 
 class BaseDataModelTestCase(BaseKisTestCase):
@@ -1612,3 +1614,33 @@ class BaseReportTestCase(BaseKisTestCase):
                                     workspaces=[workspace])
         result = report._filter(item)
         self.assertEqual(expected_result, result)
+
+
+class KisCommandEnum(enum.Enum):
+    kiscollect = enum.auto()
+    kismanage = enum.auto()
+    kisreport = enum.auto()
+
+
+class BaseTestKisCommand(BaseKisTestCase):
+    """
+    This class implements all base functionality for testing kismanage, kisreport, and kiscollect.
+    """
+
+    def __init__(self, command: KisCommandEnum, test_name: str):
+        super().__init__(test_name)
+        self._command = command
+        self._workspace = "unittest"
+
+    def execute(self, arguments: str, subcommand: str = None, expected_return_code: int = 0):
+        """
+        This method executes the current command and subcommand with the given argument and compares the return code
+        with the expected return code.
+        """
+        command = "{} --testing {}".format(self._command.name, subcommand) \
+            if subcommand else "{} --testing".format(self._command.name)
+        final_command = "{} {}".format(command, arguments)
+        result = subprocess.call(final_command, shell=True)
+        if expected_return_code != result:
+            print(final_command)
+        self.assertEqual(expected_return_code, result)

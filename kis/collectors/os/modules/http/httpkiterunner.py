@@ -103,9 +103,9 @@ class CollectorClass(BaseHttpCollector, ServiceCollector, HostNameServiceCollect
         """
         collectors = []
         command = self._path_kiterunner
-        # Kiterunner does not support IPv6. Therefore, we are checking for 'not service.host_name.resolves_to_in_scope_ipv6_address()'
+        # Kiterunner does not support IPv6. Therefore, we are checking for 'service.host_name.resolves_to_in_scope_ipv4_address()'
         if (service.host_name.name or self._scan_tld) and self.match_nmap_service_name(service) and \
-                not service.host_name.resolves_to_in_scope_ipv6_address():
+                service.host_name.resolves_to_in_scope_ipv4_address():
             tmp = self._get_commands(session, service, collector_name, command)
             collectors.extend(tmp)
         return collectors

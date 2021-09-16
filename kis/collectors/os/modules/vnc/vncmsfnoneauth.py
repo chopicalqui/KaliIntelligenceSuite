@@ -45,7 +45,7 @@ class CollectorClass(BaseVncMsfConsole, ServiceCollector):
     """This class implements a collector module that is automatically incorporated into the application."""
 
     def __init__(self, **kwargs):
-        super().__init__(priority=11750,
+        super().__init__(priority=11000,
                          timeout=0,
                          **kwargs)
         self._re_success = re.compile("^.*- VNC server security types includes None, free access!.*$", re.IGNORECASE)

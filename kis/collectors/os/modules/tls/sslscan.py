@@ -58,7 +58,7 @@ class CollectorClass(BaseTlsCollector, ServiceCollector, HostNameServiceCollecto
     """This class implements a collector module that is automatically incorporated into the application."""
 
     def __init__(self, **kwargs):
-        super().__init__(priority=41400,
+        super().__init__(priority=41320,
                          timeout=0,
                          **kwargs)
         self._xml_utils = XmlUtils()
@@ -205,7 +205,7 @@ class CollectorClass(BaseTlsCollector, ServiceCollector, HostNameServiceCollecto
                 results_tag = xml_root.find("ssltest")
                 if results_tag is None:
                     return
-                certinfo = results_tag.find("*/certificate-blob")
+                certinfo = results_tag.find("./certificates/*/certificate-blob")
                 if certinfo is not None and certinfo.text:
                     self.add_certificate(session=session,
                                          command=command,
@@ -213,6 +213,8 @@ class CollectorClass(BaseTlsCollector, ServiceCollector, HostNameServiceCollecto
                                          type=CertType.identity,
                                          source=source,
                                          report_item=report_item)
+                else:
+                    logger.error("no certificate information found.")
                 order = 1
                 for cipher_tag in results_tag.findall("cipher"):
                     status = self._xml_utils.get_xml_attribute("status", cipher_tag.attrib)
@@ -233,14 +235,37 @@ class CollectorClass(BaseTlsCollector, ServiceCollector, HostNameServiceCollecto
                         if tls_info_list[sslversion]:
                             tls_info = tls_info_list[sslversion]
                             kex_algorithm = TlsInfoCipherSuiteMapping.get_kex_algorithm(curve) if curve else None
-                            self.add_tls_info_cipher_suite_mapping(session=session,
-                                                                   tls_info=tls_info,
-                                                                   order=order,
-                                                                   kex_algorithm_details=kex_algorithm,
-                                                                   gnutls_name=cipher,
-                                                                   prefered=status == "preferred",
-                                                                   source=source,
-                                                                   report_item=report_item)
-                            order += 1
+                            # sslscan does not consistently use one cipher suite notation.
+                            mapping = self.add_tls_info_cipher_suite_mapping(session=session,
+                                                                             tls_info=tls_info,
+                                                                             order=order,
+                                                                             kex_algorithm_details=kex_algorithm,
+                                                                             gnutls_name=cipher,
+                                                                             prefered=status == "preferred",
+                                                                             source=source,
+                                                                             report_item=report_item)
+                            if not mapping:
+                                mapping = self.add_tls_info_cipher_suite_mapping(session=session,
+                                                                                 tls_info=tls_info,
+                                                                                 order=order,
+                                                                                 kex_algorithm_details=kex_algorithm,
+                                                                                 iana_name=cipher,
+                                                                                 prefered=status == "preferred",
+                                                                                 source=source,
+                                                                                 report_item=report_item)
+                                if not mapping:
+                                    mapping = self.add_tls_info_cipher_suite_mapping(session=session,
+                                                                                     tls_info=tls_info,
+                                                                                     order=order,
+                                                                                     kex_algorithm_details=kex_algorithm,
+                                                                                     openssl_name=cipher,
+                                                                                     prefered=status == "preferred",
+                                                                                     source=source,
+                                                                                     report_item=report_item)
+                                    if not mapping:
+                                        logger.error(
+                                            "cipher suite '{}' does not exist. ignoring cipher suite".format(cipher))
+                            if mapping:
+                                order += 1
         except xml.etree.ElementTree.ParseError as e:
             logger.exception(e)

@@ -47,7 +47,7 @@ class CollectorClass(BaseTlsCollector, ServiceCollector, HostNameServiceCollecto
     """This class implements a collector module that is automatically incorporated into the application."""
 
     def __init__(self, **kwargs):
-        super().__init__(priority=41400,
+        super().__init__(priority=41330,
                          timeout=120,
                          execution_class=PopenCommandOpenSsl,
                          **kwargs)

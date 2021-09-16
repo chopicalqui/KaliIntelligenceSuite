@@ -43,6 +43,7 @@ class CollectorClass(Ipv4NetworkCollector, BaseCollector):
 
     def __init__(self, **kwargs):
         super().__init__(priority=1270,
+                         exec_user="root",
                          timeout=0,
                          **kwargs)
 

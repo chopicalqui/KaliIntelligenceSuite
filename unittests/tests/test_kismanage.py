@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 __version__ = 0.1
 
+import os
 import tempfile
 import argparse
 from database.model import ReportScopeType
@@ -39,9 +40,328 @@ from database.utils import Setup
 from collectors.core import IpUtils
 from kismanage import ManageDatabase
 from unittests.tests.core import BaseKisTestCase
+from unittests.tests.core import KisCommandEnum
+from unittests.tests.core import BaseTestKisCommand
 from typing import List
 
 
+class TestSubcommandDatabase(BaseTestKisCommand):
+    """
+    This class implements checks for testing subcommand database
+    """
+
+    def __init__(self, test_name: str):
+        super().__init__(command=KisCommandEnum.kismanage, test_name=test_name)
+
+    def test_backup_restore(self):
+        """
+        This unittest tests creating and restoring a backup.
+        """
+        # Setup database and workspace
+        self.execute(subcommand="database", arguments="--drop --init")
+        self.execute(subcommand="workspace", arguments="-a {}".format(self._workspace))
+        # Backup and restore database
+        with tempfile.TemporaryDirectory() as temp_dir:
+            file_name = os.path.join(temp_dir, "backup.sql")
+            self.execute(subcommand="database", arguments="--backup {}".format(file_name))
+            self.execute(subcommand="database", arguments="--restore {}".format(file_name))
+        # Test restore
+        with self._engine.session_scope() as session:
+            result = session.query(Workspace).filter_by(name=self._workspace).one()
+            self.assertEqual(self._workspace, result.name)
+
+    def test_setup_dbg(self):
+        """
+        This unittest tests the --setup-dbg argument.
+        """
+        self.execute(subcommand="database", arguments="--setup-dbg")
+
+    def test_test(self):
+        """
+        This unittest tests the --test argument.
+        """
+        Setup(kis_scripts=ManageDatabase.KIS_SCRIPTS,
+              kali_packages=ManageDatabase.KALI_PACKAGES,
+              git_repositories=ManageDatabase.GIT_REPOSITORIES,
+              debug=True).test(throw_exception=True)
+
+
+class TestSubcommandWorkspace(BaseTestKisCommand):
+    """
+    This class implements checks for testing subcommand workspace
+    """
+
+    def __init__(self, test_name: str):
+        super().__init__(command=KisCommandEnum.kismanage, test_name=test_name)
+
+    def test_add_delete(self):
+        """
+        This unittest tests the creation and deletion of a workspace
+        """
+        # Setup database
+        self.execute(subcommand="database", arguments="--drop --init")
+        # Test workspace creation
+        self.execute(subcommand="workspace", arguments="-a {}".format(self._workspace))
+        with self._engine.session_scope() as session:
+            result = session.query(Workspace).filter_by(name=self._workspace).one()
+            self.assertEqual(self._workspace, result.name)
+        # Test workspace deletion
+        self.execute(subcommand="workspace", arguments="-d {}".format(self._workspace))
+        with self._engine.session_scope() as session:
+            result = session.query(Workspace).filter_by(name=self._workspace).one_or_none()
+            self.assertIsNone(result)
+
+
+class TestSubcommandNetwork(BaseTestKisCommand):
+    """
+    This class implements checks for testing subcommand network
+    """
+
+    def __init__(self, test_name: str):
+        super().__init__(command=KisCommandEnum.kismanage, test_name=test_name)
+
+    def test_add_delete(self):
+        """
+        This unittest tests adding and deleting a network.
+        """
+        source = "unittest"
+        scope = ScopeType.exclude
+        network = "192.168.0.0/31"
+        # Setup database and workspace
+        self.execute(subcommand="database", arguments="--drop --init")
+        self.execute(subcommand="workspace", arguments="-a {}".format(self._workspace))
+        # Add new network
+        self.execute(subcommand="network", arguments="-w {} -a {} --source {} -c --scope {}".format(self._workspace,
+                                                                                                    network,
+                                                                                                    source,
+                                                                                                    scope.name))
+        # Test network, host and source creation
+        with self._engine.session_scope() as session:
+            result = session.query(Network).filter_by(network=network).one()
+            self.assertEqual(network, result.network)
+            self.assertEqual(scope, result.scope)
+            self.assertListEqual([source], [item.name for item in result.sources])
+            self.assertEqual(2, len(result.hosts))
+        # Delete network
+        self.execute(subcommand="network", arguments="-w {} -d {} --source {} -c --scope {}".format(self._workspace,
+                                                                                                    network,
+                                                                                                    source,
+                                                                                                    scope.name))
+        # Test network deletion
+        with self._engine.session_scope() as session:
+            result = session.query(Network).filter_by(network=network).one_or_none()
+            self.assertIsNone(result)
+
+    def test_Add_Delete(self):
+        """
+        This unittest tests adding and deleting networks via a file.
+        """
+        source = "unittest"
+        scope = ScopeType.exclude
+        networks = ["192.168.0.0/31", "192.168.1.0/31"]
+        # Setup database and workspace
+        self.execute(subcommand="database", arguments="--drop --init")
+        self.execute(subcommand="workspace", arguments="-a {}".format(self._workspace))
+        # Initialize file
+        with tempfile.TemporaryDirectory() as temp_dir:
+            file_name = os.path.join(temp_dir, "networks.txt")
+            with open(file_name, "w") as file:
+                file.writelines([item + os.linesep for item in networks])
+            # Add new networks
+            self.execute(subcommand="network", arguments="-w {} -A {} --source {} -c --scope {}".format(self._workspace,
+                                                                                                        file_name,
+                                                                                                        source,
+                                                                                                        scope.name))
+            # Test networks, hosts, and source creation
+            with self._engine.session_scope() as session:
+                for network in networks:
+                    result = session.query(Network).filter_by(network=network).one()
+                    self.assertEqual(network, result.network)
+                    self.assertEqual(scope, result.scope)
+                    self.assertListEqual([source], [item.name for item in result.sources])
+                    self.assertEqual(2, len(result.hosts))
+            # Delete networks
+            self.execute(subcommand="network", arguments="-w {} -D {} --source {} -c --scope {}".format(self._workspace,
+                                                                                                        file_name,
+                                                                                                        source,
+                                                                                                        scope.name))
+            # Test network deletion
+            with self._engine.session_scope() as session:
+                result = session.query(Network).count()
+                self.assertEqual(0, result)
+
+    def test_add_implicit_in_scope(self):
+        """
+        This unittest tests adding a new in-scope network.
+        """
+        network = "192.168.0.0/31"
+        # Setup database and workspace
+        self.execute(subcommand="database", arguments="--drop --init")
+        self.execute(subcommand="workspace", arguments="-a {}".format(self._workspace))
+        # Add new network
+        self.execute(subcommand="network", arguments="-w {} -a {}".format(self._workspace, network))
+        # Test network creation
+        with self._engine.session_scope() as session:
+            result = session.query(Network).filter_by(network=network).one()
+            self.assertEqual(network, result.network)
+            self.assertEqual(ScopeType.all, result.scope)
+
+    def test_Add_implicit_in_scope(self):
+        """
+        This unittest tests adding new in-scope networks via a file.
+        """
+        networks = ["192.168.0.0/31", "192.168.1.0/31"]
+        # Setup database and workspace
+        self.execute(subcommand="database", arguments="--drop --init")
+        self.execute(subcommand="workspace", arguments="-a {}".format(self._workspace))
+        with tempfile.TemporaryDirectory() as temp_dir:
+            file_name = os.path.join(temp_dir, "networks.txt")
+            with open(file_name, "w") as file:
+                file.writelines([item + os.linesep for item in networks])
+            # Add new network
+            self.execute(subcommand="network", arguments="-w {} -A {}".format(self._workspace, file_name))
+        # Test networks
+        with self._engine.session_scope() as session:
+            for network in networks:
+                result = session.query(Network).filter_by(network=network).one()
+                self.assertEqual(network, result.network)
+                self.assertEqual(ScopeType.all, result.scope)
+
+    def test_add_explicit_in_scope(self):
+        """
+        This unittest tests adding a new in-scope network.
+        """
+        scope = ScopeType.all
+        network = "192.168.0.0/31"
+        # Setup database and workspace
+        self.execute(subcommand="database", arguments="--drop --init")
+        self.execute(subcommand="workspace", arguments="-a {}".format(self._workspace))
+        # Add new network
+        self.execute(subcommand="network", arguments="-w {} -a {} --scope {}".format(self._workspace,
+                                                                                     network,
+                                                                                     scope.name))
+        # Test network creation
+        with self._engine.session_scope() as session:
+            result = session.query(Network).filter_by(network=network).one()
+            self.assertEqual(network, result.network)
+            self.assertEqual(scope, result.scope)
+
+    def test_Add_explicit_in_scope(self):
+        """
+        This unittest tests adding new in-scope networks via a file.
+        """
+        scope = ScopeType.all
+        networks = ["192.168.0.0/31", "192.168.1.0/31"]
+        # Setup database and workspace
+        self.execute(subcommand="database", arguments="--drop --init")
+        self.execute(subcommand="workspace", arguments="-a {}".format(self._workspace))
+        with tempfile.TemporaryDirectory() as temp_dir:
+            file_name = os.path.join(temp_dir, "networks.txt")
+            with open(file_name, "w") as file:
+                file.writelines([item + os.linesep for item in networks])
+            # Add new network
+            self.execute(subcommand="network", arguments="-w {} -A {} --scope {}".format(self._workspace,
+                                                                                         file_name,
+                                                                                         scope.name))
+        # Test networks
+        with self._engine.session_scope() as session:
+            for network in networks:
+                result = session.query(Network).filter_by(network=network).one()
+                self.assertEqual(network, result.network)
+                self.assertEqual(scope, result.scope)
+
+
+class TestSubcommandHost(BaseTestKisCommand):
+    """
+    This class implements checks for testing subcommand host
+    """
+
+    def __init__(self, test_name: str):
+        super().__init__(command=KisCommandEnum.kismanage, test_name=test_name)
+
+    def test_add_delete(self):
+        """
+        This unittest tests adding a new network
+        """
+        source = "unittest"
+        scope = ReportScopeType.within
+        address = "192.168.1.1"
+        network = "192.168.1.0/24"
+        # Setup database and workspace
+        self.execute(subcommand="database", arguments="--drop --init")
+        self.execute(subcommand="workspace", arguments="-a {}".format(self._workspace))
+        # Add new network and host
+        self.execute(subcommand="network", arguments="-w {} --scope {} -a {}".format(self._workspace,
+                                                                                     ScopeType.strict.name,
+                                                                                     network))
+        self.execute(subcommand="host", arguments="-w {} -a {} --source {} --scope {}".format(self._workspace,
+                                                                                              address,
+                                                                                              source,
+                                                                                              scope.name))
+        # Test network, host and source creation
+        with self._engine.session_scope() as session:
+            result = session.query(Host).filter_by(address=address).one()
+            self.assertEqual(ScopeType.strict, result.ipv4_network.scope)
+            self.assertEqual(address, result.address)
+            self.assertTrue(result.in_scope)
+            self.assertListEqual([source], [item.name for item in result.sources])
+        # Delete network
+        self.execute(subcommand="host", arguments="-w {} -d {} --source {} --scope {}".format(self._workspace,
+                                                                                              address,
+                                                                                              source,
+                                                                                              scope.name))
+        # Test network deletion
+        with self._engine.session_scope() as session:
+            result = session.query(Host).filter_by(address=address).one_or_none()
+            self.assertIsNone(result)
+
+    def test_Add_Delete(self):
+        """
+        This unittest tests the initialization of a workspace
+        """
+        source = "unittest"
+        scope = ReportScopeType.outside
+        network = "192.168.1.0/24"
+        addresses = ["192.168.1.1", "192.168.1.2"]
+        # Setup database and workspace
+        self.execute(subcommand="database", arguments="--drop --init")
+        self.execute(subcommand="workspace", arguments="-a {}".format(self._workspace))
+        # Initialize file
+        with tempfile.TemporaryDirectory() as temp_dir:
+            file_name = os.path.join(temp_dir, "hosts.txt")
+            with open(file_name, "w") as file:
+                file.writelines([item + os.linesep for item in addresses])
+            # Add new network and host
+            self.execute(subcommand="network", arguments="-w {} -a {} --source {} --scope {}".format(self._workspace,
+                                                                                                     network,
+                                                                                                     source,
+                                                                                                     ScopeType.strict.name))
+            self.execute(subcommand="host", arguments="-w {} -A {} --source {} --scope {}".format(self._workspace,
+                                                                                                  file_name,
+                                                                                                  source,
+                                                                                                  scope.name))
+            # Test network, host and source creation
+            with self._engine.session_scope() as session:
+                # Test networks, hosts, and source creation
+                with self._engine.session_scope() as session:
+                    for address in addresses:
+                        result = session.query(Host).filter_by(address=address).one()
+                        self.assertEqual(ScopeType.strict, result.ipv4_network.scope)
+                        self.assertEqual(address, result.address)
+                        self.assertFalse(result.in_scope)
+                        self.assertListEqual([source], [item.name for item in result.sources])
+            # Delete networks
+            self.execute(subcommand="host", arguments="-w {} -D {} --source {} --scope {}".format(self._workspace,
+                                                                                                  file_name,
+                                                                                                  source,
+                                                                                                  scope.name))
+            # Test network deletion
+            with self._engine.session_scope() as session:
+                result = session.query(Host).count()
+                self.assertEqual(0, result)
+
+
+# TODO: Refactor the code below
 class BaseKismanageTestCase(BaseKisTestCase):
     """
     This class implements functionalities for testing kismanage
@@ -427,72 +747,7 @@ class BaseKismanageTestCase(BaseKisTestCase):
                     self.assertEqual(0, result)
 
 
-class TestWorkspaceModule(BaseKismanageTestCase):
-
-    def test_add(self):
-        # run command
-        self.init_db()
-        workspace = self._workspaces[0]
-        args = self.arg_parse(["workspace", "-a", workspace])
-        ManageDatabase(engine=self._engine, arguments=args, parser=self._parser).run()
-        # check database
-        with self._engine.session_scope() as session:
-            result = session.query(Workspace).one()
-            self.assertEqual(workspace, result.name)
-
-    def test_delete(self):
-        # setup database
-        self.init_db()
-        workspace = self._workspaces[0]
-        with self._engine.session_scope() as session:
-            session.add(Workspace(name=workspace))
-            result = session.query(Workspace).one()
-            self.assertEqual(workspace, result.name)
-        # run command
-        args = self.arg_parse(["workspace", "-d", workspace])
-        ManageDatabase(engine=self._engine, arguments=args, parser=self._parser).run()
-        # check database
-        with self._engine.session_scope() as session:
-            result = session.query(Workspace).one_or_none()
-            self.assertIsNone(result)
-
-
 class TestNetworkModule(BaseKismanageTestCase):
-
-    def test_add_inscope(self):
-        # setup database
-        self.init_db()
-        network = "192.168.0.0/24"
-        workspace = self._workspaces[0]
-        with self._engine.session_scope() as session:
-            self.create_workspace(session=session, workspace=workspace)
-        # run command
-        args = self.arg_parse(["network", "-w", workspace, "-a", network])
-        ManageDatabase(engine=self._engine, arguments=args, parser=self._parser).run()
-        # check database
-        self.check_results(workspace_str=workspace,
-                           networks=[network],
-                           scope=ScopeType.all,
-                           source_name="user")
-
-    def test_Add_inscope(self):
-        # setup database
-        self.init_db()
-        network = "192.168.0.0/24"
-        workspace = self._workspaces[0]
-        with self._engine.session_scope() as session:
-            self.create_workspace(session=session, workspace=workspace)
-        # run command
-        with tempfile.NamedTemporaryFile(mode="w") as file:
-            file.write(network)
-            file.flush()
-            args = self.arg_parse(["network", "-w", workspace, "-A", file.name])
-            ManageDatabase(engine=self._engine, arguments=args, parser=self._parser).run()
-        # check database
-        self.check_results(workspace_str=workspace,
-                           networks=[network],
-                           scope=ScopeType.all,
-                           source_name="user")
 
     def test_add_outofscope(self):
         # setup database
@@ -528,39 +783,6 @@ class TestNetworkModule(BaseKismanageTestCase):
                            networks=[network],
                            scope=ScopeType.exclude,
                            source_name="user")
-
-    def test_delete(self):
-        # setup database
-        self.init_db()
-        network = "192.168.0.0/24"
-        workspace = self._workspaces[0]
-        with self._engine.session_scope() as session:
-            self.create_workspace(session=session, workspace=workspace)
-            self.create_network(session=session, workspace_str=workspace, network=network)
-        # run command
-        args = self.arg_parse(["network", "-w", workspace, "-d", network])
-        ManageDatabase(engine=self._engine, arguments=args, parser=self._parser).run()
-        # check database
-        self.check_results(workspace_str=workspace,
-                           networks=[])
-
-    def test_Delete(self):
-        # setup database
-        self.init_db()
-        network = "192.168.0.0/24"
-        workspace = self._workspaces[0]
-        with self._engine.session_scope() as session:
-            self.create_workspace(session=session, workspace=workspace)
-            self.create_network(session=session, workspace_str=workspace, network=network)
-        # run command
-        with tempfile.NamedTemporaryFile(mode="w") as file:
-            file.write(network)
-            file.flush()
-            args = self.arg_parse(["network", "-w", workspace, "-D", file.name])
-            ManageDatabase(engine=self._engine, arguments=args, parser=self._parser).run()
-        # check database
-        self.check_results(workspace_str=workspace,
-                           networks=[])
 
     def test_scope(self):
         # setup database
@@ -830,74 +1052,6 @@ class TestDomainModule(BaseKismanageTestCase):
 
 
 class TestHostModule(BaseKismanageTestCase):
-
-    def test_add(self):
-        # setup database
-        self.init_db()
-        host = "192.168.1.1"
-        workspace = self._workspaces[0]
-        with self._engine.session_scope() as session:
-            self.create_workspace(session=session, workspace=workspace)
-        # run command
-        args = self.arg_parse(["host", "-w", workspace, "-a", host])
-        ManageDatabase(engine=self._engine, arguments=args, parser=self._parser).run()
-        # check database
-        self.check_results(workspace_str=workspace,
-                           hosts=[host],
-                           scope=ScopeType.all,
-                           source_name="user")
-
-    def test_Add(self):
-        # setup database
-        self.init_db()
-        host = "192.168.1.1"
-        workspace = self._workspaces[0]
-        with self._engine.session_scope() as session:
-            self.create_workspace(session=session, workspace=workspace)
-        # run command
-        with tempfile.NamedTemporaryFile(mode="w") as file:
-            file.write(host)
-            file.flush()
-            args = self.arg_parse(["host", "-w", workspace, "-A", file.name])
-            ManageDatabase(engine=self._engine, arguments=args, parser=self._parser).run()
-        # check database
-        self.check_results(workspace_str=workspace,
-                           hosts=[host],
-                           scope=ScopeType.all,
-                           source_name="user")
-
-    def test_delete(self):
-        # setup database
-        self.init_db()
-        host = "192.168.1.1"
-        workspace = self._workspaces[0]
-        with self._engine.session_scope() as session:
-            self.create_workspace(session=session, workspace=workspace)
-            self.create_host(session=session, workspace_str=workspace, address=host)
-        # run command
-        args = self.arg_parse(["host", "-w", workspace, "-d", host])
-        ManageDatabase(engine=self._engine, arguments=args, parser=self._parser).run()
-        # check database
-        self.check_results(workspace_str=workspace,
-                           hosts=[])
-
-    def test_Delete(self):
-        # setup database
-        self.init_db()
-        host = "192.168.1.1"
-        workspace = self._workspaces[0]
-        with self._engine.session_scope() as session:
-            self.create_workspace(session=session, workspace=workspace)
-            self.create_host(session=session, workspace_str=workspace, address=host)
-        # run command
-        with tempfile.NamedTemporaryFile(mode="w") as file:
-            file.write(host)
-            file.flush()
-            args = self.arg_parse(["host", "-w", workspace, "-D", file.name])
-            ManageDatabase(engine=self._engine, arguments=args, parser=self._parser).run()
-        # check database
-        self.check_results(workspace_str=workspace,
-                           hosts=[])
 
     def test_add_network_scope_all(self):
         # setup database
@@ -1192,12 +1346,3 @@ class TestCompanyModule(BaseKismanageTestCase):
             session.query(Company)\
                 .join((DomainName, Company.domain_names)).filter(Company.name == company,
                                                                  DomainName.name == domain_name2).one()
-
-
-class TestKisSetup(BaseKismanageTestCase):
-
-    def test_setup(self):
-        Setup(kis_scripts=ManageDatabase.KIS_SCRIPTS,
-              kali_packages=ManageDatabase.KALI_PACKAGES,
-              git_repositories=ManageDatabase.GIT_REPOSITORIES,
-              debug=True).test(throw_exception=True)

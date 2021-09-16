@@ -1278,7 +1278,6 @@ class BaseUtils:
         :param report_item: Item that can be used for pushing information into the view
         :return:
         """
-        error_source = "{} - ".format(source.name.lower()) if source else ""
         if (cipher_suite and iana_name) or (cipher_suite and openssl_name) or (cipher_suite and gnutls_name) or \
             (iana_name and openssl_name) or (iana_name and gnutls_name) or (openssl_name and gnutls_name):
             raise ValueError("only one of the parameters is allowed: cipher_suite, iana_name, openssl_cipher, or "
@@ -1287,37 +1286,15 @@ class BaseUtils:
             pass
         elif iana_name:
             cipher_suite = session.query(CipherSuite).filter_by(iana_name=iana_name).one_or_none()
-            if cipher_suite is None:
-                logger.error("{}cipher suite '{}' does not exist. ignoring cipher suite".format(error_source,
-                                                                                                iana_name))
-                return None
         elif openssl_name:
-            cipher_suite = session.query(CipherSuite).filter_by(openssl_full=openssl_name).one_or_none()
-            if cipher_suite is None:
-                logger.error("{}cipher suite '{}' does not exist. ignoring cipher suite".format(error_source,
-                                                                                                openssl_name))
-                return None
+            cipher_suite = session.query(CipherSuite).filter_by(openssl_name=openssl_name).one_or_none()
         elif gnutls_name:
             cipher_suite = session.query(CipherSuite).filter_by(gnutls_name=gnutls_name).one_or_none()
-            if cipher_suite is None:
-                # These are fixes for sslscan
-                if gnutls_name.startswith("TLS_"):
-                    cipher_suite = session.query(CipherSuite).filter_by(iana_name=gnutls_name).one_or_none()
-                if cipher_suite is None and gnutls_name == 'RC4-MD5':
-                    cipher_suite = session.query(CipherSuite).\
-                        filter_by(iana_name='TLS_RSA_WITH_RC4_128_MD5').one_or_none()
-                if cipher_suite is None and gnutls_name == 'RC4-SHA':
-                    cipher_suite = session.query(CipherSuite).\
-                        filter_by(iana_name='TLS_RSA_WITH_RC4_128_SHA').one_or_none()
-                if cipher_suite is None:
-                    logger.error("{}cipher suite '{}' does not exist. "
-                                 "ignoring cipher suite".format(error_source,
-                                                                gnutls_name))
-                    return None
-
         else:
             raise ValueError("at least one of the parameters is mandatory: cipher_suite, iana_name, openssl_cipher, or "
                              "gnutls_name")
+        if not cipher_suite:
+            return None
         rvalue = session.query(TlsInfoCipherSuiteMapping)\
             .filter_by(tls_info_id=tls_info.id,
                        cipher_suite_id=cipher_suite.id,

@@ -144,44 +144,6 @@ class CollectorClass(BaseTlsCollector, ServiceCollector, HostNameServiceCollecto
             collectors.append(collector)
         return collectors
 
-    def _add_cipher_suites(self,
-                           session: Session,
-                           source: Source,
-                           report_item: ReportItem,
-                           tls_info: TlsInfo,
-                           parent_tag,
-                           prefered: bool) -> List[TlsInfoCipherSuiteMapping]:
-        result = []
-        if parent_tag is not None:
-            for cipher_tag in parent_tag.findall("cipherSuite"):
-                cipher = XmlUtils.get_xml_attribute("name", cipher_tag.attrib)
-                mapping = self.add_tls_info_cipher_suite_mapping(session=session,
-                                                                 tls_info=tls_info,
-                                                                 order=0,
-                                                                 kex_algorithm_details=None,
-                                                                 iana_name=cipher,
-                                                                 prefered=prefered,
-                                                                 source=source,
-                                                                 report_item=report_item)
-                result.append(mapping)
-        return result
-
-    def parse_cipher_suite(self,
-                           cipher_suite_json: dict,
-                           session: Session,
-                           tls_info: TlsInfo,
-                           source: Source,
-                           prefered_cipher_suite: str,
-                           report_item: ReportItem):
-        if "cipher_suite" in cipher_suite_json:
-            if "name" in cipher_suite_json["cipher_suite"]:
-                pass
-            else:
-                raise NotImplementedError("unexpected JSON format (missing attribute 'name')")
-        else:
-            raise NotImplementedError("unexpected JSON format (missing attribute 'cipher_suite')")
-
-
     def verify_results(self, session: Session,
                        command: Command,
                        source: Source,
@@ -241,9 +203,13 @@ class CollectorClass(BaseTlsCollector, ServiceCollector, HostNameServiceCollecto
                                             raise NotImplementedError(
                                                 "unexpected JSON format (missing attribute "
                                                 "'received_certificate_chain')")
-                                    else:
-                                        if "tls_version_used" in scan_commands_results[section] and \
-                                                "accepted_cipher_suites" in scan_commands_results[section]:
+                                    elif section in ["ssl_2_0_cipher_suites",
+                                                     "ssl_3_0_cipher_suites",
+                                                     "tls_1_0_cipher_suites",
+                                                     "tls_1_1_cipher_suites",
+                                                     "tls_1_2_cipher_suites",
+                                                     "tls_1_3_cipher_suites"]:
+                                        if "accepted_cipher_suites" in scan_commands_results[section]:
                                             preferred_cipher = None
                                             preferred_kex = None
                                             preference = None
@@ -297,7 +263,7 @@ class CollectorClass(BaseTlsCollector, ServiceCollector, HostNameServiceCollecto
                                                         if "cipher_suite" in cipher_suite_json and \
                                                             "name" in cipher_suite_json["cipher_suite"]:
                                                             tls_cipher = cipher_suite_json["cipher_suite"]["name"]
-                                                            self._domain_utils.add_tls_info_cipher_suite_mapping(
+                                                            mapping = self._domain_utils.add_tls_info_cipher_suite_mapping(
                                                                 session=session,
                                                                 tls_info=tls_info,
                                                                 order=order,
@@ -308,6 +274,10 @@ class CollectorClass(BaseTlsCollector, ServiceCollector, HostNameServiceCollecto
                                                                 prefered=(preferred_cipher == tls_cipher and
                                                                           preferred_kex == kex_name),
                                                                 report_item=report_item)
+                                                            if not mapping:
+                                                                logger.error(
+                                                                    "cipher suite '{}' does not exist. ignoring cipher suite".format(
+                                                                        tls_cipher))
                                                             order -= 1
                                                         else:
                                                             raise NotImplementedError(

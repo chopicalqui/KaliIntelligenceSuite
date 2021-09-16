@@ -156,7 +156,7 @@ class ManageDatabase:
                   debug=True).test()
         else:
             if self._arguments.drop:
-                if BaseConfig.is_docker():
+                if BaseConfig.is_docker() or self._arguments.testing:
                     self._engine.drop()
                 else:
                     self._engine.recreate_database()
@@ -208,7 +208,7 @@ class ManageDatabase:
                         raise ValueError("cannot set scope as network '{}' does not exist".format(network))
                     elif result.scope != scope:
                         result.scope = scope
-                if self._arguments.create_hosts:
+                if self._arguments.create_hosts and not (self._arguments.delete or self._arguments.Delete):
                     ipv4_network = self._ip_utils.add_network(session=session,
                                                               workspace=workspace,
                                                               network=network,
@@ -509,6 +509,9 @@ $ sudo docker-compose run kaliintelsuite kismanage workspace --add $workspace
                         action="store_true",
                         help="prints extra information to log file")
     parser.add_argument("-l", "--list", action='store_true', help="list existing workspaces")
+    parser.add_argument('--testing',
+                        action="store_true",
+                        help="if specified, then KIS uses the testing instead of the production database")
     sub_parser = parser.add_subparsers(help='list of available database modules', dest="module")
     parser_kiscollect = sub_parser.add_parser('kiscollect', help='contains functionality used by kiscollect')
     parser_scan = sub_parser.add_parser('scan', help='allows importing scan results from filesystem')
@@ -621,8 +624,8 @@ $ sudo docker-compose run kaliintelsuite kismanage workspace --add $workspace
                              help="set the given hosts IP in or out of scope. note that KIS only "
                                   "actively collects information from in-scope hosts and networks ",
                              default=ReportScopeType.within.name)
-    parser_host_group.add_argument("--source", metavar="SOURCE", type=str,
-                                   help="specify the source of the hosts to be added")
+    parser_host.add_argument("--source", metavar="SOURCE", type=str,
+                             help="specify the source of the hosts to be added")
     # setup domain parser
     parser_domain.add_argument('DOMAIN', type=str, nargs="+")
     parser_domain.add_argument("-w", "--workspace",
@@ -961,7 +964,7 @@ $ sudo docker-compose run kaliintelsuite kismanage workspace --add $workspace
         sys.exit(1)
     try:
         exit_code = 0
-        engine = Engine()
+        engine = Engine(production=not args.testing)
         domain_utils = DomainUtils()
         ipv4_address_utils = IpUtils()
         DeclarativeBase.metadata.bind = engine.engine

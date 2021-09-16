@@ -1772,6 +1772,21 @@ class DomainName(DeclarativeBase):
                  (active_collector is None or not active_collector or self.in_scope and active_collector)
         return rvalue
 
+    def has_given_collectors(self, include_collectors: List[str] = [], **kwargs) -> bool:
+        """
+        Determines whether the given host has a collector listed in list include_collectors
+        :param include_collectors:
+        :param kwargs:
+        :return: Returns true, if the host has a collector
+        """
+        rvalue = not include_collectors
+        if not rvalue:
+            for host_name in self.host_names:
+                if host_name.has_given_collectors(include_collectors, **kwargs):
+                    rvalue = True
+                    break
+        return rvalue
+
     def get_text(self,
                  ident: int = 0,
                  show_metadata: bool = True,
@@ -1785,36 +1800,39 @@ class DomainName(DeclarativeBase):
         :return: String for console output
         """
         rvalue = []
-        if show_metadata:
-            full = report_visibility != ReportVisibility.relevant if ReportVisibility else True
-            Utils.get_text(rvalue, ident, True, "KIS intel report for {}", self.name,
-                           color=FontColor.BLUE + FontColor.BOLD if color else None)
-            Utils.get_text(rvalue, ident, True, "| In scope:        {}", self.in_scope)
-            Utils.get_text(rvalue, ident, True, "| Workspace:       {}", self.workspace.name)
-            host_names = ", ".join([item.full_name for item in self.host_names if item.name])
-            Utils.get_text(rvalue, ident, full, "| Host names:      {}", host_names)
-            Utils.get_text(rvalue, ident, full, "| Companies:       {}", self.companies_str)
-            emails = []
+        has_given_collectors = self.has_given_collectors(**kwargs)
+        if has_given_collectors:
+            if show_metadata:
+                full = report_visibility != ReportVisibility.relevant if ReportVisibility else True
+                Utils.get_text(rvalue, ident, True, "KIS intel report for {}", self.name,
+                               color=FontColor.BLUE + FontColor.BOLD if color else None)
+                Utils.get_text(rvalue, ident, True, "| In scope:        {}", self.in_scope)
+                Utils.get_text(rvalue, ident, True, "| Workspace:       {}", self.workspace.name)
+                host_names = ", ".join([item.full_name for item in self.host_names if item.name])
+                Utils.get_text(rvalue, ident, full, "| Host names:      {}", host_names)
+                Utils.get_text(rvalue, ident, full, "| Companies:       {}", self.companies_str)
+                emails = []
+                for host_name in self.host_names:
+                    for email in host_name.emails:
+                        emails.append(email.email_address)
+                emails = ", ".join(emails)
+                Utils.get_text(rvalue, ident, full, "| Emails:          {}", emails)
+                dedup = {}
+                for host_name in self.host_names:
+                    for source in host_name.sources:
+                        dedup[source.name] = True
+                sources = ", ".join(list(dedup.keys()))
+                Utils.get_text(rvalue, ident, full, "|_Sources:         {}", sources)
+            hashes_dedup = {}
             for host_name in self.host_names:
-                for email in host_name.emails:
-                    emails.append(email.email_address)
-            emails = ", ".join(emails)
-            Utils.get_text(rvalue, ident, full, "| Emails:          {}", emails)
-            dedup = {}
-            for host_name in self.host_names:
-                for source in host_name.sources:
-                    dedup[source.name] = True
-            sources = ", ".join(list(dedup.keys()))
-            Utils.get_text(rvalue, ident, full, "|_Sources:         {}", sources)
-        hashes_dedup = {}
-        for host_name in self.host_names:
-            items = host_name.get_command_text(ident=ident,
-                                               hashes_dedup=hashes_dedup,
-                                               show_metadata=show_metadata,
-                                               color=color,
-                                               **kwargs)
-            if items:
-                rvalue.extend(items)
+                items = host_name.get_command_text(ident=ident,
+                                                   hashes_dedup=hashes_dedup,
+                                                   show_metadata=show_metadata,
+                                                   report_visibility=report_visibility,
+                                                   color=color,
+                                                   **kwargs)
+                if items:
+                    rvalue.extend(items)
         return rvalue
 
 

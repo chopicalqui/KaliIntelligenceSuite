@@ -45,7 +45,7 @@ class CollectorClass(BaseDnsCollector, DomainCollector):
     """This class implements a collector module that is automatically incorporated into the application."""
 
     def __init__(self, **kwargs):
-        super().__init__(priority=170,
+        super().__init__(priority=155,
                          timeout=0,
                          delay_min=3,
                          **kwargs)

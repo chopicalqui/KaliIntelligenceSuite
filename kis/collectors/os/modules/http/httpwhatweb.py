@@ -163,5 +163,5 @@ class CollectorClass(BaseHttpCollector, ServiceCollector, HostNameServiceCollect
         code etc.
         """
         # if we do not have an output, then the command failed
-        if not command.stdout:
+        if not command.stdout and command.return_code >= 0:
             self._set_execution_failed(session=session, command=command)

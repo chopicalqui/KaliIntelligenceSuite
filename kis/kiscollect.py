@@ -234,7 +234,12 @@ Finally, you might want to re-run the entire process to collect further informat
         collector_group = parser.add_argument_group('collectors', 'use the following arguments to collect intelligence')
         ogroup = parser.add_argument_group('general options', 'use the following arguments to specify how intelligence '
                                                               'is collected')
+        testing_group = parser.add_argument_group('internal options', 'this options are only used by KIS itself and '
+                                                                      'therefore should not be used by end users')
         producer.add_argparser_arguments(collector_group)
+        testing_group.add_argument('--testing',
+                                   action="store_true",
+                                   help="if specified, then KIS uses the testing instead of the production database")
         ogroup.add_argument("--http-proxy",
                             type=str,
                             help="specify an HTTP(S) proxy that shall be used by collectors in the format "
@@ -367,6 +372,8 @@ Finally, you might want to re-run the entire process to collect further informat
             engine.print_workspaces()
             sys.exit(1)
         with tempfile.TemporaryDirectory() as temp_dir:
+            if args.testing:
+                engine.production = False
             arguments = vars(args)
             if args.output_dir and not os.path.isdir(args.output_dir):
                 print("output directory '{}' does not exist!".format(args.output_dir), file=sys.stderr)

@@ -138,6 +138,9 @@ $ sudo docker-compose run kaliintelsuite kisreport file -w $ws --type xml -I tcp
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=SortingHelpFormatter, epilog=epilog)
     parser.add_argument("--nocolor", action="store_true", help="disable colored output")
     parser.add_argument("-l", "--list", action='store_true', help="list existing workspaces")
+    parser.add_argument('--testing',
+                        action="store_true",
+                        help="if specified, then KIS uses the testing instead of the production database")
     sub_parser = parser.add_subparsers(help='list of available database modules', dest="module")
     parser_additional_info = sub_parser.add_parser('additional-info', help='allows querying additional information '
                                                                            '(e.g., HTTP headers)')
@@ -670,7 +673,7 @@ $ sudo docker-compose run kaliintelsuite kisreport file -w $ws --type xml -I tcp
         parser.print_help()
         sys.exit(1)
     try:
-        engine = Engine()
+        engine = Engine(production=not args.testing)
         if args.list:
             engine.print_workspaces()
             sys.exit(1)

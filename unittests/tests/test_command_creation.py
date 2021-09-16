@@ -1054,7 +1054,8 @@ class TestCreatingAllCommands(BaseKisTestCase):
         self._readme_path = os.path.join(os.path.dirname(__file__), "..", "..", "README.md")
         self._re_entry = re.compile("^\|\s*(?P<priority>[0-9]+)\s*\|\s*(?P<collector_name>[a-zA-Z0-9]+)\s*"
                                     "\|\s*(?P<level>[a-zA-Z0-9, ]+)\s*\|\s*(?P<type>[a-zA-Z0-9*]+)\s*\|"
-                                    "\s*(?P<ip_version>[a-zA-Z0-9, -]+)\s*\|.*$")
+                                    "\s*(?P<ip_version>[a-zA-Z0-9, -]+)\s*\|\s*(?P<timeout>.+)\s*\|"
+                                    "\s*(?P<username>.+)\s*\|.*$")
         self._collector_info = {}
         with open(self._readme_path, "r") as file:
             for line in file.readlines():
@@ -1064,11 +1065,19 @@ class TestCreatingAllCommands(BaseKisTestCase):
                     priority = match.group("priority").strip()
                     if priority != "-":
                         collector_name = match.group("collector_name").strip()
+                        priority = match.group("priority").strip()
+                        priority = int(priority) if priority.isnumeric() else None
                         level = match.group("level").strip().split(", ")
                         ip_version = match.group("ip_version").strip().split(", ")
+                        timeout = match.group("timeout").strip()
+                        timeout = int(timeout) if timeout.isnumeric() else 0
+                        username = match.group("username").strip()
                         if collector_name not in ["vnceyewitness", "httpnikto"]:
-                            self._collector_info[collector_name] = {"levels": level,
+                            self._collector_info[collector_name] = {"priority": priority,
+                                                                    "levels": level,
                                                                     "ipversions": ip_version,
+                                                                    "username": username,
+                                                                    "timeout": timeout,
                                                                     "arguments": True}
                             if collector_name in ["tcpmasscannetwork",
                                                   "tcpnmapdomain",
@@ -1257,6 +1266,18 @@ class TestCreatingAllCommands(BaseKisTestCase):
                     arguments[collector] = config["arguments"]
             producer.init(arguments)
             producer._create(debug=True)
+
+            # Check compliance to README
+            for collector in producer.selected_collectors:
+                collector_name = collector.name
+                priority = collector.instance.priority
+                timeout = collector.instance.timeout
+                exec_user = collector.instance.exec_user.pw_name
+                print("Check instance: {} ({})".format(collector_name, priority))
+                self.assertIn(collector_name, self._collector_info.keys())
+                self.assertEqual(self._collector_info[collector_name]["priority"], priority)
+                self.assertEqual(self._collector_info[collector_name]["timeout"], timeout)
+                self.assertEqual(self._collector_info[collector_name]["username"], exec_user)
         # Check database (use the following code for trouble shooting; the code above takes very long to create all 580
         # commands.
         # with tempfile.TemporaryDirectory() as temp_dir:
@@ -1273,7 +1294,7 @@ class TestCreatingAllCommands(BaseKisTestCase):
         #             arguments[collector] = config["arguments"]
         with self._engine.session_scope() as session:
             for collector, values in self._collector_info.items():
-                print(collector)
+                print("Check database: {}".format(collector))
                 actual_versions = {}
                 if specific_collector and specific_collector != collector:
                     continue

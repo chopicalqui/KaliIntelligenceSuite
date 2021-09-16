@@ -45,7 +45,7 @@ class CollectorClass(BaseVncMsfConsole, ServiceCollector):
     """This class implements a collector module that is automatically incorporated into the application."""
 
     def __init__(self, **kwargs):
-        super().__init__(priority=11750,
+        super().__init__(priority=11010,
                          timeout=0,
                          **kwargs)
         self._re_login = re.compile("^.*- Login Successful:\s+(?P<password>.*)$", re.IGNORECASE)

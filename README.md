@@ -282,7 +282,7 @@ The column **User** specifies the user with which the respective operating syste
 | 160      | dnsenum                   | domain          | Active   | -          | -       | nobody |
 | 170      | dnsgobuster               | domain          | Active   | -          | -       | nobody |
 | 180      | dnsrecon                  | domain          | Active   | -          | -       | nobody |
-| 210      | whoisdomain               | domain          | Active   | -          | 10      | nobody |
+| 210      | whoisdomain               | domain          | Active   | -          | 30      | nobody |
 | 215      | dnsspf                    | domain          | Active   | -          | -       | nobody |
 | 220      | dnsdmarc                  | domain          | Active   | -          | -       | nobody |
 | 235      | dnsdkim                   | domain          | Active   | -          | -       | nobody |
@@ -294,13 +294,13 @@ The column **User** specifies the user with which the respective operating syste
 | 410      | hunter                    | domain          | Active*  | -          | -       | nobody |
 | 420      | haveibeenbreach           | email           | Active*  | -          | -       | nobody |
 | 430      | haveibeenpaste            | email           | Active*  | -          | -       | nobody |
-| 510      | whoishost                 | host            | Passive  | IPv4, IPv6 | -       | nobody |
-| 512      | whoisnetwork              | network         | Passive  | IPv4, IPv6 | -       | nobody |
+| 510      | whoishost                 | host            | Passive  | IPv4, IPv6 | 30      | nobody |
+| 512      | whoisnetwork              | network         | Passive  | IPv4, IPv6 | 30      | nobody |
 | 515      | reversewhois              | company         | Active*  | -          | -       | nobody |
 | 520      | shodanhost                | host            | Active*  | IPv4, IPv6 | -       | nobody |
 | 521      | shodannetwork             | network         | Active*  | IPv4, IPv6 | -       | nobody |
-| 530      | censyshost                | host            | Active*  | IPv4       | -       | nobody |
-| 540      | crtshcompany              | company         | Active*  | -          | -       | root   |
+| 530      | censyshost                | host            | Active*  | IPv4       | -       | kali   |
+| 540      | crtshcompany              | company         | Active*  | -          | -       | nobody |
 | 550      | dnscrobatreversenetwork   | network         | Active*  | IPv4, IPv6 | -       | nobody |
 | 1100     | tcpnmapnetwork            | network         | Active   | IPv4, IPv6 | -       | root   |
 | 1150     | tcpnmapdomain             | domain          | Active   | IPv4, IPv6 | -       | root   |
@@ -365,9 +365,9 @@ The column **User** specifies the user with which the respective operating syste
 | 41100    | sslyze                    | service, vhost  | Active   | IPv4       | -       | nobody |
 | 41200    | sshnmap                   | service         | Active   | IPv4, IPv6 | -       | root   |
 | 41300    | certnmap                  | service, vhost  | Active   | IPv4, IPv6 | -       | root   |
-| 41305    | certopenssl               | service, vhost  | Active   | IPv4, IPv6 | 120     | nobody |
 | 41310    | tlsnmap                   | service, vhost  | Active   | IPv4, IPv6 | -       | root   |
-| 41400    | sslscan                   | service, vhost  | Active   | IPv4, IPv6 | -       | nobody |
+| 41320    | sslscan                   | service, vhost  | Active   | IPv4, IPv6 | -       | nobody |
+| 41330    | certopenssl               | service, vhost  | Active   | IPv4, IPv6 | 120     | nobody |
 | 51100    | httpgobuster              | service, vhost  | Active   | IPv4, IPv6 | -       | nobody |
 | 51110    | httpgobustersmart         | service, vhost  | Active   | IPv4, IPv6 | -       | nobody |
 | 51150    | httpkiterunner            | service, vhost  | Active   | Ipv4       | -       | kali   |
