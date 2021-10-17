@@ -76,13 +76,16 @@ Scopes can be set on the following items by using the script `kismanage`:
       The following listing provides an example on how this scope type is set during the initial intel collection setup:
       ```bash
       # create a new workspace example
-      $ sudo docker-compose run kaliintelsuite kismanage workspace -a example
+      $ docker exec -it kaliintelsuite exec kismanage workspace -a example
+      
       # add the network 192.168.1.0/24 to workspace example and set the scope to all (default)
-      $ sudo docker-compose run kaliintelsuite kismanage network -w example -a 192.168.1.0/24
+      $ docker exec -it kaliintelsuite exec kismanage network -w example -a 192.168.1.0/24
+      
       # add new IP address 192.168.1.1 to workspace example. IP address is automatically in scope due to the network's scope all
-      $ sudo docker-compose run kaliintelsuite kismanage host -w example -a 192.168.1.1
+      $ docker exec -it kaliintelsuite exec kismanage host -w example -a 192.168.1.1
+      
       # verify the initial setup
-      $ sudo docker-compose run kaliintelsuite kisreport host -w example --csv | csvcut -c "Network (NW)","Scope (NW)","IP Address (IP)","In Scope (IP)" | csvlook
+      $ docker exec -it kaliintelsuite exec kisreport host -w example --csv | csvcut -c "Network (NW)","Scope (NW)","IP Address (IP)","In Scope (IP)" | csvlook
       | Network (NW)   | Scope (NW)    | IP Address (IP) | "In Scope (IP)" |
       | -------------- | ------------- | --------------- | --------------- |
       | 192.168.1.0/24 | all           | 192.168.1.1     |            True |
@@ -98,13 +101,16 @@ Scopes can be set on the following items by using the script `kismanage`:
       The following listing provides an example on how this scope type is set during the initial intel collection setup:
       ```bash
       # create a new workspace example
-      $ sudo docker-compose run kaliintelsuite kismanage workspace -a example
+      $ docker exec -it kaliintelsuite exec kismanage workspace -a example
+      
       # add the network 192.168.1.0/24 to workspace example and set the scope to strict
-      $ sudo docker-compose run kaliintelsuite kismanage network -w example -a 192.168.1.0/24 -s strict
+      $ docker exec -it kaliintelsuite exec kismanage network -w example -a 192.168.1.0/24 -s strict
+      
       # add new IP address 192.168.1.1 to workspace example and set it in scope (default)
-      $ sudo docker-compose run kaliintelsuite kismanage host -w example -a 192.168.1.1
+      $ docker exec -it kaliintelsuite exec kismanage host -w example -a 192.168.1.1
+      
       # verify the initial setup
-      $ sudo docker-compose run kaliintelsuite kisreport host -w example --csv | csvcut -c "Network (NW)","Scope (NW)","IP Address (IP)","In Scope (IP)" | csvlook
+      $ docker exec -it kaliintelsuite exec kisreport host -w example --csv | csvcut -c "Network (NW)","Scope (NW)","IP Address (IP)","In Scope (IP)" | csvlook
       | Network (NW)   | Scope (NW)    | IP Address (IP) | "In Scope (IP)" |
       | -------------- | ------------- | --------------- | --------------- |
       | 192.168.1.0/24 | strict        | 192.168.1.1     |            True |
@@ -128,14 +134,17 @@ Scopes can be set on the following items by using the script `kismanage`:
       The following listing provides an example on how this scope type is set during the initial intel collection setup:
       ```bash
       # create a new workspace example
-      $ sudo docker-compose run kaliintelsuite kismanage workspace -a example
+      $ docker exec -it kaliintelsuite exec kismanage workspace -a example
+      
       # add the second-level domain megacorpone.com to workspace example and set the scope to all (default)
-      $ sudo docker-compose run kaliintelsuite kismanage domain -w example -a megacorpone.com
+      $ docker exec -it kaliintelsuite exec kismanage domain -w example -a megacorpone.com
+      
       # add new host names to workspace example. The host names are automatically in scope due to the second-level 
       # domain's scope all
-      $ sudo docker-compose run kaliintelsuite kismanage hostname -w example -a www.megacorpone.com ftp.megacorpone.com
+      $ docker exec -it kaliintelsuite exec kismanage hostname -w example -a www.megacorpone.com ftp.megacorpone.com
+      
       # verify the initial setup
-      $ sudo docker-compose run kaliintelsuite kisreport domain -w example --csv | csvcut -c "Second-Level Domain (SLD)","Scope (SLD)","Host Name (HN)","In Scope (HN)" | csvlook
+      $ docker exec -it kaliintelsuite exec kisreport domain -w example --csv | csvcut -c "Second-Level Domain (SLD)","Scope (SLD)","Host Name (HN)","In Scope (HN)" | csvlook
       | Second-Level Domain (SLD) | Scope (SLD) | Host Name (HN)      | In Scope (HN) |
       | ------------------------- | ----------- | ------------------- | ------------- |
       | megacorpone.com           | all         | megacorpone.com     |          True |
@@ -152,13 +161,16 @@ Scopes can be set on the following items by using the script `kismanage`:
       The following listing provides an example on how this scope type is set during the initial intel collection setup:
       ```bash
       # create a new workspace example
-      $ sudo docker-compose run kaliintelsuite kismanage workspace -a example
+      $ docker exec -it kaliintelsuite exec kismanage workspace -a example
+      
       # add the second-level domain megacorpone.com to workspace example and set the scope to strict
-      $ sudo docker-compose run kaliintelsuite kismanage domain -w example -a megacorpone.com -s strict
+      $ docker exec -it kaliintelsuite exec kismanage domain -w example -a megacorpone.com -s strict
+      
       # add new host names to workspace example. They are automatically in scope due to kismanage's default value.
-      $ sudo docker-compose run kaliintelsuite kismanage hostname -w example -a www.megacorpone.com ftp.megacorpone.com
+      $ docker exec -it kaliintelsuite exec kismanage hostname -w example -a www.megacorpone.com ftp.megacorpone.com
+      
       # verify the initial setup
-      $ sudo docker-compose run kaliintelsuite kisreport domain -w example --csv | csvcut -c "Second-Level Domain (SLD)","Scope (SLD)","Host Name (HN)","In Scope (HN)" | csvlook
+      $ docker exec -it kaliintelsuite exec kisreport domain -w example --csv | csvcut -c "Second-Level Domain (SLD)","Scope (SLD)","Host Name (HN)","In Scope (HN)" | csvlook
       | Second-Level Domain (SLD) | Scope (SLD) | Host Name (HN)      | In Scope (HN) |
       | ------------------------- | ----------- | ------------------- | ------------- |
       | megacorpone.com           | strict      | megacorpone.com     |         False |
@@ -185,9 +197,10 @@ Scopes can be set on the following items by using the script `kismanage`:
    
      ```bash
      # create a new workspace example
-     $ sudo docker-compose run kaliintelsuite kismanage workspace -a example
+     $ docker exec -it kaliintelsuite exec kismanage workspace -a example
+     
      # add the second-level domain google.com to workspace example and set the scope to all (default)
-     $ sudo docker-compose run kaliintelsuite kismanage domain -w example -a google.com
+     $ docker exec -it kaliintelsuite exec kismanage domain -w example -a google.com
      ```
      
      In this case, KIS is able to, among other things, enumerate any sub-level domains as well as resolve their 
@@ -196,7 +209,7 @@ Scopes can be set on the following items by using the script `kismanage`:
      
      ```bash
      # add the network 172.217.0.0/16 to workspace example and set the scope to all (default)
-     $ sudo docker-compose run kaliintelsuite kismanage network -w example -a 172.217.0.0/16
+     $ docker exec -it kaliintelsuite exec kismanage network -w example -a 172.217.0.0/16
      ```
      
    * Example 2: Let's assume the second-level domain google.com together with all sub-level domains that resolve to 
@@ -205,9 +218,10 @@ Scopes can be set on the following items by using the script `kismanage`:
      
      ```bash
      # create a new workspace example
-     $ sudo docker-compose run kaliintelsuite kismanage workspace -a example
+     $ docker exec -it kaliintelsuite exec kismanage workspace -a example
+     
      # add the second-level domain google.com to workspace example and set the scope to all (default)
-     $ sudo docker-compose run kaliintelsuite kismanage domain -w example -a google.com
+     $ docker exec -it kaliintelsuite exec kismanage domain -w example -a google.com
      ```
      
      In this case, KIS is able to, among other things, enumerate any sub-level domains as well as resolve their 
@@ -216,7 +230,7 @@ Scopes can be set on the following items by using the script `kismanage`:
      
      ```bash
      # add network 0.0.0.0/0 to workspace example and set the scope to all (default)
-     $ sudo docker-compose run kaliintelsuite kismanage network -w example -a 0.0.0.0/0
+     $ docker exec -it kaliintelsuite exec kismanage network -w example -a 0.0.0.0/0
      ```
 
 
@@ -405,7 +419,7 @@ This script allows:
 
 Run the following command to obtain more information and examples:
 ```bash
-$ sudo docker-compose run kaliintelsuite kismanage -h
+$ docker exec -it kaliintelsuite exec kismanage -h
 ```
 
 ### kiscollect
@@ -414,7 +428,7 @@ This script implements a commandline interface to collect the intelligence.
 
 Run the following command to obtain more information and examples:
 ```bash
-$ sudo docker-compose run kaliintelsuite kiscollect -h
+$ docker exec -it kaliintelsuite exec kiscollect -h
 ```
 
 ### kisreport
@@ -428,7 +442,7 @@ This script allows the analysis of the collected data via various filtering opti
 
 Run the following command to obtain more information and examples:
 ```bash
-$ sudo docker-compose run kaliintelsuite kisreport -h
+$ docker exec -it kaliintelsuite exec kisreport -h
 ```
 
 ## Author

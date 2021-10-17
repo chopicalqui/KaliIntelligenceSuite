@@ -56,6 +56,7 @@ RUN apt-get update && \
                        passing-the-hash \
                        proxychains4 \
                        python3-minimal \
+                       postgresql-client-14 \
                        rpcbind \
                        sidguesser \
                        smbclient \
@@ -154,6 +155,7 @@ COPY --from=builder /tmp/snmp-default.txt /usr/share/legion/wordlists/
 # Deploy KIS
 COPY ./kis /opt/kaliintelsuite/kis/
 
-WORKDIR /opt/kaliintelsuite/kis
+# Modify .bashrc to prevent copy&paste issues
+COPY .bashrc /root/.bashrc
 
-CMD ["bash"]
+WORKDIR /opt/kaliintelsuite/kis

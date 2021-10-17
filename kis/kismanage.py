@@ -477,7 +477,7 @@ if __name__ == "__main__":
 
 - I. initialize the database for the first time
 
-$ sudo docker-compose run kaliintelsuite kismanage database --init
+$ docker exec -it kaliintelsuite exec kismanage database --init
 
 - IIa. create backup of the entire KIS database and store it in file $backup
 
@@ -485,24 +485,24 @@ $ sudo docker exec -t kaliintelsuite_db_1 pg_dumpall -c -U kis > $backup
 
 - IIb. restore the previously created KIS database from file $backup
 
-$ sudo docker-compose run kaliintelsuite kismanage database --drop
+$ docker exec -it kaliintelsuite exec kismanage database --drop
 $ cat $backup | sudo docker exec -i kaliintelsuite_db_1 psql -U kis -d kis
       
 - III. drop existing database and restore KIS database backup, which is stored in file $backup
 
-$ sudo docker-compose run kaliintelsuite kismanage database --drop --restore $backup
+$ docker exec -it kaliintelsuite exec kismanage database --drop --restore $backup
 
 - IV. re-initialize KIS database
 
-$ sudo docker-compose run kaliintelsuite kismanage database --drop --init
+$ docker exec -it kaliintelsuite exec kismanage database --drop --init
 
 - V. list of existing workspaces
 
-$ sudo docker-compose run kaliintelsuite kismanage -l
+$ docker exec -it kaliintelsuite exec kismanage -l
 
 - IV. add new workspace $workspace
 
-$ sudo docker-compose run kaliintelsuite kismanage workspace --add $workspace
+$ docker exec -it kaliintelsuite exec kismanage workspace --add $workspace
 '''
     parser = KisImportArgumentParser(description=__doc__, formatter_class=SortingHelpFormatter, epilog=epilog)
     parser.add_argument("--debug",
