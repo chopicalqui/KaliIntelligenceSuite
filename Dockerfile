@@ -56,6 +56,7 @@ RUN apt-get update && \
                        passing-the-hash \
                        proxychains4 \
                        python3-minimal \
+                       postgresql-client-14 \
                        rpcbind \
                        sidguesser \
                        smbclient \
@@ -92,7 +93,7 @@ RUN wget https://github.com/michenriksen/aquatone/releases/download/v1.7.0/aquat
     unzip /tmp/aquatone.zip
 
 # Prepare Crobat
-RUN go get github.com/cgboal/SonarSearch/cmd/crobat
+RUN go get github.com/cgboal/sonarsearch/cmd/crobat
 
 # Prepare Kiterunner
 RUN wget https://github.com/assetnote/kiterunner/releases/download/v1.0.2/kiterunner_1.0.2_linux_amd64.tar.gz -O /tmp/kiterunner.tar.gz && \
@@ -154,6 +155,7 @@ COPY --from=builder /tmp/snmp-default.txt /usr/share/legion/wordlists/
 # Deploy KIS
 COPY ./kis /opt/kaliintelsuite/kis/
 
-WORKDIR /opt/kaliintelsuite/kis
+# Modify .bashrc to prevent copy&paste issues
+COPY .bashrc /root/.bashrc
 
-CMD ["bash"]
+WORKDIR /opt/kaliintelsuite/kis

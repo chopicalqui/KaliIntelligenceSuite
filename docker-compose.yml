@@ -2,6 +2,7 @@ version: "3.1"
 services:
   db:
     image: postgres:latest
+    container_name: kaliinteldb
     volumes:
       - db_data:/var/lib/postgresql/data
     environment:
@@ -13,10 +14,11 @@ services:
       - db_password
 
   kaliintelsuite:
+    container_name: kaliintelsuite
     depends_on:
       - db
     volumes:
-      - kis_config:/opt/kaliintelsuite/config/
+      - kis_config:/opt/kaliintelsuite/kis/configs/
       - kis_data:/kis
     environment:
       KIS_DB_USER: kis
@@ -28,6 +30,7 @@ services:
     secrets:
       - db_password
     build: .
+    tty: True
 
 secrets:
    db_password:
