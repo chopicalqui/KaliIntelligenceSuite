@@ -477,32 +477,34 @@ if __name__ == "__main__":
 
 - I. initialize the database for the first time
 
-$ docker exec -it kaliintelsuite exec kismanage database --init
+$ docker exec -it kaliintelsuite kismanage database --init
 
 - IIa. create backup of the entire KIS database and store it in file $backup
 
-$ sudo docker exec -t kaliintelsuite_db_1 pg_dumpall -c -U kis > $backup
+$ sudo docker exec -t kaliinteldb pg_dumpall -c -U kis > $backup
 
-- IIb. restore the previously created KIS database from file $backup
+- IIb. restore the previously created KIS database from file $backup. this command only works with local PostgreSQL
+database.
 
-$ docker exec -it kaliintelsuite exec kismanage database --drop
-$ cat $backup | sudo docker exec -i kaliintelsuite_db_1 psql -U kis -d kis
+$ docker exec -it kaliintelsuite kismanage database --drop
+$ cat $backup | sudo docker exec -i kaliinteldb psql -U kis -d kis
       
-- III. drop existing database and restore KIS database backup, which is stored in file $backup
+- III. drop existing database and restore KIS database backup, which is stored in file $backup. this command does not
+work in Docker environment.
 
-$ docker exec -it kaliintelsuite exec kismanage database --drop --restore $backup
+$ kismanage database --drop --restore $backup
 
 - IV. re-initialize KIS database
 
-$ docker exec -it kaliintelsuite exec kismanage database --drop --init
+$ docker exec -it kaliintelsuite kismanage database --drop --init
 
 - V. list of existing workspaces
 
-$ docker exec -it kaliintelsuite exec kismanage -l
+$ docker exec -it kaliintelsuite kismanage -l
 
 - IV. add new workspace $workspace
 
-$ docker exec -it kaliintelsuite exec kismanage workspace --add $workspace
+$ docker exec -it kaliintelsuite kismanage workspace --add $workspace
 '''
     parser = KisImportArgumentParser(description=__doc__, formatter_class=SortingHelpFormatter, epilog=epilog)
     parser.add_argument("--debug",

@@ -16,7 +16,7 @@ In order to use KIS in a Docker environment, follow the following configuration 
 
     ```bash
     sudo su -
-    pwgen -s -y 20 -N1 > /opt/kaliintelsuite/postgres.txt
+    pwgen -s 30 -N1 > /opt/kaliintelsuite/postgres.txt
     chmod 400 /opt/kaliintelsuite/postgres.txt
     ```
 
@@ -30,19 +30,19 @@ In order to use KIS in a Docker environment, follow the following configuration 
 
     ```bash
     cd /opt/kaliintelsuite
-    sudo docker-compose run -d
+    docker-compose run -d --name kaliintelsuite kaliintelsuite
     ```
 
  - **[mandatory]** Initialize the database.
 
     ```bash
-    sudo docker-compose run kaliintelsuite kismanage database --init --drop
+    docker exec -it kaliintelsuite kismanage database --init --drop
     ```
 
  - **[optional]** Check KIS setup to determine potential issues:
 
     ```bash
-    sudo docker-compose run kaliintelsuite kismanage database --test
+    docker exec -it kaliintelsuite kismanage database --test
     check os
     Linux 161047b3acca 5.10.0-kali8-amd64 #1 SMP Debian 5.10.40-1kali1 (2021-05-31) x86_64    [supported]
 
@@ -61,7 +61,7 @@ In order to use KIS in a Docker environment, follow the following configuration 
  - **[optional]** Remove unused Docker data to free up space:
 
     ```bash
-    sudo docker system prune
+    docker system prune
     ```
 
 ## Manual Installation (not officially supported)
@@ -92,7 +92,7 @@ In order to manually install KIS, the following configuration steps must be exec
  -  **[mandatory]** Run the setup script:
 
     ```bash
-    kali@kali: ~ $ sudo /opt/kaliintelsuite/kis/kismanage.py database --setup
+    root@kali: /opt/kaliintelsuite # /opt/kaliintelsuite/kis/kismanage.py database --setup
     ```
 
     Use argument `--setup-dbg` instead of `--setup` to review the setup OS commands first.
@@ -106,7 +106,7 @@ In order to manually install KIS, the following configuration steps must be exec
  - **[mandatory]** Check KIS setup to determine potential issues:
 
     ```bash
-    kali@kali: ~ $ sudo kismanage database --test
+    root@kali: /opt/kaliintelsuite # kismanage database --test
     check os
     Linux kali 5.8.0-kali2-amd64 #1 SMP Debian 5.8.10-1kali1 (2020-09-22) x86_64              [supported]
 

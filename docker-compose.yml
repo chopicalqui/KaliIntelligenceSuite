@@ -34,7 +34,7 @@ services:
 
 secrets:
    db_password:
-     file: postgres.txt
+     file: /opt/kaliintelsuite/postgres.txt
 
 volumes:
     db_data:

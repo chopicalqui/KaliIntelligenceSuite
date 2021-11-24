@@ -33,7 +33,7 @@ from database.model import Path
 from database.model import ScopeType
 
 
-class BaseHttpGobusterCollectorTestCase(BaseKaliHttpCollectorTestCase):
+class BaseHttpKiteRunnerCollectorTestCase(BaseKaliHttpCollectorTestCase):
     """
     This class implements all unittestss for the given collector
     """
