@@ -22,7 +22,6 @@ __version__ = 0.1
 
 import subprocess
 import psutil
-import queue
 import os
 import time
 import logging
@@ -31,6 +30,7 @@ from threading import Thread
 from threading import Lock
 from typing import List
 from datetime import datetime
+from configs.config import BaseConfig
 
 logger = logging.getLogger('process')
 
@@ -48,12 +48,13 @@ def demote(user_uid, user_gid):
 
 class OutputReader(Thread):
     """This class is used as base class to asynchronously read data from processes' STDOUT and STDERR."""
-    def __init__(self, proc):
+    def __init__(self, proc, is_stdout: bool):
         """
         :param proc: Process instance created by method subprocess.Popen
         """
         Thread.__init__(self, daemon=True)
         self._proc = proc
+        self._output_stream = proc.stdout if is_stdout else proc.stderr
         self._list_lock = Lock()
         self._output = []
 
@@ -73,7 +74,15 @@ class OutputReader(Thread):
             self._output.append(value)
 
     def run(self):
-        raise NotImplementedError("Method not implemented!")
+        """
+        Method reads the content of STDOUT as long as the process is active.
+        :return: None
+        """
+        for line in iter(self._output_stream.readline, b''):
+            try:
+                self.append(line.decode().rstrip())
+            except Exception as ex:
+                logger.exception(ex)
 
 
 class StdoutReader(OutputReader):
@@ -85,15 +94,7 @@ class StdoutReader(OutputReader):
         """
         :param proc: Process instance created by method subprocess.Popen
         """
-        super().__init__(proc)
-
-    def run(self):
-        """
-        Method reads the content of STDOUT as long as the process is active.
-        :return: None
-        """
-        for line in iter(self._proc.stdout.readline, b''):
-            self.append(line.decode().rstrip())
+        super().__init__(proc, is_stdout=True)
 
 
 class StderrReader(OutputReader):
@@ -105,15 +106,7 @@ class StderrReader(OutputReader):
         """
         :param proc: Process instance created by method subprocess.Popen
         """
-        super().__init__(proc)
-
-    def run(self):
-        """
-        Method reads the content of STDERR as long as the process is active.
-        :return: None
-        """
-        for line in iter(self._proc.stderr.readline, b''):
-            self.append(line.decode().rstrip())
+        super().__init__(proc, is_stdout=False)
 
 
 class BaseCommand(Thread):
@@ -137,8 +130,22 @@ class BaseCommand(Thread):
         self._stop_time = None
         self._lock = Lock()
         self._pwd = None
+        # Pass relevant environment variables to subprocesses
         self._env = {'PATH': os.environ["PATH"],
                      'HOME': os.environ["HOME"]}
+        if BaseConfig.ENV_PORT in os.environ:
+            self._env[BaseConfig.ENV_PORT] = os.environ[BaseConfig.ENV_PORT]
+        if BaseConfig.ENV_HOST in os.environ:
+            self._env[BaseConfig.ENV_HOST] = os.environ[BaseConfig.ENV_HOST]
+        if BaseConfig.ENV_DB_NAME in os.environ:
+            self._env[BaseConfig.ENV_DB_NAME] = os.environ[BaseConfig.ENV_DB_NAME]
+        if BaseConfig.ENV_USER in os.environ:
+            self._env[BaseConfig.ENV_USER] = os.environ[BaseConfig.ENV_USER]
+        if BaseConfig.ENV_PASSWORD_FILE in os.environ:
+            self._env[BaseConfig.ENV_PASSWORD_FILE] = os.environ[BaseConfig.ENV_PASSWORD_FILE]
+        if BaseConfig.ENV_LOG_PATH in os.environ:
+            self._env[BaseConfig.ENV_LOG_PATH] = os.environ[BaseConfig.ENV_LOG_PATH]
+        # Convert all environment variable values to string
         for key, value in self._env.items():
             self._env[key] = str(value)
         if username:

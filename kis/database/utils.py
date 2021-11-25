@@ -49,6 +49,11 @@ class Engine:
     """This class implements general methods to interact with the underlying database."""
 
     def __init__(self, production: bool = True):
+        self._production = production
+        self._config = config.Database(self._production)
+        self._engine = create_engine(self._config.connection_string)
+        self._session_factory = sessionmaker(bind=self._engine)
+        self._Session = scoped_session(self._session_factory)
         self.production = production
 
     @property

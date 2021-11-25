@@ -115,7 +115,11 @@ class Database(BaseConfig):
     @property
     def db_envs(self) -> dict:
         result = {}
-        if self.is_docker():
+        if Database.ENV_PORT in os.environ and \
+           Database.ENV_HOST in os.environ and \
+           Database.ENV_DB_NAME in os.environ and \
+           Database.ENV_USER in os.environ and \
+           Database.ENV_PASSWORD_FILE in os.environ:
             result = {Database.ENV_PORT: self.env_port,
                       Database.ENV_HOST: self.env_host,
                       Database.ENV_DB_NAME: self.env_database,
