@@ -989,7 +989,7 @@ class BaseKisTestCase(unittest.TestCase):
         self.assertEqual(0, session.query(CertInfo).count())
         self.assertEqual(0, session.query(TlsInfo).count())
         self.assertEqual(0, session.query(TlsInfoCipherSuiteMapping).count())
-        self.assertEqual(345, session.query(CipherSuite).count())
+        self.assertEqual(339, session.query(CipherSuite).count())
 
 
 class BaseDataModelTestCase(BaseKisTestCase):

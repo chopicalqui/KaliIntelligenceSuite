@@ -74,6 +74,10 @@ class BaseConfig:
         return os.path.join(path, "kaliintelsuite.log")
 
     @staticmethod
+    def get_config_home() -> str:
+        return os.path.dirname(__file__)
+
+    @staticmethod
     def get_script_home() -> str:
         return os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), ".."))
 

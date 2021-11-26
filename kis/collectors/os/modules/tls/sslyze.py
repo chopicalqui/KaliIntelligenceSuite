@@ -62,7 +62,7 @@ class CollectorClass(BaseTlsCollector, ServiceCollector, HostNameServiceCollecto
     """This class implements a collector module that is automatically incorporated into the application."""
 
     def __init__(self, **kwargs):
-        super().__init__(priority=41100,
+        super().__init__(priority=41315,
                          timeout=0,
                          **kwargs)
 

@@ -29,7 +29,9 @@ import subprocess
 import ipaddress
 import re
 import pwd
+import json
 import sqlalchemy as sa
+from configs.config import BaseConfig
 from sqlalchemy import Column
 from sqlalchemy import Integer
 from sqlalchemy import String
@@ -3767,29 +3769,8 @@ class CipherSuite(DeclarativeBase):
     openssl_name = Column(Text, nullable=True, unique=True)
     byte_1 = Column(Integer, nullable=False, unique=False)
     byte_2 = Column(Integer, nullable=False, unique=False)
-    protocol_version = Column(Enum(CipherSuiteProtocolVersion), nullable=False, unique=False)
     security = Column(Enum(CipherSuiteSecurity), nullable=False, unique=False)
-    kex_algorithm = Column(Enum(KeyExchangeAlgorithm), nullable=True, unique=False)
-    auth_algorithm = Column(Enum(AuthenticationAlgorithm), nullable=True, unique=False)
-    enc_algorithm = Column(Enum(SymmetricAlgorithm), nullable=False, unique=False)
-    enc_algorithm_bits = Column(Integer, nullable=True, unique=False)
-    aead = Column(Boolean, nullable=True, unique=False)
-    hash_algorithm = Column(Enum(HashAlgorithm), nullable=False, unique=False)
     tls_info = relationship('TlsInfo', secondary='tls_info_cipher_suite_mapping')
-
-    @property
-    def pfs(self):
-        return self.kex_algorithm in [KeyExchangeAlgorithm.ecdh_x25519,
-                                      KeyExchangeAlgorithm.dh,
-                                      KeyExchangeAlgorithm.dhe,
-                                      KeyExchangeAlgorithm.ecdh,
-                                      KeyExchangeAlgorithm.ecdhe,
-                                      KeyExchangeAlgorithm.dh512,
-                                      KeyExchangeAlgorithm.dh1024,
-                                      KeyExchangeAlgorithm.dh2048,
-                                      KeyExchangeAlgorithm.dh2240,
-                                      KeyExchangeAlgorithm.dh3072,
-                                      KeyExchangeAlgorithm.dh4096]
 
     @property
     def sources_str(self) -> str:
@@ -3799,45 +3780,10 @@ class CipherSuite(DeclarativeBase):
         return result
 
     @property
-    def kex_algorithm_str(self) -> str:
-        result = None
-        if self.kex_algorithm:
-            result = self.kex_algorithm.name.upper()
-        return result
-
-    @property
-    def auth_algorithm_str(self) -> str:
-        result = None
-        if self.auth_algorithm:
-            result = self.auth_algorithm.name.upper()
-        return result
-
-    @property
-    def enc_algorithm_str(self) -> str:
-        result = None
-        if self.enc_algorithm:
-            result = self.enc_algorithm.name.upper()
-        return result
-
-    @property
-    def hash_algorithm_str(self) -> str:
-        result = None
-        if self.hash_algorithm:
-            result = self.hash_algorithm.name.upper()
-        return result
-
-    @property
     def security_str(self) -> str:
         result = None
         if self.security:
             result = self.security.name
-        return result
-
-    @property
-    def protocol_version_str(self) -> str:
-        result = None
-        if self.protocol_version:
-            result = self.protocol_version.name
         return result
 
 
@@ -4066,3 +4012,24 @@ class TlsInfo(DeclarativeBase):
             rvalue = True
         return rvalue
 
+
+class CipherSuites(list):
+    """
+    This class holds the current set of cipher suites
+    """
+
+    def __init__(self):
+        super().__init__()
+        file = os.path.join(BaseConfig.get_config_home(), "ciphersuites.json")
+        with open(file, "r") as file:
+            content = json.loads(file.read())
+        for cipher_suites in content["ciphersuites"]:
+            for key, value in cipher_suites.items():
+                gnutls_name = value["gnutls_name"]
+                openssl_name = value["openssl_name"]
+                self.append(CipherSuite(iana_name=key,
+                                        gnutls_name=gnutls_name if gnutls_name else None,
+                                        openssl_name=openssl_name if openssl_name else None,
+                                        byte_1=int(value["hex_byte_1"], 16),
+                                        byte_2=int(value["hex_byte_2"], 16),
+                                        security=CipherSuiteSecurity[value["security"]]))

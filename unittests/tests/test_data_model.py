@@ -1026,77 +1026,27 @@ class TestCipherSuite(BaseDataModelTestCase):
                                          gnutls_name='test',
                                          byte_1=1,
                                          byte_2=2,
-                                         protocol_version=CipherSuiteProtocolVersion.tls,
-                                         security=CipherSuiteSecurity.insecure,
-                                         enc_algorithm=SymmetricAlgorithm.aes128,
-                                         hash_algorithm=HashAlgorithm.md5)
+                                         security=CipherSuiteSecurity.insecure)
 
     def test_not_null_constraint(self):
         self.init_db()
         with self._engine.session_scope() as session:
             self._test_not_null_constraint(session,
-                                           openssl_name='AECDH-RC4-SHA',
-                                           gnutls_name='test',
                                            byte_1=1,
                                            byte_2=2,
-                                           protocol_version=CipherSuiteProtocolVersion.tls,
-                                           security=CipherSuiteSecurity.insecure,
-                                           enc_algorithm=SymmetricAlgorithm.aes128,
-                                           hash_algorithm=HashAlgorithm.md5)
+                                           security=CipherSuiteSecurity.insecure)
             self._test_not_null_constraint(session,
                                            iana_name='TLS_ECDH_anon_WITH_RC4_128_SHA',
-                                           openssl_name='AECDH-RC4-SHA',
-                                           gnutls_name='test',
                                            byte_2=2,
-                                           protocol_version=CipherSuiteProtocolVersion.tls,
-                                           security=CipherSuiteSecurity.insecure,
-                                           enc_algorithm=SymmetricAlgorithm.aes128,
-                                           hash_algorithm=HashAlgorithm.md5)
+                                           security=CipherSuiteSecurity.insecure)
             self._test_not_null_constraint(session,
                                            iana_name='TLS_ECDH_anon_WITH_RC4_128_SHA',
-                                           openssl_name='AECDH-RC4-SHA',
-                                           gnutls_name='test',
                                            byte_1=1,
-                                           protocol_version=CipherSuiteProtocolVersion.tls,
-                                           security=CipherSuiteSecurity.insecure,
-                                           enc_algorithm=SymmetricAlgorithm.aes128,
-                                           hash_algorithm=HashAlgorithm.md5)
+                                           security=CipherSuiteSecurity.insecure)
             self._test_not_null_constraint(session,
                                            iana_name='TLS_ECDH_anon_WITH_RC4_128_SHA',
-                                           openssl_name='AECDH-RC4-SHA',
-                                           gnutls_name='test',
                                            byte_1=1,
-                                           byte_2=2,
-                                           security=CipherSuiteSecurity.insecure,
-                                           enc_algorithm=SymmetricAlgorithm.aes128,
-                                           hash_algorithm=HashAlgorithm.md5)
-            self._test_not_null_constraint(session,
-                                           iana_name='TLS_ECDH_anon_WITH_RC4_128_SHA',
-                                           openssl_name='AECDH-RC4-SHA',
-                                           gnutls_name='test',
-                                           byte_1=1,
-                                           byte_2=2,
-                                           protocol_version=CipherSuiteProtocolVersion.tls,
-                                           enc_algorithm=SymmetricAlgorithm.aes128,
-                                           hash_algorithm=HashAlgorithm.md5)
-            self._test_not_null_constraint(session,
-                                           iana_name='TLS_ECDH_anon_WITH_RC4_128_SHA',
-                                           openssl_name='AECDH-RC4-SHA',
-                                           gnutls_name='test',
-                                           byte_1=1,
-                                           byte_2=2,
-                                           protocol_version=CipherSuiteProtocolVersion.tls,
-                                           security=CipherSuiteSecurity.insecure,
-                                           hash_algorithm=HashAlgorithm.md5)
-            self._test_not_null_constraint(session,
-                                           iana_name='TLS_ECDH_anon_WITH_RC4_128_SHA',
-                                           openssl_name='AECDH-RC4-SHA',
-                                           gnutls_name='test',
-                                           byte_1=1,
-                                           byte_2=2,
-                                           protocol_version=CipherSuiteProtocolVersion.tls,
-                                           security=CipherSuiteSecurity.insecure,
-                                           enc_algorithm=SymmetricAlgorithm.aes128)
+                                           byte_2=2)
 
     def test_check_constraint(self):
         pass
@@ -1110,10 +1060,7 @@ class TestCipherSuite(BaseDataModelTestCase):
                                gnutls_name='test',
                                byte_1=1,
                                byte_2=2,
-                               protocol_version=CipherSuiteProtocolVersion.tls,
-                               security=CipherSuiteSecurity.insecure,
-                               enc_algorithm=SymmetricAlgorithm.aes128,
-                               hash_algorithm=HashAlgorithm.md5)
+                               security=CipherSuiteSecurity.insecure)
 
 
 class TestTlsInfo(BaseDataModelTestCase):

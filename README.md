@@ -371,7 +371,7 @@ The column **User** specifies the user with which the respective operating syste
 | 11760    | rmiregistrynmap           | service         | Active   | IPv4, IPv6 | -       | root   |
 | 12100    | ftpfilelist               | service         | Active   | IPv4, IPv6 | -       | nobody |
 | 13000    | showmount                 | service         | Active   | IPv4, IPv6 | 300     | nobody |
-| 13090    | smbcme                    | service         | Active   | IPv4, IPv6 | -       | kali   |
+| 13090    | smbcme                    | service         | Active   | Ipv4, Ipv6 | -       | kali   |
 | 13100    | smbclient                 | service         | Active   | IPv4, IPv6 | -       | nobody |
 | 13200    | smbfilelist               | service         | Active   | IPv4, IPv6 | -       | nobody |
 | 13210    | smbmap                    | service         | Active   | IPv4       | -       | nobody |
@@ -383,10 +383,10 @@ The column **User** specifies the user with which the respective operating syste
 | 31200    | onesixtyone               | service         | Active   | IPv4       | 60      | nobody |
 | 31300    | snmpwalk                  | service         | Active   | IPv4       | -       | nobody |
 | 31400    | oraclesidguess            | service         | Active   | IPv4       | -       | nobody |
-| 41100    | sslyze                    | service, vhost  | Active   | IPv4       | -       | nobody |
 | 41200    | sshnmap                   | service         | Active   | IPv4, IPv6 | -       | root   |
 | 41300    | certnmap                  | service, vhost  | Active   | IPv4, IPv6 | -       | root   |
 | 41310    | tlsnmap                   | service, vhost  | Active   | IPv4, IPv6 | -       | root   |
+| 41315    | sslyze                    | service, vhost  | Active   | IPv4       | -       | nobody |
 | 41320    | sslscan                   | service, vhost  | Active   | IPv4, IPv6 | -       | nobody |
 | 41330    | certopenssl               | service, vhost  | Active   | IPv4, IPv6 | 120     | nobody |
 | 51100    | httpgobuster              | service, vhost  | Active   | IPv4, IPv6 | -       | nobody |
@@ -409,6 +409,7 @@ The column **User** specifies the user with which the respective operating syste
 | 92200    | httpwapiti                | service, vhost  | Active   | IPv4, IPv6 | -       | nobody |
 | 100000   | vncviewer                 | service         | Active   | IPv4       | -       | nobody |
 | 100100   | httpeyewitness            | service, vhost  | Active   | IPv4, IPv6 | 3600    | kali   |
+
 
 
 ## Usage
