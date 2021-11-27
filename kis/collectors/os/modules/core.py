@@ -73,7 +73,7 @@ from database.utils import HostHostNameMapping
 from database.utils import HostNameHostNameMapping
 from database.utils import DnsResourceRecordType
 from threading import Lock
-from configs import config
+from database import config
 from collectors.os.core import PopenCommand
 from collectors.core import NmapUtils
 from collectors.core import XmlUtils

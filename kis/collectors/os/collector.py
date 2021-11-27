@@ -36,7 +36,7 @@ from queue import Queue
 from datetime import datetime
 from threading import Lock
 from threading import Thread
-from configs.config import Collector
+from database.config import Collector
 from database.model import Service
 from database.model import Host
 from database.model import HostName

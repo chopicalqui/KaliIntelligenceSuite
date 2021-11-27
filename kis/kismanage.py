@@ -33,7 +33,6 @@ import sys
 import os
 import json
 import logging
-from configs.config import SortingHelpFormatter
 from database.utils import Engine
 from database.utils import Setup
 from database.utils import DeclarativeBase
@@ -69,7 +68,8 @@ from collectors.apis.certspotter import Certspotter
 from collectors.apis.crtsh import CrtshDomain
 from collectors.apis.crtsh import CrtshCompany
 from collectors.apis.viewdns import ViewDns
-from configs.config import BaseConfig
+from database.config import BaseConfig
+from database.config import SortingHelpFormatter
 from sqlalchemy.orm.session import Session
 from typing import List
 

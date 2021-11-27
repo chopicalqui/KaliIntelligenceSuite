@@ -30,7 +30,7 @@ import logging
 import hashlib
 import io
 import csv
-import configs
+from database.config import Collector as CollectorConfig
 from urllib.parse import urlparse
 from xml.etree.ElementTree import Element
 from typing import List
@@ -102,7 +102,7 @@ class BaseUtils:
     TLD_DEFINITION_FILE = 'top-level-domains.json'
 
     def __init__(self, **args):
-        config = configs.config.Collector()
+        config = CollectorConfig()
         self._re_domain = re.compile(DomainUtils.RE_DOMAIN, re.IGNORECASE)
         self._re_email = re.compile(EmailUtils.RE_EMAIL, re.IGNORECASE)
         self._top_level_domains = {}

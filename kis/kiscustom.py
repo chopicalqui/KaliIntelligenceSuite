@@ -26,7 +26,7 @@ __version__ = 0.1
 import argparse
 import sys
 import traceback
-from configs.config import SortingHelpFormatter
+from database.config import SortingHelpFormatter
 from database.utils import Engine
 
 

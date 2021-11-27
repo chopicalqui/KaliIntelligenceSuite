@@ -5,7 +5,7 @@
 The latest version of Kali Intelligence Suite is available at:
 https://hub.docker.com/r/chopicalqui/kali-intelligence-suite
 
-Follow the installation instructions there.
+Follow the installation instructions [there](https://hub.docker.com/r/chopicalqui/kali-intelligence-suite).
 
 
 ## Manual Installation (Developers Only)

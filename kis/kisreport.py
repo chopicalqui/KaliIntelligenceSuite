@@ -33,7 +33,7 @@ from database.model import ReportScopeType
 from database.model import ReportVisibility
 from database.model import WorkspaceNotFound
 from database.model import ScopeType
-from configs.config import SortingHelpFormatter
+from database.config import SortingHelpFormatter
 from database.utils import Engine
 from database.report import ReportGenerator
 from database.report import ReportLanguage

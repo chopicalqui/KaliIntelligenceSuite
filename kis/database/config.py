@@ -59,7 +59,7 @@ class BaseConfig:
         self._config_file = config_file
         self._repo_home = BaseConfig.get_repo_home()
         self._script_home = BaseConfig.get_script_home()
-        self._config_dir = os.path.dirname(__file__)
+        self._config_dir = BaseConfig.get_config_home()
         self.full_path = os.path.join(self._config_dir, config_file)
         if not os.path.exists(self.full_path):
             raise FileNotFoundError("The database configuration file  \"{}\" does not exist!".format(self.full_path))
@@ -75,7 +75,7 @@ class BaseConfig:
 
     @staticmethod
     def get_config_home() -> str:
-        return os.path.dirname(__file__)
+        return os.path.join(BaseConfig.get_script_home(), "configs")
 
     @staticmethod
     def get_script_home() -> str:

@@ -29,7 +29,7 @@ from urllib.parse import urlparse
 from typing import List
 from typing import Dict
 from unittests.tests.core import BaseKisTestCase
-from configs.config import DomainConfig
+from database.config import DomainConfig
 from database.model import Workspace
 from database.model import Host
 from database.model import Service

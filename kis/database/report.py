@@ -26,7 +26,7 @@ import sys
 import json
 import re
 import enum
-from configs.config import DomainConfig
+from database.config import DomainConfig
 from database.model import FileType
 from database.model import CommandFileMapping
 from openpyxl import Workbook

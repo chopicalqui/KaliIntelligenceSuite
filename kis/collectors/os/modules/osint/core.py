@@ -28,7 +28,7 @@ import os
 import re
 from typing import List
 from typing import Dict
-from configs.config import ApiConfig
+from database.config import ApiConfig
 from collectors.core import IpUtils
 from collectors.core import JsonUtils
 from collectors.os.modules.core import BaseCollector

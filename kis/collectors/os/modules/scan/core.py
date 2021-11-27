@@ -34,7 +34,7 @@ from database.model import HostName
 from database.model import ServiceState
 from database.model import ExecutionInfoType
 from view.core import ReportItem
-from configs.config import ScannerConfig
+from database.config import ScannerConfig
 from collectors.os.core import PopenCommand
 from collectors.os.core import PopenCommandWithoutStderr
 from collectors.os.modules.core import BaseCollector

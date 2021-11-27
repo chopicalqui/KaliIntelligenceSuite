@@ -27,10 +27,10 @@ import shutil
 import tempfile
 import sqlalchemy
 from sqlalchemy import create_engine
-from configs import config
-from configs.config import Database as DatabaseConfig
-from configs.config import Collector as CollectorConfig
-from configs.config import ApiConfig
+from database import config
+from database.config import Database as DatabaseConfig
+from database.config import Collector as CollectorConfig
+from database.config import ApiConfig
 from collectors.os.core import SetupCommand
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session

@@ -31,8 +31,8 @@ from database.model import Workspace
 from database.model import Command
 from collectors.core import DomainUtils
 from collectors.core import IpUtils
-from configs.config import ApiConfig
-from configs.config import Collector as CollectorConfig
+from database.config import ApiConfig
+from database.config import Collector as CollectorConfig
 from sqlalchemy.orm.session import Session
 
 

@@ -30,7 +30,7 @@ from threading import Thread
 from threading import Lock
 from typing import List
 from datetime import datetime
-from configs.config import BaseConfig
+from database.config import BaseConfig
 
 logger = logging.getLogger('process')
 

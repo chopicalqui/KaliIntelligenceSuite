@@ -49,9 +49,9 @@ import traceback
 import os
 import logging
 import tempfile
-from configs.config import SortingHelpFormatter
-from configs.config import BaseConfig
-from configs.config import Collector
+from database.config import SortingHelpFormatter
+from database.config import BaseConfig
+from database.config import Collector
 from collectors.os.collector import CollectorProducer
 from view.console import KisCollectConsole
 from database.model import CommandStatus

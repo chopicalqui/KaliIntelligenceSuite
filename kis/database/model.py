@@ -31,7 +31,7 @@ import re
 import pwd
 import json
 import sqlalchemy as sa
-from configs.config import BaseConfig
+from database.config import BaseConfig
 from sqlalchemy import Column
 from sqlalchemy import Integer
 from sqlalchemy import String
