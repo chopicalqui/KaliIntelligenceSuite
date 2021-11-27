@@ -1,5 +1,15 @@
 # Installation
 
+## Docker.io Installation (Recommended)
+
+The latest version of Kali Intelligence Suite is available at:
+https://hub.docker.com/r/chopicalqui/kali-intelligence-suite
+
+Follow the installation instructions there.
+
+
+## Manual Installation (Developers Only)
+
 Note that Kali Intelligence Suite (KIS) only runs on official releases of Kali Linux. Before you start, clone the KIS
 repository to the directory `/opt/kaliintelsuite`:
 
@@ -7,7 +17,7 @@ repository to the directory `/opt/kaliintelsuite`:
 sudo git clone https://github.com/chopicalqui/KaliIntelligenceSuite.git /opt/kaliintelsuite
 ```
 
-## Docker Installation (recommended)
+### Docker
 
 In order to use KIS in a Docker environment, follow the following configuration steps:
 
@@ -64,7 +74,7 @@ In order to use KIS in a Docker environment, follow the following configuration 
     docker system prune
     ```
 
-## Manual Installation (not officially supported)
+### Manual Kali Installation
 
 This setup requires an official
 [Kali Linux](https://www.kali.org/docs/introduction/download-official-kali-linux-images/) release with the following

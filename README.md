@@ -1,12 +1,12 @@
 # Kali Intelligence Suite
 
-Kali Intelligence Suite (KIS) shall aid in the fast, autonomous, central, and comprehensive collection of intelligence 
-by automatically:
+Kali Intelligence Suite (KIS) is an intelligence gathering and data mining tool for penetration testers. It shall aid
+in the fast, autonomous, central, and comprehensive collection of intelligence by automatically:
 
  -  executing Kali Linux tools (e.g., dnsrecon, gobuster, hydra, nmap, etc.)
  -  querying publicly available APIs (e.g., Censys.io, Haveibeenpwned.com, Hunter.io, Securitytrails.com,
  DNSdumpster.com, Shodan.io, etc.)
- -  storing the collected data in a central rational database (see next section)
+ -  storing the collected data in a central PostgreSQL database (see next section)
  -  providing an interface to query and analyze the gathered intelligence
 
 After the execution of each Kali Linux tool or querying APIs, KIS analyses the collected information and extracts

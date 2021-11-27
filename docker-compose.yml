@@ -15,6 +15,7 @@ services:
 
   kaliintelsuite:
     container_name: kaliintelsuite
+    image: chopicalqui/kali-intelligence-suite:latest
     depends_on:
       - db
     volumes:

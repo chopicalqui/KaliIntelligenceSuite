@@ -111,7 +111,7 @@ RUN wget https://github.com/0xbharath/slurp/releases/download/1.1.0/slurp-1.1.0-
 RUN wget https://raw.githubusercontent.com/SECFORCE/sparta/master/wordlists/snmp-default.txt -O /tmp/snmp-default.txt
 
 # Setup and install Poetry
-RUN apt install -y python3-pip python-is-python2
+RUN apt install -y python3-pip python2
 ENV POETRY_HOME="/opt/poetry" \
     POETRY_VIRTUALENVS_IN_PROJECT=true \
     POETRY_NO_INTERACTION=1 \
@@ -120,7 +120,7 @@ ENV POETRY_HOME="/opt/poetry" \
 RUN pip install "poetry==$POETRY_VERSION"
 COPY pyproject.toml /opt/kaliintelsuite/
 WORKDIR /opt/kaliintelsuite/
-RUN poetry install --no-root --no-dev
+RUN ln -sT python2 /usr/bin/python && poetry install --no-root --no-dev
 
 
 # Setup and deploy Kali Intelligence Suite
