@@ -37,7 +37,11 @@ Additional features are:
 
 ## Setup and Installation
 
-Refer to [INSTALL](INSTALL.md) for more information.
+The latest version of KIS is available at
+[Docker.com](https://hub.docker.com/r/chopicalqui/kali-intelligence-suite). Follow the installation instructions
+[there](https://hub.docker.com/r/chopicalqui/kali-intelligence-suite).
+
+Information about manual installations can be obtained at [INSTALL](INSTALL.md).
 
 ## KIS' Data and Collection Model
 
@@ -183,6 +187,7 @@ Scopes can be set on the following items by using the script `kismanage`:
       | megacorpone.com           | strict      | megacorpone.com     |         False |
       | megacorpone.com           | strict      | www.megacorpone.com |          True |
       | megacorpone.com           | strict      | ftp.megacorpone.com |          True |
+      kis_shell> exit
       # Note that KIS treats the second-level domain also as a host name. As it has not been explicitly put in scope, it
       # is still out of scope.
       ```
