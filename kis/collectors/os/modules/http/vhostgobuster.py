@@ -157,10 +157,4 @@ class CollectorClass(BaseHttpGoBuster, ServiceCollector):
                 if not host_name:
                     logger.debug("ignoring host name due to invalid domain in line: {}".format(line))
                 else:
-                    self.add_host_host_name_mapping(session=session,
-                                                    command=command,
-                                                    host=command.host,
-                                                    host_name=host_name,
-                                                    source=source,
-                                                    mapping_type=DnsResourceRecordType.vhost,
-                                                    report_item=report_item)
+                    host_name.vhosts.append(command.service)

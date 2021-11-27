@@ -270,6 +270,49 @@ class TestSubcommandNetwork(BaseTestKisCommand):
                 self.assertEqual(network, result.network)
                 self.assertEqual(scope, result.scope)
 
+    def test_add_explicit_out_of_scope(self):
+        """
+        This unittest tests adding a new in-scope network.
+        """
+        scope = ScopeType.exclude
+        network = "192.168.0.0/31"
+        # Setup database and workspace
+        self.execute(subcommand="database", arguments="--drop --init")
+        self.execute(subcommand="workspace", arguments="-a {}".format(self._workspace))
+        # Add new network
+        self.execute(subcommand="network", arguments="-w {} -a {} --scope {}".format(self._workspace,
+                                                                                     network,
+                                                                                     scope.name))
+        # Test network creation
+        with self._engine.session_scope() as session:
+            result = session.query(Network).filter_by(network=network).one()
+            self.assertEqual(network, result.network)
+            self.assertEqual(scope, result.scope)
+
+    def test_Add_explicit_out_of_scope(self):
+        """
+        This unittest tests adding new in-scope networks via a file.
+        """
+        scope = ScopeType.exclude
+        networks = ["192.168.0.0/31", "192.168.1.0/31"]
+        # Setup database and workspace
+        self.execute(subcommand="database", arguments="--drop --init")
+        self.execute(subcommand="workspace", arguments="-a {}".format(self._workspace))
+        with tempfile.TemporaryDirectory() as temp_dir:
+            file_name = os.path.join(temp_dir, "networks.txt")
+            with open(file_name, "w") as file:
+                file.writelines([item + os.linesep for item in networks])
+            # Add new network
+            self.execute(subcommand="network", arguments="-w {} -A {} --scope {}".format(self._workspace,
+                                                                                         file_name,
+                                                                                         scope.name))
+        # Test networks
+        with self._engine.session_scope() as session:
+            for network in networks:
+                result = session.query(Network).filter_by(network=network).one()
+                self.assertEqual(network, result.network)
+                self.assertEqual(scope, result.scope)
+
 
 class TestSubcommandHost(BaseTestKisCommand):
     """
@@ -748,41 +791,6 @@ class BaseKismanageTestCase(BaseKisTestCase):
 
 
 class TestNetworkModule(BaseKismanageTestCase):
-
-    def test_add_outofscope(self):
-        # setup database
-        self.init_db()
-        network = "192.168.0.0/24"
-        workspace = self._workspaces[0]
-        with self._engine.session_scope() as session:
-            self.create_workspace(session=session, workspace=workspace)
-        # run command
-        args = self.arg_parse(["network", "-w", workspace, "-a", network, "--scope", "exclude"])
-        ManageDatabase(engine=self._engine, arguments=args, parser=self._parser).run()
-        # check database
-        self.check_results(workspace_str=workspace,
-                           networks=[network],
-                           scope=ScopeType.exclude,
-                           source_name="user")
-
-    def test_Add_outofscope(self):
-        # setup database
-        self.init_db()
-        network = "192.168.0.0/24"
-        workspace = self._workspaces[0]
-        with self._engine.session_scope() as session:
-            self.create_workspace(session=session, workspace=workspace)
-        # run command
-        with tempfile.NamedTemporaryFile(mode="w") as file:
-            file.write(network)
-            file.flush()
-            args = self.arg_parse(["network", "-w", workspace, "-A", file.name, "--scope", "exclude"])
-            ManageDatabase(engine=self._engine, arguments=args, parser=self._parser).run()
-        # check database
-        self.check_results(workspace_str=workspace,
-                           networks=[network],
-                           scope=ScopeType.exclude,
-                           source_name="user")
 
     def test_scope(self):
         # setup database

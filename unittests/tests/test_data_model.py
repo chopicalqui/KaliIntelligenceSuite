@@ -42,7 +42,6 @@ from database.model import Path
 from database.model import PathType
 from database.model import AdditionalInfo
 from database.model import Command
-from database.model import CipherSuiteProtocolVersion
 from database.model import CipherSuiteSecurity
 from database.model import ScopeType
 from database.model import CollectorName
@@ -53,7 +52,6 @@ from database.model import HostHostNameMapping
 from database.model import HostNameHostNameMapping
 from database.model import CipherSuite
 from database.model import KeyExchangeAlgorithm
-from database.model import SymmetricAlgorithm
 from database.model import HashAlgorithm
 from database.model import TlsInfo
 from database.model import TlsVersion

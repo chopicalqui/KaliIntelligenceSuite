@@ -263,6 +263,7 @@ class CommandStatus(enum.Enum):
     collecting = 20
     terminated = 110
     failed = 210
+    not_found = 230
     completed = 1000
 
 
@@ -299,9 +300,8 @@ class DnsResourceRecordType(enum.Flag):
     ns = 16
     mx = 32
     alias = 64
-    vhost = 128
-    soa = 256
-    txt = 512
+    soa = 128
+    txt = 256
 
 
 class CollectorType(enum.Enum):
@@ -345,13 +345,6 @@ class CipherSuiteSecurity(enum.Enum):
     recommended = enum.auto()
 
 
-class CipherSuiteProtocolVersion(enum.Enum):
-    tls_export = enum.auto()
-    tls = enum.auto()
-    ssl = enum.auto()
-# sudo -u postgres psql kis -c "alter type public.ciphersuiteprotocolversion add value 'ssl';"
-
-
 class HashAlgorithm(enum.Enum):
     sha1 = enum.auto()
     md5 = enum.auto()
@@ -375,21 +368,6 @@ class AsymmetricAlgorithm(enum.Enum):
     rsa4096 = enum.auto()
     anon512 = enum.auto()
 # sudo -u postgres psql kis -c "alter type public.asymmetricalgorithm add value 'anon512';"
-
-
-class AuthenticationAlgorithm(enum.Enum):
-    anon = enum.auto()
-    dss = enum.auto()
-    psk = enum.auto()
-    rsa = enum.auto()
-    ecdsa = enum.auto()
-    krb5 = enum.auto()
-    null = enum.auto()
-    sha_dss = enum.auto()
-    sha = enum.auto()
-    sha_rsa = enum.auto()
-    eccpwd = enum.auto()
-    dhe = enum.auto()
 
 
 class KeyExchangeAlgorithm(enum.Enum):
@@ -423,40 +401,6 @@ class KeyExchangeAlgorithm(enum.Enum):
     secp521r1 = enum.auto()
     anonymous = enum.auto()
 # sudo -u postgres psql kis -c "alter type public.keyexchangealgorithm add value 'anonymous';"
-
-
-class SymmetricAlgorithm(enum.Enum):
-    tripledes_ede_cbc = enum.auto()
-    aes128 = enum.auto()
-    aes128_cbc = enum.auto()
-    aes128_ccm = enum.auto()
-    aes128_ccm_8 = enum.auto()
-    aes128_gcm = enum.auto()
-    aes256 = enum.auto()
-    aes256_cbc = enum.auto()
-    aes256_ccm = enum.auto()
-    aes256_gcm = enum.auto()
-    aria128_cbc = enum.auto()
-    aria128_gcm = enum.auto()
-    aria256_cbc = enum.auto()
-    aria256_gcm = enum.auto()
-    camellia128_cbc = enum.auto()
-    camellia128_gcm = enum.auto()
-    camellia256_cbc = enum.auto()
-    camellia256_gcm = enum.auto()
-    chacha20_poly1305 = enum.auto()
-    des_cbc = enum.auto()
-    des_cbc_40 = enum.auto()
-    des40_cbc = enum.auto()
-    idea_cbc = enum.auto()
-    null = enum.auto()
-    rc2_cbc_40 = enum.auto()
-    rc2_cbc_128 = enum.auto()
-    rc4_128 = enum.auto()
-    rc4_56 = enum.auto()
-    rc4_40 = enum.auto()
-    seed_cbc = enum.auto()
-# alter type public.symmetricalgorithm add value 'rc2_cbc_128';
 
 
 class TlsVersion(enum.Enum):
@@ -764,6 +708,21 @@ company_domain_name_mapping = Table("company_domain_name_mapping", DeclarativeBa
                                     UniqueConstraint("company_id",
                                                      "domain_name_id",
                                                      name="_company_domain_name_mapping_unique"))
+
+vhost_mapping = Table("vhost_mapping", DeclarativeBase.metadata,
+                      Column("id", Integer, primary_key=True),
+                      Column("service_id",
+                             Integer,
+                             ForeignKey('service.id', ondelete='cascade'),
+                             nullable=False),
+                      Column("host_name_id", Integer, ForeignKey('host_name.id',
+                                                                 ondelete='cascade'), nullable=False),
+                      Column("creation_date", DateTime, nullable=False, default=datetime.utcnow()),
+                      Column("last_modified", DateTime, nullable=True, onupdate=datetime.utcnow()),
+                      UniqueConstraint("service_id",
+                                       "host_name_id",
+                                       name="_vhost_mapping_unique"))
+
 
 #create unique index _host_index_address on host(address);
 class Host(DeclarativeBase):
@@ -1266,6 +1225,10 @@ class HostName(DeclarativeBase):
                             backref=backref("host_name"),
                             cascade="delete, delete-orphan",
                             order_by="desc(Service.protocol), asc(Service.port)")
+    vhosts = relationship("Service",
+                          secondary=vhost_mapping,
+                          backref=backref("vhosts"),
+                          order_by="desc(Service.protocol), asc(Service.port)")
     hosts = relationship('Host',
                          secondary='host_host_name_mapping',
                          back_populates="host_names")

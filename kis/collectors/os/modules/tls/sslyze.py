@@ -26,9 +26,7 @@ __version__ = 0.1
 import re
 import logging
 import xml
-import json
 from typing import List
-from collectors.os.modules.core import XmlUtils
 from collectors.os.modules.core import ServiceCollector
 from collectors.os.modules.core import HostNameServiceCollector
 from collectors.os.modules.tls.core import BaseTlsCollector

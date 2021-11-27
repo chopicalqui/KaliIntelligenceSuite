@@ -32,7 +32,8 @@ from database.model import CollectorType
 from database.model import ScopeType
 from database.model import DomainName
 from database.model import HostName
-from database.model import DnsResourceRecordType
+from database.model import Service
+from database.model import ProtocolType
 
 
 class BaseHttpGobusterCollectorTestCase(BaseKaliHttpCollectorTestCase):
@@ -65,6 +66,9 @@ by OJ Reeves (@TheColonial) & Christian Mehlmauer (@firefart)
 Found: www.mysite.com
 Found: piwik.mysite.com
 Found: mail.mysite.com
+Found: www1.mysite.com
+Found: hidden.mysite.com
+Found: mysite.com
 ===============================================================
 2019/06/21 08:36:05 Finished
 ==============================================================="""]
@@ -119,18 +123,30 @@ Found: mail.mysite.com
                                           source=source,
                                           report_item=self._report_item)
         with self._engine.session_scope() as session:
+            vhosts = ["www.mysite.com", "piwik.mysite.com", "mysite.com", "mail.mysite.com", "www1.mysite.com",
+                      "hidden.mysite.com"]
+            vhosts.sort()
             results = session.query(Command).count()
             self.assertEqual(1, results)
             results = session.query(DomainName).all()
             self.assertEqual(1, len(results))
             results = session.query(HostName).all()
-            self.assertEqual(4, len(results))
+            self.assertEqual(6, len(results))
             host_names = [item.full_name for item in results]
             self.assertIn("www.mysite.com", host_names)
             self.assertIn("piwik.mysite.com", host_names)
             self.assertIn("mail.mysite.com", host_names)
-            for item in results:
-                if item.name is not None:
-                    self.assertEqual(1, len(item.host_host_name_mappings))
-                    self.assertEqual(DnsResourceRecordType.vhost, item.host_host_name_mappings[0].type)
-                    self.assertEqual("192.168.1.1", item.host_host_name_mappings[0].host.address)
+            # Check host_name.vhosts
+            for host_name in results:
+                if host_name.full_name in vhosts:
+                    self.assertEqual(1, len(host_name.vhosts))
+                    self.assertEqual(80, host_name.vhosts[0].port)
+                    self.assertEqual(ProtocolType.tcp, host_name.vhosts[0].protocol)
+                    self.assertEqual("192.168.1.1", host_name.vhosts[0].host.address)
+                else:
+                    raise ValueError("this case ('{}') should not happen.".format(host_name.name))
+            # Check service.vhost
+            service = session.query(Service).one()
+            actual_vhosts = [item.full_name for item in service.vhosts]
+            actual_vhosts.sort()
+            self.assertListEqual(vhosts, actual_vhosts)
