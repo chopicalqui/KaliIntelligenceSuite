@@ -5,6 +5,8 @@ performed on all in-scope host names. if credentials for basic authentication ar
 automatically used. alternatively, use optional arguments -u and -p to provide a user name and password for basic
 authentication. use optional argument --cookies to specify a list of cookies, optional argument --user-agent to
 specify a different user agent string, or optional argument --http-proxy to specify an HTTP proxy
+
+you can also use the --filter argument to exclude/include certain vhost names
 """
 
 __author__ = "Lukas Reiter"
@@ -56,7 +58,7 @@ class CollectorClass(BaseHttpGoBuster, ServiceCollector):
                          timeout=0,
                          mode="vhost",
                          **kwargs)
-        self._re_vhost = re.compile("^Found: (?P<vhost>.+?)$")
+        self._re_vhost = re.compile("^Found: (?P<vhost>.+?) \(Status:(.*?)\) \[Size:(.*?)$")
 
     @staticmethod
     def get_argparse_arguments():
@@ -89,7 +91,9 @@ class CollectorClass(BaseHttpGoBuster, ServiceCollector):
                      .filter(DomainName.workspace_id == service.workspace_id, HostName._in_scope):
                     resolves_to = host_name.get_host_host_name_mappings([DnsResourceRecordType.a,
                                                                          DnsResourceRecordType.aaaa])
-                    if not resolves_to:
+                    if (not resolves_to and not self._blacklist_filter and not self._whitelist_filter) or \
+                            ((not resolves_to and self._blacklist_filter and host_name.full_name not in self._blacklist_filter) or
+                             (self._whitelist_filter and host_name.full_name in self._whitelist_filter)):
                         host_names.append(host_name.full_name)
                 # Write wordlist to filesystem
                 file_path = self.create_text_file_path(service=service,

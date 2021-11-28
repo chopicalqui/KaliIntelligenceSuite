@@ -111,6 +111,7 @@ class CollectorClass(BaseDnsCollector, DomainCollector):
         code etc.
         """
         for line in command.stdout_output:
+            line = line.strip()
             match_dns = self._re_dns.match(line)
             if match_dns:
                 addresses = match_dns.group("address").split(",")

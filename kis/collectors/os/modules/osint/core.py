@@ -315,8 +315,10 @@ class BaseKisImport(BaseCollector):
         code etc.
         """
         if command.return_code and command.return_code > 0:
-            command.hide = True
+            command.hide = False
             self._set_execution_failed(session=session, command=command)
+        else:
+            command.hide = True
 
 
 class BaseKisImportHost(BaseKisImport):

@@ -365,6 +365,7 @@ class BaseCollector(config.Collector):
                  hashes: bool = None,
                  active_collector: bool = True,
                  service_descriptors: List[ServiceDescriptorBase] = [],
+                 filter: list = [],
                  delay_min: int = 0,
                  delay_max: int = 0,
                  force_delay_min: int = 0,
@@ -450,6 +451,13 @@ class BaseCollector(config.Collector):
         self._proxychains = self.get_commandline_argument_value("proxychains")
         self._analyze = analyze
         self._ignore = ignore
+        self._whitelist_filter = []
+        self._blacklist_filter = []
+        for item in filter:
+            if item.startswith("+"):
+                self._whitelist_filter.append(item.lstrip("+"))
+            else:
+                self._blacklist_filter.append(item)
         if vhost:
             if isinstance(vhost, VhostChoice):
                 self._vhost = vhost

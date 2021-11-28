@@ -64,9 +64,9 @@ by OJ Reeves (@TheColonial) & Christian Mehlmauer (@_FireFart_)
 ===============================================================
 2019/01/01 00:00:00 Starting gobuster
 ===============================================================
-/.hta (Status: 403) [Size: 291]
-/.htaccess (Status: 403) [Size: 296]
-/.htpasswd (Status: 403) [Size: 296]
+\r/.hta                (Status: 403) [Size: 291] [--> http://127.0.0.1/.hta]
+\r/.htaccess                (Status: 403) [Size: 291] [--> http://127.0.0.1/.htaccess]
+\r/.htpasswd                (Status: 403) [Size: 291] [--> http://127.0.0.1/.htpasswd]
 ===============================================================
 2019/07/28 04:39:18 Finished
 ==============================================================="""]
