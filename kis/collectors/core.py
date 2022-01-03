@@ -75,6 +75,7 @@ from database.model import ScopeType
 from database.model import DomainNameNotFound
 from datetime import datetime
 from database.model import ExecutionInfoType
+from database.model import VHostNameMapping
 from database.utils import Engine
 from database.utils import CredentialType
 from database.model import CertType
@@ -270,6 +271,63 @@ class BaseUtils:
                                                                                         source_info)
             report_item.report_type = "GENERIC"
             report_item.notify()
+        session.flush()
+        return mapping
+
+    @staticmethod
+    def add_vhost_name_mapping(session: Session,
+                               service: Service,
+                               host_name: HostName = None,
+                               host: Host = None,
+                               return_code: int = None,
+                               size_bytes: int = None,
+                               source: Source = None,
+                               report_item: ReportItem = None) -> VHostNameMapping:
+        """
+        This method establishes a link between a host name and a service
+        :param session: Sqlalchemy session that manages persistence operations for ORM-mapped objects
+        :param host_name: The virtual host name, which was identified on a web server
+        :param host: The virtual host IP address, which was identified on a web server
+        :param service: The web service on which the virtual host name was identified
+        :param return_code: The status code returned by the web application during the vhost enumeration
+        :param size_bytes: The response size returned by the web application during the vhost enumeration
+        :param source: The source that identified the link
+        :param report_item: Item that can be used for pushing information into the view
+        """
+        if not service:
+            raise ValueError("servide is mandatory")
+        if not host_name and not host:
+            raise ValueError("host name or IP address are mandatory")
+        elif host_name and host:
+            raise ValueError("either host name or host must be specified")
+        elif host_name:
+            mapping = session.query(VHostNameMapping) \
+                .filter_by(service_id=service.id,
+                           host_name_id=host_name.id).one_or_none()
+            if not mapping:
+                mapping = VHostNameMapping(service=service, host_name=host_name)
+                session.add(mapping)
+            if report_item:
+                report_item.details = "potentially new vhost {} on {}".format(host_name.full_name, service.summary)
+                report_item.report_type = "VHOST"
+                report_item.notify()
+        else:
+            mapping = session.query(VHostNameMapping) \
+                .filter_by(service_id=service.id,
+                           host_id=host.id).one_or_none()
+            if not mapping:
+                mapping = VHostNameMapping(service=service, host=host)
+                session.add(mapping)
+            if report_item:
+                report_item.details = "potentially new vhost {} on {}".format(host.address, service.summary)
+                report_item.report_type = "VHOST"
+                report_item.notify()
+        if return_code:
+            mapping.return_code = return_code
+        if size_bytes:
+            mapping.size_bytes = size_bytes
+        if source:
+            mapping.sources.append(source)
         session.flush()
         return mapping
 

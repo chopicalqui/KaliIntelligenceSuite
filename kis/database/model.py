@@ -647,6 +647,20 @@ source_host_name_host_name_mapping = Table("source_host_name_host_name_mapping",
                                                             "source_id",
                                                             name="_source_host_name_host_name_mapping_unique"))
 
+source_vhost_name_mapping = Table("source_vhost_name_mapping", DeclarativeBase.metadata,
+                                  Column("id", Integer, primary_key=True),
+                                  Column("vhost_name_mapping_id",
+                                         Integer,
+                                         ForeignKey('vhost_name_mapping.id', ondelete='cascade'),
+                                         nullable=False),
+                                  Column("source_id", Integer, ForeignKey('source.id',
+                                                                          ondelete='cascade'), nullable=False),
+                                  Column("creation_date", DateTime, nullable=False, default=datetime.utcnow()),
+                                  Column("last_modified", DateTime, nullable=True, onupdate=datetime.utcnow()),
+                                  UniqueConstraint("vhost_name_mapping_id",
+                                                   "source_id",
+                                                   name="_source_vhost_name_mapping_unique"))
+
 source_cert_info_mapping = Table("source_cert_info_mapping", DeclarativeBase.metadata,
                                  Column("id", Integer, primary_key=True),
                                  Column("cert_info_id",
@@ -708,20 +722,6 @@ company_domain_name_mapping = Table("company_domain_name_mapping", DeclarativeBa
                                     UniqueConstraint("company_id",
                                                      "domain_name_id",
                                                      name="_company_domain_name_mapping_unique"))
-
-vhost_mapping = Table("vhost_mapping", DeclarativeBase.metadata,
-                      Column("id", Integer, primary_key=True),
-                      Column("service_id",
-                             Integer,
-                             ForeignKey('service.id', ondelete='cascade'),
-                             nullable=False),
-                      Column("host_name_id", Integer, ForeignKey('host_name.id',
-                                                                 ondelete='cascade'), nullable=False),
-                      Column("creation_date", DateTime, nullable=False, default=datetime.utcnow()),
-                      Column("last_modified", DateTime, nullable=True, onupdate=datetime.utcnow()),
-                      UniqueConstraint("service_id",
-                                       "host_name_id",
-                                       name="_vhost_mapping_unique"))
 
 
 #create unique index _host_index_address on host(address);
@@ -1225,10 +1225,6 @@ class HostName(DeclarativeBase):
                             backref=backref("host_name"),
                             cascade="delete, delete-orphan",
                             order_by="desc(Service.protocol), asc(Service.port)")
-    vhosts = relationship("Service",
-                          secondary=vhost_mapping,
-                          backref=backref("vhosts"),
-                          order_by="desc(Service.protocol), asc(Service.port)")
     hosts = relationship('Host',
                          secondary='host_host_name_mapping',
                          back_populates="host_names")
@@ -1975,6 +1971,9 @@ class Source(DeclarativeBase):
     host_name_host_name_mappings = relationship("HostNameHostNameMapping",
                                                 secondary=source_host_name_host_name_mapping,
                                                 backref=backref("sources", order_by="asc(Source.name)"))
+    vhost_name_mappings = relationship("VHostNameMapping",
+                                       secondary=source_vhost_name_mapping,
+                                       backref=backref("sources", order_by="asc(Source.name)"))
     tls_info_cipher_suite_mappings = relationship("TlsInfoCipherSuiteMapping",
                                                   secondary=source_tls_info_cipher_suite_mapping,
                                                   backref=backref("sources", order_by="asc(Source.name)"))
@@ -3726,6 +3725,7 @@ class CipherSuite(DeclarativeBase):
     """This class holds general information about TLS."""
 
     __tablename__ = "cipher_suite"
+    __mapper_args__ = {'confirm_deleted_rows': False}
     id = Column(Integer, primary_key=True)
     iana_name = Column(Text, nullable=False, unique=True)
     gnutls_name = Column(Text, nullable=True, unique=True)
@@ -3996,3 +3996,29 @@ class CipherSuites(list):
                                         byte_1=int(value["hex_byte_1"], 16),
                                         byte_2=int(value["hex_byte_2"], 16),
                                         security=CipherSuiteSecurity[value["security"]]))
+
+
+class VHostNameMapping(DeclarativeBase):
+    """
+    This class stores vhost relationships between host names and services.
+    """
+
+    __tablename__ = "vhost_name_mapping"
+    __mapper_args__ = {'confirm_deleted_rows': False}
+    id = Column(Integer, primary_key=True)
+    service_id = Column(Integer, ForeignKey('service.id', ondelete='cascade'), nullable=False)
+    host_name_id = Column(Integer, ForeignKey('host_name.id', ondelete='cascade'), nullable=True)
+    host_id = Column(Integer, ForeignKey('host.id', ondelete='cascade'), nullable=True)
+    return_code = Column(Integer, nullable=True)
+    size_bytes = Column(Integer, nullable=True, unique=False)
+    creation_date = Column(DateTime, nullable=False, default=datetime.utcnow())
+    last_modified = Column(DateTime, nullable=True, onupdate=datetime.utcnow())
+    service = relationship(Service, backref=backref('vhosts', cascade="delete, delete-orphan"))
+    host_name = relationship(HostName, backref=backref('vhosts', cascade="delete, delete-orphan"))
+    host = relationship(Host, backref=backref('vhosts', cascade="delete, delete-orphan"))
+    __table_args__ = (UniqueConstraint('service_id', 'host_name_id', name='_vhost_host_name_mapping_unique'),
+                      UniqueConstraint('service_id', 'host_id', name='_vhost_host_mapping_unique'),
+                      CheckConstraint(
+                          '(case when not host_name_id is null and host_id is null then 1 else 0 end'
+                          '+case when host_name_id is null and not host_id is null then 1 else 0 end) = 1',
+                          name='_vhost_name_mapping_mutex_constraint'),)

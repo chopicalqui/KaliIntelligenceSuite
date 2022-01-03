@@ -43,6 +43,8 @@ from database.model import CollectorType
 from database.model import HostHostNameMapping
 from database.model import HostNameHostNameMapping
 from database.model import ScopeType
+from database.model import VHostNameMapping
+from sqlalchemy.orm.session import Session
 
 
 class TestDeleteWorkspace(BaseKisTestCase):
@@ -900,3 +902,216 @@ class TestDeleteHostNameHostNameMapping(BaseKisTestCase):
             self.assertEqual(0, session.query(HostNameHostNameMapping).count())
             self.assertEqual(1, session.query(HostName).filter_by(name="www").count())
             self.assertEqual(1, session.query(HostName).filter_by(name="resolved").count())
+
+
+class TestDeleteVHostNameMapping(BaseKisTestCase):
+
+    def __init__(self, test_name: str):
+        super().__init__(test_name)
+
+    def _create_virtual_host_name_mapping_host(self,
+                                               session: Session,
+                                               workspace_str: str = "unittest",
+                                               host_str: str = "127.0.0.1",
+                                               source_str: str = None) -> VHostNameMapping:
+
+        service = self.create_service(session=session, workspace_str=workspace_str)
+        host = self.create_host(session=session, workspace_str=workspace_str, address=host_str)
+        mapping = VHostNameMapping(host=host, service=service, return_code=200, size_bytes=2353)
+        session.add(mapping)
+        if source_str:
+            source = self.create_source(session=session, source_str=source_str)
+            source.vhost_name_mappings.append(mapping)
+        return mapping
+
+    def _create_virtual_host_name_mapping_host_name(self,
+                                                    session: Session,
+                                                    workspace_str: str = "unittest",
+                                                    host_name_str: str = "www.unittest1.com",
+                                                    source_str: str = None) -> VHostNameMapping:
+        service = self.create_service(session=session, workspace_str=workspace_str)
+        host_name = self.create_hostname(session=session, workspace_str=workspace_str, host_name=host_name_str)
+        mapping = VHostNameMapping(host_name=host_name, service=service, return_code=200, size_bytes=2353)
+        if source_str:
+            source = self.create_source(session=session, source_str=source_str)
+            source.vhost_name_mappings.append(mapping)
+        session.add(mapping)
+        return mapping
+
+    def test_delete_source_host_name(self):
+        """
+        If deleting the vhost mapping's source information should not affect any vhost mapping information.
+        """
+        self.init_db()
+        # create database
+        with self._engine.session_scope() as session:
+            self._create_virtual_host_name_mapping_host_name(session=session, source_str="test")
+        # check and delete data
+        with self._engine.session_scope() as session:
+            source = session.query(Source).filter_by(name="test").one()
+            self.assertEqual("www.unittest1.com", source.vhost_name_mappings[0].host_name.full_name)
+            self.assertEqual(80, source.vhost_name_mappings[0].service.port)
+            self.assertEqual(200, source.vhost_name_mappings[0].return_code)
+            self.assertEqual(2353, source.vhost_name_mappings[0].size_bytes)
+            session.delete(source)
+        # check data
+        with self._engine.session_scope() as session:
+            mapping = session.query(VHostNameMapping).one()
+            self.assertEqual("www.unittest1.com", mapping.host_name.full_name)
+            self.assertEqual(80, mapping.service.port)
+            self.assertEqual(200, mapping.return_code)
+            self.assertEqual(2353, mapping.size_bytes)
+
+    def test_delete_source_host(self):
+        """
+        If deleting the vhost mapping's source information should not affect any vhost mapping information.
+        """
+        self.init_db()
+        # create database
+        with self._engine.session_scope() as session:
+            self._create_virtual_host_name_mapping_host(session=session, source_str="test")
+        # check and delete data
+        with self._engine.session_scope() as session:
+            source = session.query(Source).filter_by(name="test").one()
+            self.assertEqual("127.0.0.1", source.vhost_name_mappings[0].host.address)
+            self.assertEqual(80, source.vhost_name_mappings[0].service.port)
+            self.assertEqual(200, source.vhost_name_mappings[0].return_code)
+            self.assertEqual(2353, source.vhost_name_mappings[0].size_bytes)
+            session.delete(source)
+        # check data
+        with self._engine.session_scope() as session:
+            mapping = session.query(VHostNameMapping).one()
+            self.assertEqual("127.0.0.1", mapping.host.address)
+            self.assertEqual(80, mapping.service.port)
+            self.assertEqual(200, mapping.return_code)
+            self.assertEqual(2353, mapping.size_bytes)
+
+    def test_delete_host_name(self):
+        """
+        If the virtual host is deleted, then the vhost mapping should be deleted as well.
+        """
+        self.init_db()
+        # create database
+        with self._engine.session_scope() as session:
+            self._create_virtual_host_name_mapping_host_name(session=session, source_str="test")
+        # check and delete data
+        with self._engine.session_scope() as session:
+            host_name = self.query_hostname(session=session, workspace_str="unittest", host_name="www.unittest1.com")
+            self.assertEqual(1, len(host_name.vhosts))
+            self.assertEqual(80, host_name.vhosts[0].service.port)
+            self.assertEqual(200, host_name.vhosts[0].return_code)
+            self.assertEqual(2353, host_name.vhosts[0].size_bytes)
+            self.assertEqual(80, host_name.vhosts[0].service.port)
+            self.assertEqual("192.168.1.1", host_name.vhosts[0].service.host.address)
+            self.assertEqual(1, len(host_name.vhosts[0].sources))
+            self.assertEqual("test", host_name.vhosts[0].sources[0].name)
+            session.delete(host_name)
+        # check data
+        with self._engine.session_scope() as session:
+            mapping = session.query(VHostNameMapping).one_or_none()
+            self.assertIsNone(mapping)
+            service = session.query(Service).one()
+            self.assertEqual(80, service.port)
+            self.assertEqual("192.168.1.1", service.host.address)
+            source = session.query(Source).filter_by(name="test").one()
+            self.assertEqual(0, len(source.vhost_name_mappings))
+            host_name = self.query_hostname(session=session, workspace_str="unittest", host_name="www.unittest1.com")
+            self.assertIsNone(host_name)
+
+    def test_delete_host(self):
+        """
+        If the virtual host is deleted, then the vhost mapping should be deleted as well.
+        """
+        self.init_db()
+        # create database
+        with self._engine.session_scope() as session:
+            self._create_virtual_host_name_mapping_host(session=session, source_str="test")
+        # check and delete data
+        with self._engine.session_scope() as session:
+            host = session.query(Host).filter_by(address="127.0.0.1").one()
+            self.assertEqual(1, len(host.vhosts))
+            self.assertEqual(80, host.vhosts[0].service.port)
+            self.assertEqual(200, host.vhosts[0].return_code)
+            self.assertEqual(2353, host.vhosts[0].size_bytes)
+            self.assertEqual(80, host.vhosts[0].service.port)
+            self.assertEqual("192.168.1.1", host.vhosts[0].service.host.address)
+            self.assertEqual(1, len(host.vhosts[0].sources))
+            self.assertEqual("test", host.vhosts[0].sources[0].name)
+            session.delete(host)
+        # check data
+        with self._engine.session_scope() as session:
+            mapping = session.query(VHostNameMapping).one_or_none()
+            self.assertIsNone(mapping)
+            service = session.query(Service).one()
+            self.assertEqual(80, service.port)
+            self.assertEqual("192.168.1.1", service.host.address)
+            source = session.query(Source).filter_by(name="test").one()
+            self.assertEqual(0, len(source.vhost_name_mappings))
+            host = session.query(Host).filter_by(address="127.0.0.1").one_or_none()
+            self.assertIsNone(host)
+
+    def test_delete_service_host_name(self):
+        """
+        If the service is deleted, then the vhost mapping to a host name should be deleted as well.
+        """
+        self.init_db()
+        # create database
+        with self._engine.session_scope() as session:
+            self._create_virtual_host_name_mapping_host_name(session=session, source_str="test")
+        # check and delete data
+        with self._engine.session_scope() as session:
+            service = session.query(Service).filter_by(port=80).one()
+            self.assertEqual("192.168.1.1", service.host.address)
+            self.assertEqual(1, len(service.vhosts))
+            self.assertEqual("www.unittest1.com", service.vhosts[0].host_name.full_name)
+            self.assertEqual(200, service.vhosts[0].return_code)
+            self.assertEqual(2353, service.vhosts[0].size_bytes)
+            session.delete(service)
+        # check data
+        with self._engine.session_scope() as session:
+            mapping = session.query(VHostNameMapping).one_or_none()
+            self.assertIsNone(mapping)
+            service = session.query(Service).one_or_none()
+            self.assertIsNone(service)
+            source = session.query(Source).filter_by(name="test").one()
+            self.assertEqual(0, len(source.vhost_name_mappings))
+            host_name = self.query_hostname(session=session, workspace_str="unittest", host_name="www.unittest1.com")
+            self.assertIsNotNone(host_name)
+            self.assertEqual(0, len(host_name.vhosts))
+            host = session.query(Host).filter_by(address="192.168.1.1").one_or_none()
+            self.assertIsNotNone(host)
+            self.assertEqual(0, len(host.vhosts))
+
+    def test_delete_service(self):
+        """
+        If the service is deleted, then the vhost mapping to a host should be deleted as well.
+        """
+        self.init_db()
+        # create database
+        with self._engine.session_scope() as session:
+            self._create_virtual_host_name_mapping_host(session=session, source_str="test")
+        # check and delete data
+        with self._engine.session_scope() as session:
+            service = session.query(Service).filter_by(port=80).one()
+            self.assertEqual("192.168.1.1", service.host.address)
+            self.assertEqual(1, len(service.vhosts))
+            self.assertEqual("127.0.0.1", service.vhosts[0].host.address)
+            self.assertEqual(200, service.vhosts[0].return_code)
+            self.assertEqual(2353, service.vhosts[0].size_bytes)
+            session.delete(service)
+        # check data
+        with self._engine.session_scope() as session:
+            mapping = session.query(VHostNameMapping).one_or_none()
+            self.assertIsNone(mapping)
+            service = session.query(Service).one_or_none()
+            self.assertIsNone(service)
+            source = session.query(Source).filter_by(name="test").one()
+            self.assertEqual(0, len(source.vhost_name_mappings))
+            host = session.query(Host).filter_by(address="127.0.0.1").one_or_none()
+            self.assertIsNotNone(host)
+            self.assertEqual(0, len(host.vhosts))
+            host = session.query(Host).filter_by(address="192.168.1.1").one_or_none()
+            self.assertIsNotNone(host)
+            self.assertEqual(0, len(host.vhosts))
+
+# TODO: Update when adding a new table

@@ -61,6 +61,7 @@ from database.model import CertInfo
 from database.model import AsymmetricAlgorithm
 from database.model import CertType
 from database.model import DnsResourceRecordType
+from database.model import VHostNameMapping
 from datetime import datetime
 
 
@@ -805,9 +806,7 @@ class TestPath(BaseDataModelTestCase):
             self._test_not_null_constraint(session, type=PathType.http, service=service)
 
     def test_check_constraint(self):
-        self.init_db()
-        with self._engine.session_scope() as session:
-            pass
+        pass
 
     def test_success(self):
         self.init_db()
@@ -857,9 +856,7 @@ class TestFile(BaseDataModelTestCase):
                                            type=FileType.screenshot)
 
     def test_check_constraint(self):
-        self.init_db()
-        with self._engine.session_scope() as session:
-            pass
+        pass
 
     def test_success(self):
         self.init_db()
@@ -1100,6 +1097,61 @@ class TestTlsInfo(BaseDataModelTestCase):
                                service=service,
                                compressors=[],
                                preference=TlsPreference.client)
+
+
+class TestVHostNameMapping(BaseDataModelTestCase):
+    """
+    Test data model for VHostNameMapping
+    """
+
+    def __init__(self, test_name: str):
+        super().__init__(test_name, VHostNameMapping)
+
+    def test_unique_constraint(self):
+        self.init_db()
+        with self._engine.session_scope() as session:
+            # Test with host name as vhost.
+            host_name = self.create_hostname(session=session, workspace_str=self._workspaces[0])
+            service = self.create_service(session=session, workspace_str=self._workspaces[0])
+            self._test_unique_constraint(session, host_name=host_name, service=service)
+            # Test with IP address as vhost.
+            host = self.create_host(session=session, workspace_str=self._workspaces[0])
+            service = self.create_service(session=session, workspace_str=self._workspaces[0])
+            self._test_unique_constraint(session, host=host, service=service)
+
+    def test_not_null_constraint(self):
+        self.init_db()
+        with self._engine.session_scope() as session:
+            host_name = self.create_hostname(session=session, workspace_str=self._workspaces[0])
+            host = self.create_host(session=session, workspace_str=self._workspaces[0])
+            self._test_not_null_constraint(session, host_name=host_name)
+            self._test_not_null_constraint(session, host=host)
+
+    def test_check_constraint(self):
+        self.init_db()
+        with self._engine.session_scope() as session:
+            host_name = self.create_hostname(session=session, workspace_str=self._workspaces[0])
+            service = self.create_service(session=session, workspace_str=self._workspaces[0])
+            host = self.create_host(session=session, workspace_str=self._workspaces[0])
+            self._test_check_constraint(session, service=service)
+            self._test_check_constraint(session, host_name=host_name, host=host, service=service)
+
+    def test_success(self):
+        self.init_db()
+        with self._engine.session_scope() as session:
+            host_name = self.create_hostname(session=session, workspace_str=self._workspaces[0])
+            service = self.create_service(session=session, workspace_str=self._workspaces[0])
+            host = self.create_host(session=session, workspace_str=self._workspaces[0])
+            self._test_success(session,
+                               host_name=host_name,
+                               service=service,
+                               return_code=200,
+                               size_bytes=200)
+            self._test_success(session,
+                               host=host,
+                               service=service,
+                               return_code=200,
+                               size_bytes=200)
 
 
 class TestCertInfo(BaseDataModelTestCase):

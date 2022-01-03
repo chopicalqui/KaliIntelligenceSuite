@@ -29,6 +29,7 @@ from unittests.tests.collectors.kali.modules.http.core import BaseKaliHttpCollec
 from unittests.tests.collectors.kali.modules.core import BaseKaliCollectorTestCase
 from unittests.tests.collectors.core import CollectorProducerTestSuite
 from collectors.os.modules.http.vhostgobuster import CollectorClass as VhostGobusterCollector
+from database.model import Host
 from database.model import Command
 from database.model import CollectorType
 from database.model import ScopeType
@@ -37,6 +38,7 @@ from database.model import HostName
 from database.model import Service
 from database.model import ProtocolType
 from database.model import DnsResourceRecordType
+from database.model import VHostNameMapping
 
 
 class BaseVhostGobusterCollectorTestCase(BaseKaliHttpCollectorTestCase):
@@ -72,6 +74,9 @@ by OJ Reeves (@TheColonial) & Christian Mehlmauer (@firefart)
 \rFound: www1.mysite.com (Status: 403) [Size: 915]
 \rFound: hidden.mysite.com (Status: 403) [Size: 915]
 \rFound: mysite.com (Status: 403) [Size: 915]
+\rFound: localhost (Status: 403) [Size: 915]
+\rFound: 127.0.0.1 (Status: 403) [Size: 915]
+\rFound: ::1 (Status: 403) [Size: 915]
 ===============================================================
 2019/06/21 08:36:05 Finished
 ==============================================================="""]
@@ -126,33 +131,39 @@ by OJ Reeves (@TheColonial) & Christian Mehlmauer (@firefart)
                                           source=source,
                                           report_item=self._report_item)
         with self._engine.session_scope() as session:
-            vhosts = ["www.mysite.com", "piwik.mysite.com", "mysite.com", "mail.mysite.com", "www1.mysite.com",
-                      "hidden.mysite.com"]
-            vhosts.sort()
+            vhost_host_names = ["www.mysite.com", "piwik.mysite.com", "mysite.com", "mail.mysite.com",
+                                "www1.mysite.com", "hidden.mysite.com", "localhost"]
+            vhost_hosts = ["127.0.0.1", "::1"]
+            vhost_host_names.sort()
+            vhost_hosts.sort()
             results = session.query(Command).count()
             self.assertEqual(1, results)
             results = session.query(DomainName).all()
-            self.assertEqual(1, len(results))
-            results = session.query(HostName).all()
-            self.assertEqual(6, len(results))
-            host_names = [item.full_name for item in results]
-            self.assertIn("www.mysite.com", host_names)
-            self.assertIn("piwik.mysite.com", host_names)
-            self.assertIn("mail.mysite.com", host_names)
-            # Check host_name.vhosts
-            for host_name in results:
-                if host_name.full_name in vhosts:
-                    self.assertEqual(1, len(host_name.vhosts))
-                    self.assertEqual(80, host_name.vhosts[0].port)
-                    self.assertEqual(ProtocolType.tcp, host_name.vhosts[0].protocol)
-                    self.assertEqual("192.168.1.1", host_name.vhosts[0].host.address)
-                else:
-                    raise ValueError("this case ('{}') should not happen.".format(host_name.name))
-            # Check service.vhost
-            service = session.query(Service).one()
-            actual_vhosts = [item.full_name for item in service.vhosts]
-            actual_vhosts.sort()
-            self.assertListEqual(vhosts, actual_vhosts)
+            self.assertEqual(2, len(results))
+            # Check vhost host names
+            host_names = []
+            for host_name in session.query(HostName).join(VHostNameMapping).all():
+                host_names.append(host_name.full_name)
+                self.assertEqual(1, len(host_name.vhosts))
+                self.assertEqual(80, host_name.vhosts[0].service.port)
+                self.assertEqual(ProtocolType.tcp, host_name.vhosts[0].service.protocol)
+                self.assertEqual("192.168.1.1", host_name.vhosts[0].service.host.address)
+                self.assertEqual(403, host_name.vhosts[0].return_code)
+                self.assertEqual(915, host_name.vhosts[0].size_bytes)
+            host_names.sort()
+            self.assertListEqual(vhost_host_names, host_names)
+            # Check vhost IP address
+            ip_addresses = []
+            for host in session.query(Host).join(VHostNameMapping).all():
+                ip_addresses.append(host.address)
+                self.assertEqual(1, len(host.vhosts))
+                self.assertEqual(80, host.vhosts[0].service.port)
+                self.assertEqual(ProtocolType.tcp, host.vhosts[0].service.protocol)
+                self.assertEqual("192.168.1.1", host.vhosts[0].service.host.address)
+                self.assertEqual(403, host.vhosts[0].return_code)
+                self.assertEqual(915, host.vhosts[0].size_bytes)
+            ip_addresses.sort()
+            self.assertEqual(vhost_hosts, ip_addresses)
 
 
 class TestVhostGoBusterFilteringClass(BaseKaliCollectorTestCase):

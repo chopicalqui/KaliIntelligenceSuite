@@ -68,6 +68,7 @@ from database.model import CommandStatus
 from database.model import IpSupport
 from database.model import ExecutionInfoType
 from database.model import VhostChoice
+from database.model import VHostNameMapping
 from database.utils import Engine
 from database.utils import HostHostNameMapping
 from database.utils import HostNameHostNameMapping
@@ -365,7 +366,7 @@ class BaseCollector(config.Collector):
                  hashes: bool = None,
                  active_collector: bool = True,
                  service_descriptors: List[ServiceDescriptorBase] = [],
-                 filter: list = [],
+                 filter: list = None,
                  delay_min: int = 0,
                  delay_max: int = 0,
                  force_delay_min: int = 0,
@@ -453,6 +454,7 @@ class BaseCollector(config.Collector):
         self._ignore = ignore
         self._whitelist_filter = []
         self._blacklist_filter = []
+        filter = filter if filter else []
         for item in filter:
             if item.startswith("+"):
                 self._whitelist_filter.append(item.lstrip("+"))
@@ -722,6 +724,37 @@ class BaseCollector(config.Collector):
                                                                      mapping_type=mapping_type,
                                                                      report_item=report_item)
         return mapping
+
+    def add_vhost_name_mapping(self,
+                               session: Session,
+                               service: Service,
+                               host: Host = None,
+                               host_name: HostName = None,
+                               return_code: int = None,
+                               size_bytes: int = None,
+                               source: Source = None,
+                               report_item: ReportItem = None) -> VHostNameMapping:
+        """
+        This method establishes a link between a host name and a service
+        :param session: Sqlalchemy session that manages persistence operations for ORM-mapped objects
+        :param host_name: The virtual host name which was identified on a web server
+        :param host: The virtual host IP address, which was identified on a web server
+        :param service: The web service on which the virtual host name was identified
+        :param return_code: The status code returned by the web application during the vhost enumeration
+        :param size_bytes: The response size returned by the web application during the vhost enumeration
+        :param source: The source that identified the link
+        :param report_item: Item that can be used for pushing information into the view
+        """
+        if report_item:
+            report_item.listener = self._listeners
+        return self._domain_utils.add_vhost_name_mapping(session=session,
+                                                         host=host,
+                                                         host_name=host_name,
+                                                         service=service,
+                                                         return_code=return_code,
+                                                         size_bytes=size_bytes,
+                                                         source=source,
+                                                         report_item=report_item)
 
     def add_host(self,
                  session: Session,

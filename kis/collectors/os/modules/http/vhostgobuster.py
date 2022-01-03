@@ -36,6 +36,7 @@ from collectors.os.modules.core import ServiceCollector
 from collectors.os.modules.http.core import BaseHttpGoBuster
 from collectors.os.modules.core import BaseCollector
 from collectors.os.core import PopenCommand
+from collectors.core import IpUtils
 from database.model import Command
 from database.model import CollectorName
 from database.model import Service
@@ -58,7 +59,7 @@ class CollectorClass(BaseHttpGoBuster, ServiceCollector):
                          timeout=0,
                          mode="vhost",
                          **kwargs)
-        self._re_vhost = re.compile("^Found: (?P<vhost>.+?) \(Status:(.*?)\) \[Size:(.*?)$")
+        self._re_vhost = re.compile("^Found:\s+(?P<vhost>.+?)\s+\(Status:\s*(?P<status>\d+)\)\s+\[Size:\s*(?P<size>\d+?)\]\s*$")
 
     @staticmethod
     def get_argparse_arguments():
@@ -152,13 +153,40 @@ class CollectorClass(BaseHttpGoBuster, ServiceCollector):
             match = self._re_vhost.match(line)
             if match:
                 vhost = match.group("vhost").strip()
-                # Add host name to database
-                host_name = self.add_host_name(session=session,
-                                               command=command,
-                                               source=source,
-                                               host_name=vhost,
-                                               report_item=report_item)
-                if not host_name:
-                    logger.debug("ignoring host name due to invalid domain in line: {}".format(line))
+                return_code = int(match.group("status").strip())
+                size_bytes = int(match.group("size").strip())
+                if IpUtils.is_valid_address(vhost):
+                    # Add IP address to database
+                    host = self.add_host(session=session,
+                                         command=command,
+                                         address=vhost,
+                                         source=source,
+                                         report_item=report_item)
+                    if not host:
+                        logger.debug("ignoring IP address due to invalid domain in line: {}".format(line))
+                    else:
+                        self.add_vhost_name_mapping(session=session,
+                                                    host=host,
+                                                    service=command.service,
+                                                    return_code=return_code,
+                                                    size_bytes=size_bytes,
+                                                    source=source,
+                                                    report_item=report_item)
                 else:
-                    host_name.vhosts.append(command.service)
+                    # Add host name to database
+                    host_name = self.add_host_name(session=session,
+                                                   command=command,
+                                                   source=source,
+                                                   host_name=vhost,
+                                                   verify=False,
+                                                   report_item=report_item)
+                    if not host_name:
+                        logger.debug("ignoring host name due to invalid domain in line: {}".format(line))
+                    else:
+                        self.add_vhost_name_mapping(session=session,
+                                                    host_name=host_name,
+                                                    service=command.service,
+                                                    return_code=return_code,
+                                                    size_bytes=size_bytes,
+                                                    source=source,
+                                                    report_item=report_item)

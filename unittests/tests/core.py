@@ -66,6 +66,7 @@ from database.model import AsymmetricAlgorithm
 from database.model import HashAlgorithm
 from database.model import CertType
 from database.model import CertInfo
+from database.model import VHostNameMapping
 from datetime import datetime
 from typing import Dict
 from database.model import CommandStatus
@@ -885,7 +886,10 @@ class BaseKisTestCase(unittest.TestCase):
         tls_info = self.create_tls_info(session=session, service=service, version=TlsVersion.tls13)
         cipher_suite = self.query_cipher_suite(session=session, iana_name="TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384")
         self.create_tls_info_cipher_suite_mapping(session=session, tls_info=tls_info, cipher_suite=cipher_suite)
-
+        # add vhosts
+        session.add(VHostNameMapping(host_name=host_name, service=service, return_code=200, size_bytes=2353))
+        session.add(VHostNameMapping(host=host, service=service, return_code=201, size_bytes=321))
+        # TODO: Update when adding a new table
 
     def _check_database(self, session: Session, workspace: str):
         """
@@ -964,6 +968,12 @@ class BaseKisTestCase(unittest.TestCase):
                          host.services[0].tls_info[0].cipher_suite_mappings[0].cipher_suite.iana_name)
         # check file
         self.assertEqual(b"test", host_name.emails[0].commands[0].files[0].content)
+        # check vhost
+        self.assertEqual(1, len(host_name.vhosts))
+        self.assertEqual(200, host_name.vhosts[0].return_code)
+        self.assertEqual(1, len(host.vhosts))
+        self.assertEqual(201, host.vhosts[0].return_code)
+        # TODO: Update when adding a new table
 
     def _check_database_empty(self, session: Session):
         self.assertEqual(0, session.query(Workspace).count())
@@ -989,7 +999,9 @@ class BaseKisTestCase(unittest.TestCase):
         self.assertEqual(0, session.query(CertInfo).count())
         self.assertEqual(0, session.query(TlsInfo).count())
         self.assertEqual(0, session.query(TlsInfoCipherSuiteMapping).count())
+        self.assertEqual(0, session.query(VHostNameMapping).count())
         self.assertEqual(339, session.query(CipherSuite).count())
+        # TODO: Update when adding a new table
 
 
 class BaseDataModelTestCase(BaseKisTestCase):

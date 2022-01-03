@@ -53,7 +53,7 @@ class CollectorClass(BaseHttpGoBuster, ServiceCollector, HostNameServiceCollecto
                          timeout=0,
                          mode="dir",
                          **kwargs)
-        self._re_path = re.compile("^(.*?) \(Status:(.*?)\) \[Size:(.*?)\]")
+        self._re_path = re.compile("^(.*?)\s+\(Status:\s*(\d+)\)\s+\[Size:\s*(\d+)\]")
         self._re_wildcard_response = re.compile("^$\[\-\] Wildcard response found: (?P<value>.+?) => (?P<status>[0-9])+$")
 
     @staticmethod

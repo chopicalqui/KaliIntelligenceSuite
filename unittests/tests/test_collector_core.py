@@ -4598,3 +4598,101 @@ class TestIpv4NetworkExcludedHosts(BaseKisTestCase):
             results = IpUtils.get_excluded_hosts(session=session, network=result[0])
             self.assertListEqual(expected_results, results)
 
+
+class TestAddVHostNameMapping(BaseKisTestCase):
+    """
+    This test case tests BaseUtils.add_host_host_name_mapping
+    """
+
+    def __init__(self, test_name: str):
+        super().__init__(test_name)
+
+    def test_add_vhost_name_full_information_using_host_name(self):
+        """
+        This method tests BaseUtils.
+        """
+        self.init_db()
+        status_code = 200
+        size_bytes = 1256
+        host_name_str = "www.test.local"
+        ip_address = "192.168.1.1"
+        service_summary = None
+        # Setup database
+        with self._engine.session_scope() as session:
+            source = self.create_source(session, source_str="vhost")
+            for workspace in self._workspaces:
+                host_name = self.create_hostname(session=session,
+                                                 workspace_str=workspace,
+                                                 host_name=host_name_str)
+                service = self.create_service(session=session,
+                                              workspace_str=workspace,
+                                              address=ip_address,
+                                              port=80,
+                                              protocol_type=ProtocolType.tcp)
+                service_summary = service.summary
+                self._ip_utils.add_vhost_name_mapping(session=session,
+                                                      host_name=host_name,
+                                                      service=service,
+                                                      return_code=status_code,
+                                                      size_bytes=size_bytes,
+                                                      source=source,
+                                                      report_item=self._report_item)
+        # Verify report item
+        self.assertIn("potentially new vhost {} on {}".format(host_name_str, service_summary),
+                      self._report_item.get_report())
+        # Verify database
+        with self._engine.session_scope() as session:
+            for workspace in self._workspaces:
+                service = session.query(Service) \
+                    .join(Host) \
+                    .join(Workspace) \
+                    .filter(Workspace.name == workspace).one()
+                self.assertEqual(1, len(service.vhosts))
+                self.assertEqual(status_code, service.vhosts[0].return_code)
+                self.assertEqual(size_bytes, service.vhosts[0].size_bytes)
+                self.assertEqual(host_name_str, service.vhosts[0].host_name.full_name)
+                self.assertEqual(1, len(service.vhosts[0].sources))
+                self.assertEqual("vhost", service.vhosts[0].sources[0].name)
+
+    def test_add_vhost_name_full_information_using_host(self):
+        """
+        This method tests BaseUtils.
+        """
+        self.init_db()
+        status_code = 200
+        size_bytes = 1256
+        ip_address = "192.168.1.1"
+        service_summary = None
+        # Setup database
+        with self._engine.session_scope() as session:
+            source = self.create_source(session, source_str="vhost")
+            for workspace in self._workspaces:
+                service = self.create_service(session=session,
+                                              workspace_str=workspace,
+                                              address=ip_address,
+                                              port=80,
+                                              protocol_type=ProtocolType.tcp)
+                service_summary = service.summary
+                self._ip_utils.add_vhost_name_mapping(session=session,
+                                                      host=service.host,
+                                                      service=service,
+                                                      return_code=status_code,
+                                                      size_bytes=size_bytes,
+                                                      source=source,
+                                                      report_item=self._report_item)
+        # Verify report item
+        self.assertIn("potentially new vhost {} on {}".format(ip_address, service_summary),
+                      self._report_item.get_report())
+        # Verify database
+        with self._engine.session_scope() as session:
+            for workspace in self._workspaces:
+                service = session.query(Service) \
+                    .join(Host) \
+                    .join(Workspace) \
+                    .filter(Workspace.name == workspace).one()
+                self.assertEqual(1, len(service.vhosts))
+                self.assertEqual(status_code, service.vhosts[0].return_code)
+                self.assertEqual(size_bytes, service.vhosts[0].size_bytes)
+                self.assertEqual(ip_address, service.vhosts[0].host.address)
+                self.assertEqual(1, len(service.vhosts[0].sources))
+                self.assertEqual("vhost", service.vhosts[0].sources[0].name)
