@@ -201,8 +201,8 @@ class CollectorProducer(Thread):
         self._consumer_threads = []
         self.consoles = []
         # This is just for UI purposes.
-        self._collector_list_lock = Lock()
-        self._collector_list = []
+        self._remaining_collectors_lock = Lock()
+        self._remaining_collectors = []
 
     @property
     def collector_classes(self) -> Dict[str, BaseCollector]:
@@ -281,15 +281,8 @@ class CollectorProducer(Thread):
         """
         This property returns the list of remaining collectors that have not been processed.
         """
-        result = []
-        remaining = False
-        with self._collector_list_lock:
-            for item in self._collector_list:
-                if self.current_collector is None or remaining:
-                    result.append(item)
-                elif self.current_collector.name == item:
-                    remaining = True
-        return result
+        with self._remaining_collectors_lock:
+            return list(self._remaining_collectors)
 
     def register_console(self, console) -> None:
         """
@@ -389,14 +382,16 @@ class CollectorProducer(Thread):
                 item.create_instance(engine=self._engine, **kwargs)
                 item.collector_type_info = self.get_collector_types(item, vhost=self._vhost)
                 self._selected_collectors.append(item)
-                with self._collector_list_lock:
-                    self._collector_list.append(item.name)
                 for mapping in item.collector_type_info:
                     BaseUtils.add_collector_name(session=session,
                                                  name=item.name,
                                                  type=mapping.collector_type,
                                                  priority=item.instance.priority)
         self._selected_collectors.sort()
+        # Register all selected collectors
+        for item in self._selected_collectors:
+            with self._remaining_collectors_lock:
+                self._remaining_collectors.append(item.name)
 
     def clear_commands_queue(self):
         """
@@ -520,6 +515,12 @@ class CollectorProducer(Thread):
                             self.log_exception(ex)
                             break
                     if self._command_queue:
+                        # We remove already completed collectors from list
+                        with self._remaining_collectors_lock:
+                            if collector.name in self._remaining_collectors:
+                                index = self._remaining_collectors.index(collector.name)
+                                self._remaining_collectors = self._remaining_collectors[index:]
+                        # We add new command IDs to the queue
                         for key, value in uniq_command_ids.items():
                             self._command_queue.put(value)
                         self._command_queue.join()
