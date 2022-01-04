@@ -2559,6 +2559,9 @@ class ExecutionInfoType(enum.Enum):
     command_id = enum.auto()
     working_directory = enum.auto()
     username = enum.auto()
+    # This type only contains the file name without the extension. The actual program (e.g., theharvester) then
+    # adds the file extension (e.g., json).
+    generic_file_name = enum.auto()
 
     @property
     def argument(self) -> str:

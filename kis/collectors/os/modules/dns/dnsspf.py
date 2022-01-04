@@ -25,6 +25,7 @@ __version__ = 0.1
 
 import re
 import logging
+import ipaddress
 from typing import List
 from collectors.os.modules.core import DomainCollector
 from collectors.os.modules.dns.core import BaseDnsCollector
@@ -48,9 +49,8 @@ class CollectorClass(BaseDnsCollector, DomainCollector):
         super().__init__(priority=215,
                          timeout=0,
                          **kwargs)
-        self._re_include = re.compile("^((a)|(include)):(?P<host_name>.+)$")
-        self._re_ip_address = re.compile("^((ip4)|(ip6)):(?P<ip_address>.+?)$")
-        self._re_ip_network = re.compile("^((ip4)|(ip6)):(?P<ip_network>.+?/[0-9]{{1,3}})$")
+        self._re_domain = re.compile("^((a)|(include)|(exist)|(mx)):(?P<host_name>.+?)$")
+        self._re_ip_address = re.compile("^((ip4)|(ip6)):(?P<ip_address>.+?(/\d{1,3})?)$")
 
     @staticmethod
     def get_argparse_arguments():
@@ -105,11 +105,10 @@ class CollectorClass(BaseDnsCollector, DomainCollector):
         for line in command.stdout_output:
             line = line.strip()
             for token in line.split(" "):
-                match_include = self._re_include.match(token)
+                match_include = self._re_domain.match(token)
                 match_ip_address = self._re_ip_address.match(token)
-                match_ip_network = self._re_ip_network.match(token)
                 if match_include:
-                    item = match_include.group("host_name")
+                    item = match_include.group("host_name").split("/")[0]
                     self.add_host_name(session=session,
                                        command=command,
                                        host_name=item,
@@ -118,15 +117,8 @@ class CollectorClass(BaseDnsCollector, DomainCollector):
                                        report_item=report_item)
                 if match_ip_address:
                     item = match_ip_address.group("ip_address")
-                    self.add_host(session=session,
-                                  command=command,
-                                  address=item,
-                                  source=source,
-                                  report_item=report_item)
-                if match_ip_network:
-                    item = match_ip_network.group("ip_network")
-                    self.add_network(session=session,
-                                     command=command,
-                                     network=item,
-                                     source=source,
-                                     report_item=report_item)
+                    self.add_network_or_host(session=session,
+                                             command=command,
+                                             address=item,
+                                             source=source,
+                                             report_item=report_item)

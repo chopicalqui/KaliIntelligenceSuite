@@ -164,10 +164,10 @@ class CollectorClass(BaseHttpCollector, ServiceCollector, HostNameServiceCollect
                 size_bytes = int(match.group("size"))
                 status_code = int(match.group("status"))
                 url = match.group("url")
-                self.add_url(session,
-                             command.service,
-                             url,
-                             status_code=status_code,
-                             size_bytes=size_bytes,
-                             source=source,
-                             report_item=report_item)
+                self.add_url_path(session=session,
+                                  service=command.service,
+                                  url_path=url,
+                                  status_code=status_code,
+                                  size_bytes=size_bytes,
+                                  source=source,
+                                  report_item=report_item)

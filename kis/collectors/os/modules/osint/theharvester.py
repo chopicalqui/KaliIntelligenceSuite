@@ -22,18 +22,16 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 __version__ = 0.1
 
-import re
+import os
+import uuid
 import logging
 from typing import List
-from collectors.core import EmailUtils
-from collectors.core import DomainUtils
-from collectors.core import IpUtils
-from collectors.core import CertificateUtils
 from database.model import Host
-from database.model import HostName
 from database.model import Source
 from database.model import Command
+from database.model import HostName
 from database.model import CollectorName
+from database.model import ExecutionInfoType
 from collectors.os.modules.core import DomainCollector
 from collectors.os.modules.core import BaseCollector
 from collectors.os.core import PopenCommand
@@ -53,8 +51,6 @@ class CollectorClass(BaseCollector, DomainCollector):
                          delay_min=1,
                          exec_user="kali",
                          **kwargs)
-        self._re_email = re.compile("^{}$".format(EmailUtils.RE_EMAIL))
-        self._re_domain_ip = re.compile("^{}\s?:\s?(?P<ipv4_address>.*)$".format(DomainUtils.RE_DOMAIN))
 
     @staticmethod
     def get_argparse_arguments():
@@ -68,10 +64,19 @@ class CollectorClass(BaseCollector, DomainCollector):
                       module: str) -> List[BaseCollector]:
         """Returns a list of commands based on the provided information."""
         collectors = []
+        # this is workaround for theharvester as it removes everything after the first .
+        text_file = os.path.join(self.output_dir, str(uuid.uuid4()))
         os_command = [command,
                       '-d', host_name.domain_name.name,
-                      '-b', module]
-        collector = self._get_or_create_command(session, os_command, collector_name, host_name=host_name)
+                      '-b', module,
+                      '-f', ExecutionInfoType.generic_file_name.argument]
+        collector = self._get_or_create_command(session,
+                                                os_command,
+                                                collector_name,
+                                                host_name=host_name,
+                                                generic_file_name=text_file,
+                                                xml_file="{}.xml".format(text_file),
+                                                json_file="{}.json".format(text_file))
         collectors.append(collector)
         return collectors
 
@@ -117,35 +122,46 @@ class CollectorClass(BaseCollector, DomainCollector):
         :param process: The PopenCommand object that executed the given result. This object holds stderr, stdout, return
         code etc.
         """
-        for line in command.stdout_output:
-            match_email = self._re_email.match(line)
-            match_domain_ip = self._re_domain_ip.match(line)
-            if match_email:
-                email = match_email.group("email")
-                email = self.add_email(session=session,
-                                       command=command,
-                                       email=email,
-                                       source=source,
-                                       report_item=report_item)
-                if not email:
-                    logger.debug("ignoring email in line: {}".format(line))
-            if match_domain_ip:
-                ipv4_address = match_domain_ip.group("ipv4_address")
-                domain = match_domain_ip.group("domain")
-                if IpUtils.is_valid_address(ipv4_address):
+        for json_object in command.json_output:
+            section = "hosts"
+            if section in json_object:
+                for item in json_object[section]:
+                    host_name_str = item.split(":")[0]
+                    host_name = self.add_host_name(session=session,
+                                                   command=command,
+                                                   source=source,
+                                                   host_name=host_name_str,
+                                                   report_item=report_item)
+                    if not host_name:
+                        logger.info("ignoring host name in line: {}".format(host_name_str))
+            section = "interesting_urls"
+            if section in json_object:
+                for item in json_object[section]:
+                    try:
+                        self.add_url(session=session,
+                                     command=command,
+                                     url=item,
+                                     source=source,
+                                     report_item=report_item)
+                    except Exception as ex:
+                        logger.exception(ex)
+            section = "ips"
+            if section in json_object:
+                for item in json_object[section]:
                     host = self.add_host(session=session,
                                          command=command,
-                                         address=ipv4_address,
+                                         address=item,
                                          source=source,
                                          report_item=report_item)
-                    if not ipv4_address:
-                        logger.debug("ignoring IPv4 address in line: {}".format(line))
-                else:
-                    host = None
-                host_name = self.add_host_name(session=session,
-                                               command=command,
-                                               source=source,
-                                               host_name=domain,
-                                               report_item=report_item)
-                if not host_name:
-                    logger.debug("ignoring host name in line: {}".format(line))
+                    if not host:
+                        logger.debug("ignoring IPv4 address in line: {}".format(item))
+            section = "emails"
+            if section in json_object:
+                for item in json_object[section]:
+                    email = self.add_email(session=session,
+                                           command=command,
+                                           email=item,
+                                           source=source,
+                                           report_item=report_item)
+                    if not email:
+                        logger.debug("ignoring email in line: {}".format(email))

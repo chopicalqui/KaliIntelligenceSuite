@@ -207,10 +207,6 @@ class BaseReport:
         if "text" in self._args and getattr(self._args, "text"):
             for line in self.get_text():
                 print(line)
-        elif "csv" in self._args and getattr(self._args, "csv"):
-            results = self.get_csv()
-            csv_writer = csv.writer(sys.stdout, dialect='excel')
-            csv_writer.writerows(results)
         elif "grep" in self._args and getattr(self._args, "grep") or \
              "igrep" in self._args and getattr(self._args, "igrep"):
             results = self.grep_text()
@@ -221,6 +217,10 @@ class BaseReport:
                 self.export_files()
             else:
                 print("Invalid output directory '{}'.".format(self._args.export_path), file=sys.stderr)
+        elif "csv" in self._args and getattr(self._args, "csv"):
+            results = self.get_csv()
+            csv_writer = csv.writer(sys.stdout, dialect='excel')
+            csv_writer.writerows(results)
 
     def _get_unique_file_name(self, output_path: str, file_name: str) -> str:
         """This method returns a unique output path"""

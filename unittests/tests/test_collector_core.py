@@ -68,6 +68,7 @@ from database.model import TlsInfoCipherSuiteMapping
 from database.model import ScopeType
 from database.model import ExecutionInfoType
 from database.model import DomainNameNotFound
+from database.model import ServiceState
 from collectors.os.core import PopenCommand
 from collectors.os.core import PopenCommandOpenSsl
 from collectors.core import IpUtils
@@ -537,9 +538,72 @@ class TestAddHost(BaseKisTestCase):
         self._unittest_add_host(address="0.0.256.0", valid=valid)
         self._unittest_add_host(address="0.0.0.256", valid=valid)
         self._unittest_add_host(address="a.b.c.d", valid=valid)
-        self._unittest_add_host(address="10.10.10.10.1/24", valid=valid)
         self._unittest_add_host(address="-1.-1.-1.-1", valid=valid)
-        self._unittest_add_host(address="::1/24", valid=valid)
+
+    def test_add_special_hosts(self):
+        self.init_db()
+        with self._engine.session_scope() as session:
+            workspace = self.create_workspace(session)
+            self.assertEqual("1080::8:800:200C:417A",
+                             IpUtils.add_host(session=session,
+                                              workspace=workspace,
+                                              address="1080::8:800:200C:417A/96").address)
+            self.assertIsNotNone("192.168.0.1",
+                                 IpUtils.add_host(session=session,
+                                                  workspace=workspace,
+                                                  address="192.168.0.1/16").address)
+            self.assertIsNotNone("192.168.0.2",
+                                 IpUtils.add_host(session=session,
+                                                  workspace=workspace,
+                                                  address="192.168.0.2/32").address)
+            self.assertIsNotNone("::1",
+                                 IpUtils.add_host(session=session,
+                                                  workspace=workspace,
+                                                  address="::1/128").address)
+
+
+class TestAddNetworkOrHost(BaseKisTestCase):
+    """
+    This test case tests Ipv4Utils.add_network_or_host
+    """
+
+    def __init__(self, test_name: str):
+        super().__init__(test_name)
+
+    def test_add_addresses(self):
+        self.init_db()
+        networks = ["192.168.0.0/16", "fe80::/64"]
+        hosts = ["192.168.0.1/16", "192.168.0.2/32", "192.168.0.3", "::1/96", "::2/128", "::3", "1080::8:800:200C:417A/98"]
+        networks.sort()
+        hosts.sort()
+        # Create database
+        with self._engine.session_scope() as session:
+            workspace = self.create_workspace(session)
+            source = self.create_source(session)
+            for item in networks:
+                result = IpUtils.add_network_or_host(session=session,
+                                                     workspace=workspace,
+                                                     address=item,
+                                                     source=source)
+                self.assertTrue(isinstance(result, Network))
+            for item in hosts:
+                result = IpUtils.add_network_or_host(session=session,
+                                                     workspace=workspace,
+                                                     address=item,
+                                                     source=source)
+                self.assertTrue(isinstance(result, Host))
+        # Check database
+        hosts = [item.split("/")[0].lower() for item in hosts]
+        with self._engine.session_scope() as session:
+            result = session.query(Source).one()
+            self.assertEqual(len(networks), len(result.ipv4_networks))
+            self.assertEqual(len(hosts), len(result.hosts))
+            result = [item.network for item in session.query(Network).all()]
+            result.sort()
+            self.assertListEqual(networks, result)
+            result = [item.address for item in session.query(Host).all()]
+            result.sort()
+            self.assertListEqual(hosts, result)
 
 
 class TestAddNetwork(BaseKisTestCase):
@@ -832,6 +896,23 @@ class TestAddNetwork(BaseKisTestCase):
         self._initial_setup_scope_tests_check(workspace1=self._workspaces[0],
                                               workspace2=self._workspaces[1],
                                               ipv4_network2_scope=ScopeType.all)
+
+    def test_add_special_networks(self):
+        self.init_db()
+        with self._engine.session_scope() as session:
+            workspace = self.create_workspace(session)
+            self.assertIsNone(IpUtils.add_network(session=session,
+                                                  workspace=workspace,
+                                                  network="1080::8:800:200C:417A/96"))
+            self.assertIsNone(IpUtils.add_network(session=session,
+                                                  workspace=workspace,
+                                                  network="192.168.0.1/16"))
+            self.assertIsNotNone(IpUtils.add_network(session=session,
+                                                     workspace=workspace,
+                                                     network="192.168.0.2/32"))
+            self.assertIsNotNone(IpUtils.add_network(session=session,
+                                                     workspace=workspace,
+                                                     network="::1/128"))
 
 
 class TestAddCompany(BaseKisTestCase):
@@ -3763,6 +3844,78 @@ class TestAddUrl(BaseKisTestCase):
     def __init__(self, test_name: str):
         super().__init__(test_name)
 
+    def test_add_url(self):
+        # Setup database
+        self.init_db()
+        workspace_str = "unittest"
+        with self._engine.session_scope() as session:
+            source = self.create_source(session)
+            workspace = self.create_workspace(session=session, workspace=workspace_str)
+            self._domain_utils.add_url(session=session,
+                                       workspace=workspace,
+                                       url="http://www.test.local/",
+                                       source=source)
+            self._domain_utils.add_url(session=session,
+                                       workspace=workspace,
+                                       url="https://www.test1.local/",
+                                       source=source)
+            self._domain_utils.add_url(session=session,
+                                       workspace=workspace,
+                                       url="http://www.test2.local:8080/",
+                                       source=source)
+            self._domain_utils.add_url(session=session,
+                                       workspace=workspace,
+                                       url="https://www.test3.local:8443/login?username=admin&password=pwd",
+                                       source=source)
+        # Check database
+        with self._engine.session_scope() as session:
+            workspace = self._domain_utils.get_workspace(session=session, name=workspace_str)
+            # Check www.test.local
+            result = self._domain_utils.get_host_name(session=session, workspace=workspace, host_name="www.test.local")
+            self.assertIsNotNone(result)
+            self.assertEqual(1, len(result.services))
+            self.assertEqual(80, result.services[0].port)
+            self.assertIsNone(result.services[0].nmap_tunnel)
+            self.assertEqual(ProtocolType.tcp, result.services[0].protocol)
+            self.assertEqual(ServiceState.Open, result.services[0].state)
+            # Check www.test1.local
+            result = self._domain_utils.get_host_name(session=session, workspace=workspace, host_name="www.test1.local")
+            self.assertIsNotNone(result)
+            self.assertEqual(1, len(result.services))
+            self.assertEqual(443, result.services[0].port)
+            self.assertEqual("ssl", result.services[0].nmap_tunnel)
+            self.assertEqual(ProtocolType.tcp, result.services[0].protocol)
+            self.assertEqual(ServiceState.Open, result.services[0].state)
+            # Check www.test2.local
+            result = self._domain_utils.get_host_name(session=session, workspace=workspace, host_name="www.test2.local")
+            self.assertIsNotNone(result)
+            self.assertEqual(1, len(result.services))
+            self.assertEqual(8080, result.services[0].port)
+            self.assertIsNone(result.services[0].nmap_tunnel)
+            self.assertEqual(ProtocolType.tcp, result.services[0].protocol)
+            self.assertEqual(ServiceState.Open, result.services[0].state)
+            # Check www.test3.local
+            result = self._domain_utils.get_host_name(session=session, workspace=workspace, host_name="www.test3.local")
+            self.assertIsNotNone(result)
+            self.assertEqual(1, len(result.services))
+            self.assertEqual(8443, result.services[0].port)
+            self.assertEqual("ssl", result.services[0].nmap_tunnel)
+            self.assertEqual(ProtocolType.tcp, result.services[0].protocol)
+            self.assertEqual(ServiceState.Open, result.services[0].state)
+            self.assertEqual(1, len(result.services[0].paths))
+            self.assertEqual("/login", result.services[0].paths[0].name)
+            self.assertEqual(1, len(result.services[0].paths[0].queries))
+            self.assertEqual("username=admin&password=pwd", result.services[0].paths[0].queries[0].query)
+
+
+class TestAddUrlPath(BaseKisTestCase):
+    """
+    This test case tests BaseUtils.add_url_path
+    """
+
+    def __init__(self, test_name: str):
+        super().__init__(test_name)
+
     def _test_add_url(self,
                       session: Session,
                       service_port: int = None,
@@ -3782,13 +3935,13 @@ class TestAddUrl(BaseKisTestCase):
             service = self.create_service(session=session,
                                           workspace_str=item,
                                           port=service_port)
-            result = self._domain_utils.add_url(session=session,
-                                                service=service,
-                                                url=url_str,
-                                                status_code=status_code,
-                                                size_bytes=size_bytes,
-                                                source=source,
-                                                report_item=report_item)
+            result = self._domain_utils.add_url_path(session=session,
+                                                     service=service,
+                                                     url_path=url_str,
+                                                     status_code=status_code,
+                                                     size_bytes=size_bytes,
+                                                     source=source,
+                                                     report_item=report_item)
             if url.path:
                 self.assertIsNotNone(result)
                 self.assertIsNotNone(result.service)

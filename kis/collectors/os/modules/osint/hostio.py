@@ -65,68 +65,6 @@ class CollectorClass(BaseKisImportDomain, DomainCollector):
                self._api_config.config.get("host.io", "api_key") and \
                self._api_config.config.get("host.io", "api_limit")
 
-    def _add_ipv4_address(self,
-                          session: Session,
-                          json_object: dict,
-                          path: str,
-                          command: Command,
-                          source: Source,
-                          report_item: ReportItem) -> None:
-        value = self._json_utils.get_attribute_value(json_object, path)
-        if value:
-            if isinstance(value, list):
-                for item in value:
-                    host = self.add_host(session=session,
-                                         command=command,
-                                         address=item,
-                                         source=source,
-                                         report_item=report_item)
-                    if not host:
-                        logger.warning("could not add host name '{}' to database due to invalid format".format(item))
-            elif isinstance(value, str):
-                host = self.add_host(session=session,
-                                     command=command,
-                                     address=value,
-                                     source=source,
-                                     report_item=report_item)
-                if not host:
-                    logger.warning("could not add host name '{}' to database due to invalid format".format(value))
-            else:
-                raise NotImplementedError("case not implemented")
-
-    def _add_host_name(self,
-                       session: Session,
-                       json_object: dict,
-                       path: str,
-                       command: Command,
-                       source: Source,
-                       report_item: ReportItem) -> None:
-        value = self._json_utils.get_attribute_value(json_object, path)
-        if value:
-            if isinstance(value, list):
-                new_source = self.add_source(session=session, name="{}_{}".format(source.name, path))
-                for item in value:
-                    host_name = self.add_host_name(session=session,
-                                                   command=command,
-                                                   host_name=item,
-                                                   source=new_source,
-                                                   verify=True,
-                                                   report_item=report_item)
-                    if not host_name:
-                        logger.warning("could not add host name '{}' to database due to invalid format".format(item))
-            elif isinstance(value, str):
-                new_source = self.add_source(session=session, name="{}_{}".format(source.name, path))
-                host_name = self.add_host_name(session=session,
-                                               command=command,
-                                               host_name=value,
-                                               source=new_source,
-                                               verify=True,
-                                               report_item=report_item)
-                if not host_name:
-                    logger.warning("could not add host name '{}' to database due to invalid format".format(value))
-            else:
-                raise NotImplementedError("case not implemented")
-
     def verify_results(self, session: Session,
                        command: Command,
                        source: Source,
@@ -150,108 +88,166 @@ class CollectorClass(BaseKisImportDomain, DomainCollector):
             self._set_execution_failed(session=session, command=command)
             return
         for json_object in command.json_output:
-            if "domain" in json_object and json_object["domain"] == command.host_name.full_name:
-                if "web" in json_object:
-                    item = json_object["web"]
-                    self._add_host_name(session=session,
+            section = "domain"
+            if section in json_object:
+                item = json_object[section]
+                self.add_host_name(session=session,
+                                   command=command,
+                                   host_name=item,
+                                   source=source,
+                                   report_item=report_item)
+            if "web" in json_object:
+                item = json_object["web"]
+                self.add_host_name_from_json(session=session,
+                                             json_object=item,
+                                             path="domain",
+                                             command=command,
+                                             source=source,
+                                             report_item=report_item)
+                self.add_host_name_from_json(session=session,
+                                             json_object=item,
+                                             path="redirect",
+                                             command=command,
+                                             source=source,
+                                             report_item=report_item)
+                self.add_host_name_from_json(session=session,
+                                             json_object=item,
+                                             path="links",
+                                             command=command,
+                                             source=source,
+                                             report_item=report_item)
+                self.add_url_from_json(session=session,
+                                       json_object=item,
+                                       path="url",
+                                       command=command,
+                                       source=source,
+                                       report_item=report_item)
+                self.add_host_from_json(session=session,
                                         json_object=item,
-                                        path="redirect",
+                                        path="ip",
                                         command=command,
                                         source=source,
                                         report_item=report_item)
-                    self._add_host_name(session=session,
-                                        json_object=item,
-                                        path="links",
-                                        command=command,
-                                        source=source,
-                                        report_item=report_item)
-                    if "email" in item:
-                        for email in item["email"].split(","):
-                            email = email.strip()
-                            self.add_email(session=session,
-                                           command=command,
-                                           email=email,
-                                           source=source,
-                                           report_item=report_item,
-                                           verify=True)
-                if "dns" in json_object:
-                    item = json_object["dns"]
-                    # add A records
-                    self._add_ipv4_address(session=session,
-                                           json_object=item,
-                                           path="a",
-                                           command=command,
-                                           source=source,
-                                           report_item=report_item)
-                    # add MX records
-                    if "mx" in item:
-                        for mx in item["mx"]:
-                            mx = mx.split()[-1]
-                            self.add_host_name(session=session,
+                if "email" in item:
+                    for email_str in item["email"].split(","):
+                        email_str = email_str.strip()
+                        email = self.add_email(session=session,
                                                command=command,
-                                               host_name=mx,
+                                               email=email_str,
                                                source=source,
-                                               verify=True,
-                                               report_item=report_item)
-                    # add NS records
-                    self._add_host_name(session=session,
+                                               report_item=report_item,
+                                               verify=True)
+                        if not email:
+                            logger.warning("could not add email '{}' to database due to invalid format".format(email_str))
+            if "dns" in json_object:
+                item = json_object["dns"]
+                # add A records
+                self.add_host_from_json(session=session,
                                         json_object=item,
-                                        path="ns",
+                                        path="a",
                                         command=command,
                                         source=source,
                                         report_item=report_item)
-                if "domains" in json_object:
-                    item = json_object["domains"]
-                    # add A records
-                    self._add_ipv4_address(session=session,
-                                           json_object=item,
-                                           path="ip",
+                # add MX records
+                if "mx" in item:
+                    for mx in item["mx"]:
+                        mx = mx.split()[-1]
+                        self.add_host_name(session=session,
                                            command=command,
+                                           host_name=mx,
                                            source=source,
+                                           verify=True,
                                            report_item=report_item)
-                    self._add_host_name(session=session,
+                # add NS records
+                self.add_host_name_from_json(session=session,
+                                             json_object=item,
+                                             path="ns",
+                                             command=command,
+                                             source=source,
+                                             report_item=report_item)
+            if "ipinfo" in json_object:
+                for ip_address, content in json_object["ipinfo"].items():
+                    host = self.add_host(session=session,
+                                         command=command,
+                                         address=ip_address,
+                                         source=source,
+                                         report_item=report_item)
+                    if not host:
+                        logger.warning("could not add host '{}' to database due to invalid format".format(ip_address))
+                    self.add_network_from_json(session=session,
+                                               json_object=content,
+                                               path="asn/route",
+                                               command=command,
+                                               source=source,
+                                               report_item=report_item)
+                    self.add_host_name_from_json(session=session,
+                                                 json_object=content,
+                                                 path="asn/domain",
+                                                 command=command,
+                                                 source=source,
+                                                 report_item=report_item)
+            if "domains" in json_object:
+                item = json_object["domains"]
+                # add A records
+                self.add_host_from_json(session=session,
                                         json_object=item,
-                                        path="domains",
+                                        path="ip",
                                         command=command,
                                         source=source,
                                         report_item=report_item)
-                if "redirects" in json_object:
-                    item = json_object["redirects"]
-                    self._add_host_name(session=session,
+                self.add_host_name_from_json(session=session,
+                                             json_object=item,
+                                             path="domains",
+                                             command=command,
+                                             source=source,
+                                             report_item=report_item)
+            if "related" in json_object:
+                item = json_object["related"]
+                self.add_host_from_json(session=session,
                                         json_object=item,
-                                        path="domains",
+                                        path="ip/*/value",
                                         command=command,
                                         source=source,
                                         report_item=report_item)
-                if "backlinks" in json_object:
-                    item = json_object["backlinks"]
-                    self._add_host_name(session=session,
-                                        json_object=item,
-                                        path="domains",
-                                        command=command,
-                                        source=source,
-                                        report_item=report_item)
-                if "email" in json_object:
-                    item = json_object["email"]
-                    self._add_host_name(session=session,
-                                        json_object=item,
-                                        path="domains",
-                                        command=command,
-                                        source=source,
-                                        report_item=report_item)
-                if "adsense" in json_object:
-                    item = json_object["adsense"]
-                    self._add_host_name(session=session,
-                                        json_object=item,
-                                        path="domains",
-                                        command=command,
-                                        source=source,
-                                        report_item=report_item)
-                if "googleanalytics" in json_object:
-                    item = json_object["googleanalytics"]
-                    self._add_host_name(session=session,
-                                        json_object=item,
-                                        path="domains",
-                                        command=command,
-                                        source=source,
-                                        report_item=report_item)
+                self.add_host_name_from_json(session=session,
+                                             json_object=item,
+                                             path="ns/*/value",
+                                             command=command,
+                                             source=source,
+                                             report_item=report_item)
+                self.add_host_name_from_json(session=session,
+                                             json_object=item,
+                                             path="mx/*/value",
+                                             command=command,
+                                             source=source,
+                                             report_item=report_item)
+                self.add_host_name_from_json(session=session,
+                                             json_object=item,
+                                             path="backlinks/*/value",
+                                             command=command,
+                                             source=source,
+                                             report_item=report_item)
+                self.add_host_name_from_json(session=session,
+                                             json_object=item,
+                                             path="redirects/*/value",
+                                             command=command,
+                                             source=source,
+                                             report_item=report_item)
+                self.add_host_name_from_json(session=session,
+                                             json_object=item,
+                                             path="adsense/*/value",
+                                             command=command,
+                                             source=source,
+                                             report_item=report_item)
+                self.add_host_name_from_json(session=session,
+                                             json_object=item,
+                                             path="googleanalytics/*/value",
+                                             command=command,
+                                             source=source,
+                                             report_item=report_item)
+                self.add_email_from_json(session=session,
+                                         json_object=item,
+                                         path="email/*/value",
+                                         command=command,
+                                         source=source,
+                                         report_item=report_item)

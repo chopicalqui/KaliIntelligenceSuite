@@ -232,8 +232,8 @@ class CollectorClass(BaseHttpCollector, ServiceCollector, HostNameServiceCollect
             path_str = path_str.strip()
             if path_str and path_str != "/" and path_str not in dedup:
                 dedup[path_str] = True
-                self.add_url(session=session,
-                             service=command.service,
-                             url=path_str,
-                             source=source,
-                             report_item=report_item)
+                self.add_url_path(session=session,
+                                  service=command.service,
+                                  url_path=path_str,
+                                  source=source,
+                                  report_item=report_item)

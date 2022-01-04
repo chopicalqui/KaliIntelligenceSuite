@@ -127,4 +127,3 @@ Received 723 bytes from 51.222.39.63#53 in 100 ms""".split(os.linesep)
                                             host_name="www6.megacorpone.com")
             hosts = host_name.get_host_host_name_mappings([DnsResourceRecordType.aaaa])
             self.assertEqual("2a00:1450:400a:802::2004", hosts[0].host.ipv6_address)
-

@@ -804,6 +804,30 @@ class BaseCollector(config.Collector):
                                              report_item=report_item)
         return network
 
+    def add_network_or_host(self,
+                            session: Session,
+                            command: Command,
+                            address: str,
+                            source: Source = None,
+                            report_item: ReportItem = None) -> object:
+        """
+        This method should be used by collectors to add hosts to the database
+        :param session: Sqlalchemy session that manages persistence operations for ORM-mapped objects
+        :param command: The command instance that contains the results of the command execution
+        :param network: The IPv4/IPv6 network that shall be added
+        :param source: The source object of the current collector
+        :param report_item: Item that can be used for pushing information into the view
+        :return:
+        """
+        if report_item:
+            report_item.listener = self._listeners
+        result = self._ip_utils.add_network_or_host(session=session,
+                                                    workspace=command.workspace,
+                                                    address=address,
+                                                    source=source,
+                                                    report_item=report_item)
+        return result
+
     def add_source(self,
                    session: Session,
                    name: str) -> Source:
@@ -1180,18 +1204,49 @@ class BaseCollector(config.Collector):
                                              report_item=report_item)
         return rvalue
 
+    def add_url_path(self,
+                     session: Session,
+                     url_path: str,
+                     service: Service,
+                     status_code: int = None,
+                     size_bytes: int = None,
+                     source: Source = None,
+                     report_item: ReportItem = None) -> Path:
+        """
+        This method adds the given URL path and query to the given service
+        :param session: The database session used for addition the URL
+        :param service: The service to which the URL belongs
+        :param url_path: The URL's path and query that shall be added to the database
+        :param status_code: The access code
+        :param size_bytes: The size of the response body in bytes
+        :param source: The source object from which the URL originates
+        :param report_item: Item that can be used for pushing information into the view
+        :return: The newly added path object
+        """
+        if report_item:
+            report_item.listener = self._listeners
+        rvalue = self._domain_utils.add_url_path(session=session,
+                                                 service=service,
+                                                 url_path=url_path,
+                                                 status_code=status_code,
+                                                 size_bytes=size_bytes,
+                                                 source=source,
+                                                 report_item=report_item)
+        return rvalue
+
     def add_url(self,
                 session: Session,
-                service: Service,
+                command: Command,
                 url: str,
                 status_code: int = None,
                 size_bytes: int = None,
                 source: Source = None,
+                verify: bool = False,
                 report_item: ReportItem = None) -> Path:
         """
         This method adds the given URL to the database
         :param session: The database session used for addition the URL
-        :param service: The service to which the URL belongs
+        :param command: The command instance that contains the results of the command execution
         :param url: The URL that shall be added to the database
         :param status_code: The access code
         :param size_bytes: The size of the response body in bytes
@@ -1202,11 +1257,12 @@ class BaseCollector(config.Collector):
         if report_item:
             report_item.listener = self._listeners
         rvalue = self._domain_utils.add_url(session=session,
-                                            service=service,
+                                            workspace=command.workspace,
                                             url=url,
                                             status_code=status_code,
                                             size_bytes=size_bytes,
                                             source=source,
+                                            verify=verify,
                                             report_item=report_item)
         return rvalue
 
@@ -1341,6 +1397,213 @@ class BaseCollector(config.Collector):
                                                   source=source,
                                                   report_item=report_item)
         return result
+
+    def add_host_from_json(self,
+                           session: Session,
+                           json_object: dict,
+                           path: str,
+                           command: Command,
+                           source: Source,
+                           report_item: ReportItem) -> None:
+        """
+        This method uses the given path to extract and import the JSON attribute to the database
+        :param session: The database session used for addition the URL
+        :param json_object: The JSON object that should be searched
+        :param path: The path to the respective JSON attribute
+        :param command: The command to which the file should be attached
+        :param source: The source object from which the URL originates
+        :param report_item: Item that can be used for pushing information into the view
+        """
+        for value in self._json_utils.get_attribute_values(json_object, path):
+            if value is None:
+                continue
+            elif isinstance(value, list):
+                for item in value:
+                    host = self.add_host(session=session,
+                                         command=command,
+                                         address=item,
+                                         source=source,
+                                         report_item=report_item)
+                    if not host:
+                        logger.warning("could not add host '{}' to database due to invalid format".format(item))
+            elif isinstance(value, str):
+                host = self.add_host(session=session,
+                                     command=command,
+                                     address=value,
+                                     source=source,
+                                     report_item=report_item)
+                if not host:
+                    logger.warning("could not add host '{}' to database due to invalid format".format(value))
+            else:
+                raise NotImplementedError("case not implemented")
+
+    def add_network_from_json(self,
+                              session: Session,
+                              json_object: dict,
+                              path: str,
+                              command: Command,
+                              source: Source,
+                              report_item: ReportItem) -> None:
+        """
+        This method uses the given path to extract and import the JSON attribute to the database
+        :param session: The database session used for addition the URL
+        :param json_object: The JSON object that should be searched
+        :param path: The path to the respective JSON attribute
+        :param command: The command to which the file should be attached
+        :param source: The source object from which the URL originates
+        :param report_item: Item that can be used for pushing information into the view
+        """
+        for value in self._json_utils.get_attribute_values(json_object, path):
+            if value is None:
+                continue
+            elif isinstance(value, list):
+                for item in value:
+                    network = self.add_network(session=session,
+                                               command=command,
+                                               network=item,
+                                               source=source,
+                                               report_item=report_item)
+                    if not network:
+                        logger.warning("could not add network '{}' to database due to invalid format".format(item))
+            elif isinstance(value, str):
+                network = self.add_network(session=session,
+                                           command=command,
+                                           network=value,
+                                           source=source,
+                                           report_item=report_item)
+                if not network:
+                    logger.warning("could not add network '{}' to database due to invalid format".format(value))
+            else:
+                raise NotImplementedError("case not implemented")
+
+    def add_host_name_from_json(self,
+                                session: Session,
+                                json_object: dict,
+                                path: str,
+                                command: Command,
+                                source: Source,
+                                report_item: ReportItem) -> None:
+        """
+        This method uses the given path to extract and import the JSON attribute to the database
+        :param session: The database session used for addition the URL
+        :param json_object: The JSON object that should be searched
+        :param path: The path to the respective JSON attribute
+        :param command: The command to which the file should be attached
+        :param source: The source object from which the URL originates
+        :param report_item: Item that can be used for pushing information into the view
+        """
+        for value in self._json_utils.get_attribute_values(json_object, path):
+            if value is None:
+                continue
+            elif isinstance(value, list):
+                new_source = self.add_source(session=session, name="{}_{}".format(source.name, path))
+                for item in value:
+                    host_name = self.add_host_name(session=session,
+                                                   command=command,
+                                                   host_name=item,
+                                                   source=new_source,
+                                                   verify=True,
+                                                   report_item=report_item)
+                    if not host_name:
+                        logger.warning("could not add host name '{}' to database due to invalid format".format(item))
+            elif isinstance(value, str):
+                new_source = self.add_source(session=session, name="{}_{}".format(source.name, path))
+                host_name = self.add_host_name(session=session,
+                                               command=command,
+                                               host_name=value,
+                                               source=new_source,
+                                               verify=True,
+                                               report_item=report_item)
+                if not host_name:
+                    logger.warning("could not add host name '{}' to database due to invalid format".format(value))
+            else:
+                raise NotImplementedError("case not implemented")
+
+    def add_email_from_json(self,
+                            session: Session,
+                            json_object: dict,
+                            path: str,
+                            command: Command,
+                            source: Source,
+                            report_item: ReportItem) -> None:
+        """
+        This method uses the given path to extract and import the JSON attribute to the database
+        :param session: The database session used for addition the URL
+        :param json_object: The JSON object that should be searched
+        :param path: The path to the respective JSON attribute
+        :param command: The command to which the file should be attached
+        :param source: The source object from which the URL originates
+        :param report_item: Item that can be used for pushing information into the view
+        """
+        for value in self._json_utils.get_attribute_values(json_object, path):
+            if value is None:
+                continue
+            elif isinstance(value, list):
+                new_source = self.add_source(session=session, name="{}_{}".format(source.name, path))
+                for item in value:
+                    email = self.add_email(session=session,
+                                           command=command,
+                                           email=item,
+                                           source=new_source,
+                                           report_item=report_item,
+                                           verify=True)
+                    if not email:
+                        logger.warning("could not add email '{}' to database due to invalid format".format(item))
+            elif isinstance(value, str):
+                new_source = self.add_source(session=session, name="{}_{}".format(source.name, path))
+                email = self.add_email(session=session,
+                                       command=command,
+                                       email=value,
+                                       source=new_source,
+                                       report_item=report_item,
+                                       verify=True)
+                if not email:
+                    logger.warning("could not add email '{}' to database due to invalid format".format(value))
+            else:
+                raise NotImplementedError("case not implemented")
+
+    def add_url_from_json(self,
+                          session: Session,
+                          json_object: dict,
+                          path: str,
+                          command: Command,
+                          source: Source,
+                          report_item: ReportItem) -> None:
+        """
+        This method uses the given path to extract and import the JSON attribute to the database
+        :param session: The database session used for addition the URL
+        :param json_object: The JSON object that should be searched
+        :param path: The path to the respective JSON attribute
+        :param command: The command to which the file should be attached
+        :param source: The source object from which the URL originates
+        :param report_item: Item that can be used for pushing information into the view
+        """
+        for value in self._json_utils.get_attribute_values(json_object, path):
+            if value is None:
+                continue
+            elif isinstance(value, list):
+                new_source = self.add_source(session=session, name="{}_{}".format(source.name, path))
+                for item in value:
+                    url = self.add_url(session=session,
+                                       command=command,
+                                       url=item,
+                                       source=new_source,
+                                       report_item=report_item,
+                                       verify=True)
+                    if not url:
+                        logger.warning("could not add url '{}' to database due to invalid format".format(item))
+            elif isinstance(value, str):
+                new_source = self.add_source(session=session, name="{}_{}".format(source.name, path))
+                url = self.add_url(session=session,
+                                   command=command,
+                                   url=value,
+                                   source=new_source,
+                                   report_item=report_item,
+                                   verify=True)
+                if not url:
+                    logger.warning("could not add url '{}' to database due to invalid format".format(value))
+            else:
+                raise NotImplementedError("case not implemented")
 
     # todo: update for new collector
     def create_xml_file_path(self,
@@ -1764,6 +2027,7 @@ class BaseCollector(config.Collector):
                                output_path: str = None,
                                input_file: str = None,
                                input_file_2: str = None,
+                               generic_file_name: str = None,
                                binary_file: str = None) -> Command:
         """
         This method can be used by all collectors to create new commands in the database.
@@ -1776,6 +2040,9 @@ class BaseCollector(config.Collector):
         :param collector_name: The name of the collector
         :param xml_file: Path to the command's XML output file
         :param json_file: Path to the command's JSON output file
+        :param generic_file_name: Path to the command's generic output file name. The command then adds the file extension to
+        the file and therefore, the full file name cannot be specified by KIS. This argument must be used in combination
+        with xml_file, json_file or binary_file, which specify the final location of the input files.
         :param binary_file: Path to the command's binary output file
         :param host: Host object to which the command belongs
         :param host_name: Host object to which the command belongs
@@ -1810,6 +2077,7 @@ class BaseCollector(config.Collector):
                                               input_file_2=input_file_2,
                                               binary_file=binary_file,
                                               working_directory=working_directory,
+                                              generic_file_name=generic_file_name,
                                               exec_user=exec_user)
 
     def verify_command_execution(self,
@@ -2220,11 +2488,11 @@ class BaseChangeme(BaseCollector):
                                         service=command.service,
                                         report_item=report_item)
                     if target:
-                        self.add_url(session=session,
-                                     service=command.service,
-                                     url=target,
-                                     source=source,
-                                     report_item=report_item)
+                        self.add_url_path(session=session,
+                                          service=command.service,
+                                          url_path=target,
+                                          source=source,
+                                          report_item=report_item)
         command.hide = found_credentials
 
 

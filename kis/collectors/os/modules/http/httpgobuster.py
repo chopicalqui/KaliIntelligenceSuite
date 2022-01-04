@@ -159,11 +159,12 @@ class CollectorClass(BaseHttpGoBuster, ServiceCollector, HostNameServiceCollecto
                 path_status_pair = [path_str, status_code, None]
             if path_status_pair:
                 path_str, status_code, size_bytes = path_status_pair
-                url = self.add_url(session,
-                                   command.service, path_str,
-                                   status_code=status_code,
-                                   size_bytes=size_bytes,
-                                   source=source,
-                                   report_item=report_item)
+                url = self.add_url_path(session=session,
+                                        service=command.service,
+                                        url_path=path_str,
+                                        status_code=status_code,
+                                        size_bytes=size_bytes,
+                                        source=source,
+                                        report_item=report_item)
                 if not url:
                     logger.debug("ignoring host name due to invalid domain in line: {}".format(line))

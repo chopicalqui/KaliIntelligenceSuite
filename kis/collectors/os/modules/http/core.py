@@ -313,11 +313,11 @@ class HttpExtraInfoExtraction(BaseExtraServiceInfoExtraction):
                 tmp = output.split(os.linesep)
                 for line in tmp[1:]:
                     for item in line.split(" "):
-                        self._domain_utils.add_url(session=self._session,
-                                                   service=self._service,
-                                                   url=item,
-                                                   source=self._source_robots_txt,
-                                                   report_item=self._report_item)
+                        self._domain_utils.add_url_path(session=self._session,
+                                                        service=self._service,
+                                                        url_path=item,
+                                                        source=self._source_robots_txt,
+                                                        report_item=self._report_item)
 
     def _extract_http_auth_finder(self, port_tag):
         """This method extracts URLs"""
@@ -329,11 +329,11 @@ class HttpExtraInfoExtraction(BaseExtraServiceInfoExtraction):
                 for line in tmp:
                     match = self._re_http_auth_finder.match(line)
                     if match:
-                        self._domain_utils.add_url(session=self._session,
-                                                   service=self._service,
-                                                   url=match.group("url"),
-                                                   source=self._source_auth_finder,
-                                                   report_item=self._report_item)
+                        self._domain_utils.add_url_path(session=self._session,
+                                                        service=self._service,
+                                                        url_path=match.group("url"),
+                                                        source=self._source_auth_finder,
+                                                        report_item=self._report_item)
 
     def _extract_http_comments_displayer(self, port_tag):
         """This method extracts URLs"""
@@ -348,11 +348,11 @@ class HttpExtraInfoExtraction(BaseExtraServiceInfoExtraction):
                         url = match.group("url")
                         if url not in dedup:
                             dedup[url] = True
-                            self._domain_utils.add_url(session=self._session,
-                                                       service=self._service,
-                                                       url=url,
-                                                       source=self._source_auth_finder,
-                                                       report_item=self._report_item)
+                            self._domain_utils.add_url_path(session=self._session,
+                                                            service=self._service,
+                                                            url_path=url,
+                                                            source=self._source_auth_finder,
+                                                            report_item=self._report_item)
 
     def _extract_http_backup_finder(self, port_tag):
         """This method extracts URLs"""
@@ -364,11 +364,11 @@ class HttpExtraInfoExtraction(BaseExtraServiceInfoExtraction):
                 for line in tmp:
                     match = self._re_http_backup_finder.match(line)
                     if match:
-                        self._domain_utils.add_url(session=self._session,
-                                                   service=self._service,
-                                                   url=match.group("url"),
-                                                   source=self._source,
-                                                   report_item=self._report_item)
+                        self._domain_utils.add_url_path(session=self._session,
+                                                        service=self._service,
+                                                        url_path=match.group("url"),
+                                                        source=self._source,
+                                                        report_item=self._report_item)
 
     def _extract_http_methods(self, port_tag):
         """This method extracts the HTTP methods supported by the web server."""

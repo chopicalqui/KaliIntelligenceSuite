@@ -755,10 +755,10 @@ class BaseKisTestCase(unittest.TestCase):
                                                  state=ServiceState.Open,
                                                  source=self.create_source(session=session,
                                                                            source_str="shodanhost"))
-        self._domain_utils.add_url(session=session,
-                                   service=service,
-                                   url="/test?a=b",
-                                   source=self.create_source(session=session, source_str="nikto"))
+        self._domain_utils.add_url_path(session=session,
+                                        service=service,
+                                        url_path="/test?a=b",
+                                        source=self.create_source(session=session, source_str="nikto"))
         self._domain_utils.add_service_method(session=session,
                                               name="PUT",
                                               service=service,

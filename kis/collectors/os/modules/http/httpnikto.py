@@ -182,7 +182,11 @@ class CollectorClass(BaseHttpCollector, ServiceCollector, HostNameServiceCollect
             elif match_path:
                 path_str = match_path.group("path").strip()
                 path_str = path_str.split()[0]
-                url = self.add_url(session, command.service, path_str, source=source, report_item=report_item)
+                url = self.add_url_path(session=session,
+                                        service=command.service,
+                                        url_path=path_str,
+                                        source=source,
+                                        report_item=report_item)
                 if not url:
                     logger.debug("ignoring URL due to invalid IPv4 address in line: {}".format(line))
             elif match_header_info:
@@ -215,17 +219,21 @@ class CollectorClass(BaseHttpCollector, ServiceCollector, HostNameServiceCollect
                                                  report_item=report_item)
                 if not credential:
                     logger.debug("ignoring credentials in line: {}".format(line))
-                path = self.add_url(session, command.service, path_str, source=source, report_item=report_item)
+                path = self.add_url_path(session=session,
+                                         service=command.service,
+                                         url_path=path_str,
+                                         source=source,
+                                         report_item=report_item)
                 if not path:
                     logger.debug("ignoring URL due to invalid IPv4 address in line: {}".format(line))
             elif match_robots:
                 path_str = match_robots.group("path").strip()
                 code = match_robots.group("code").strip()
-                path = self.add_url(session,
-                                    command.service,
-                                    path_str,
-                                    status_code=int(code) if code else None,
-                                    source=source,
-                                    report_item=report_item)
+                path = self.add_url_path(session=session,
+                                         service=command.service,
+                                         url_path=path_str,
+                                         status_code=int(code) if code else None,
+                                         source=source,
+                                         report_item=report_item)
                 if not path:
                     logger.debug("ignoring URL due to invalid IPv4 address in line: {}".format(line))

@@ -80,7 +80,7 @@ class OutputReader(Thread):
         """
         for line in iter(self._output_stream.readline, b''):
             try:
-                self.append(line.decode().rstrip())
+                self.append(line.decode(errors="ignore").rstrip())
             except Exception as ex:
                 logger.exception(ex)
 

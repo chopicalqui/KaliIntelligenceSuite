@@ -30,6 +30,8 @@ import logging
 import hashlib
 import io
 import csv
+import sys
+import traceback
 from database.config import Collector as CollectorConfig
 from urllib.parse import urlparse
 from xml.etree.ElementTree import Element
@@ -362,6 +364,7 @@ class BaseUtils:
                     input_file: str = None,
                     input_file_2: str = None,
                     working_directory: str = None,
+                    generic_file_name: str = None,
                     exec_user: str = None) -> Command:
         """
         This method can be used by all collectors to create new commands in the database.
@@ -380,6 +383,9 @@ class BaseUtils:
         :param output_path: Path to the commands's output directory
         :param input_file: File which contains all the information for the target application (e.g. list of URLs for httpeyewitness)
         :param input_file_2: File which contains all the information for the target application (e.g. list of URLs for httpeyewitness)
+        :param generic_file_name: Path to the command's generic output file name. The command then adds the file extension to
+        the file and therefore, the full file name cannot be specified by KIS. This argument must be used in combination
+        with xml_file, json_file or binary_file, which specify the final location of the input files.
         :param exec_user: The username with whom the command is executed
         :param working_directory: The command's working directory
         :return: The queried or newly created collector class
@@ -392,6 +398,9 @@ class BaseUtils:
             (network and email) or (network and company) or (email and company):
             raise ValueError("command must be assigned either to a service, host, host name or "
                              "to an IPv4 network")
+        if generic_file_name and not xml_file and not json_file and not binary_file:
+            raise ValueError("the argument generic_file_name requires the precense of one of the following arguments: "
+                             "xml_file, json_file or binary_file")
         if service:
             command = session.query(Command) \
                 .join((Service, Command.service)) \
@@ -470,6 +479,8 @@ class BaseUtils:
             command.execution_info[ExecutionInfoType.xml_output_file.name] = xml_file
         if json_file:
             command.execution_info[ExecutionInfoType.json_output_file.name] = json_file
+        if generic_file_name:
+            command.execution_info[ExecutionInfoType.generic_file_name.name] = generic_file_name
         if output_path:
             command.execution_info[ExecutionInfoType.output_path.name] = output_path
         if binary_file:
@@ -559,11 +570,11 @@ class BaseUtils:
                     match = regex.match(line)
                     if match:
                         path = match.group("path")
-                        tmp = self.add_url(session=session,
-                                           service=service,
-                                           url=path,
-                                           source=source,
-                                           report_item=report_item)
+                        tmp = self.add_url_path(session=session,
+                                                service=service,
+                                                url_path=path,
+                                                source=source,
+                                                report_item=report_item)
                         paths.append(tmp)
         return paths
 
@@ -1220,20 +1231,20 @@ class BaseUtils:
                                               content=content)
         return file
 
-    def add_url(self,
-                session: Session,
-                service: Service,
-                url: str,
-                status_code: int = None,
-                size_bytes: int = None,
-                source: Source = None,
-                report_item: ReportItem = None,
-                add_all: bool = False) -> Path:
+    def add_url_path(self,
+                     session: Session,
+                     service: Service,
+                     url_path: str,
+                     status_code: int = None,
+                     size_bytes: int = None,
+                     source: Source = None,
+                     report_item: ReportItem = None,
+                     add_all: bool = False) -> Path:
         """
-        This method adds the given URL (path and query part) to the database
+        This method adds the given URL (path and query part) to the service
         :param session: The database session used for addition the URL
         :param service: The service to which the URL belongs
-        :param url: The URL that shall be added to the database
+        :param url_path: The URL's path and query that shall be added to the database
         :param status_code: The access code
         :param size_bytes: Size of response body or file content in bytes
         :param source: The source object from which the URL originates
@@ -1241,7 +1252,7 @@ class BaseUtils:
         :param add_all: If true, then also files with extensions like js, css, woff, jpg, png, etc. are added
         :return: The newly added path object
         """
-        url_object = urlparse(url)
+        url_object = urlparse(url_path)
         path = None
         if url_object.path and url_object.query:
             path_str = url_object.path
@@ -1274,6 +1285,66 @@ class BaseUtils:
                                 source=source,
                                 report_item=report_item)
         return path
+
+    def add_url(self,
+                session: Session,
+                workspace: Service,
+                url: str,
+                status_code: int = None,
+                size_bytes: int = None,
+                source: Source = None,
+                verify: bool = False,
+                report_item: ReportItem = None,
+                add_all: bool = False) -> Path:
+        """
+        This method adds the given URL (path and query part) to the database
+        :param session: The database session used for addition the URL
+        :param workspace: The workspace to which the URL belongs
+        :param url: The URL's path and query that shall be added to the database
+        :param status_code: The access code
+        :param size_bytes: Size of response body or file content in bytes
+        :param source: The source object from which the URL originates
+        :param report_item: Item that can be used for pushing information into the view
+        :param add_all: If true, then also files with extensions like js, css, woff, jpg, png, etc. are added
+        :return: The newly added path object
+        """
+        result = None
+        url_object = urlparse(url)
+        host_name = self.add_domain_name(session=session,
+                                         workspace=workspace,
+                                         item=url_object.hostname,
+                                         verify=verify,
+                                         report_item=report_item,
+                                         source=source)
+        if not host_name:
+            logger.info("ignoring host name in line: {}".format(url_object.hostname))
+        else:
+            port = url_object.port
+            if not port:
+                if url_object.scheme == "http":
+                    port = 80
+                elif url_object.scheme == "https":
+                    port = 443
+                else:
+                    raise NotImplementedError("URL scheme not http(s) is not implemented.")
+            service = self.add_service(session=session,
+                                       port=port,
+                                       protocol_type=ProtocolType.tcp,
+                                       state=ServiceState.Open,
+                                       host_name=host_name,
+                                       nmap_tunnel="ssl" if url_object.scheme == "https" else None,
+                                       source=source,
+                                       report_item=report_item)
+            if service:
+                result = self.add_url_path(session=session,
+                                           service=service,
+                                           url_path=url,
+                                           status_code=status_code,
+                                           size_bytes=size_bytes,
+                                           source=source,
+                                           report_item=report_item,
+                                           add_all=add_all)
+        return result
 
     @staticmethod
     def add_tls_info(session: Session,
@@ -1997,6 +2068,37 @@ class JsonUtils(BaseUtils):
         return current_position if current_position else default_value
 
     @staticmethod
+    def get_attribute_values(json_object: Dict, path: str, default_value = None) -> list:
+        """
+        This method returns the content of the attribute specified by the path. This method is used, when the path
+        variable contains a * in the list to traverse a list.
+        :param json_object: The JSON object that is searched
+        :param path: Path (e.g. data/value/) that specifies which attribute shall be returned\
+        :param default_value: The default value that shall be returned if the requested path does not exist
+        :return:
+        """
+        path = path[1:] if path[0] == '/' else path
+        path_elements = path.split("/")
+        path_elements_count = len(path_elements)
+        current_position = json_object
+        for i in range(0, path_elements_count):
+            value = path_elements[i]
+            if isinstance(current_position, dict) and value in current_position:
+                current_position = current_position[value]
+            elif isinstance(current_position, list) and value == "*":
+                result = []
+                for item in current_position:
+                    if isinstance(item, dict) and (i + 1) < path_elements_count:
+                        tmp = JsonUtils.get_attribute_value(json_object=item, path="/".join(path_elements[(i+1):]))
+                        if tmp:
+                            result.append(tmp)
+                return result if result else [default_value]
+            else:
+                current_position = None
+                break
+        return [current_position] if current_position else [default_value]
+
+    @staticmethod
     def find_attribute(json_object: dict, name: str) -> List[dict]:
         """
         This method returns a list of attributes that match the given name
@@ -2239,7 +2341,8 @@ class IpUtils(BaseUtils):
         result = True
         try:
             ipaddress.ip_address(address)
-        except ValueError:
+        except ValueError as ex:
+            logger.exception(ex)
             result = False
         return result
 
@@ -2253,7 +2356,8 @@ class IpUtils(BaseUtils):
         result = True
         try:
             ipaddress.ip_network(ipv4_range, strict=True)
-        except ValueError:
+        except ValueError as ex:
+            logger.exception(ex)
             result = False
         return result
 
@@ -2308,6 +2412,9 @@ class IpUtils(BaseUtils):
                     report_item.details = "potentially new IP network: {}".format(network)
                     report_item.report_type = "NETWORK"
                     report_item.notify()
+        else:
+            logger.info("IpUtils.add_network: the following IP network is not valid "
+                        "and therefore is not added: {}".format(network))
         return result
 
     @staticmethod
@@ -2341,6 +2448,48 @@ class IpUtils(BaseUtils):
             session.delete(result)
 
     @staticmethod
+    def add_network_or_host(session: Session,
+                            workspace: Workspace,
+                            address: str,
+                            source: Source = None,
+                            report_item: ReportItem = None) -> object:
+        """
+        This method shall be used to add an IPv4/IPv6 address or network if it is not clear whether it is an IPv4/IPv6
+        address or network.
+        :param session: Database session used to add the email address
+        :param workspace: The workspace to which the network shall be added
+        :param address: IPv4/IPv6 address that should be added to the database
+        :param source: Source information
+        :param report_item: Item that can be used for pushing information into the view
+        :return: Database object
+        """
+        # Try adding as network
+        try:
+            item = ipaddress.ip_network(address, strict=True)
+            # The given IP address is a network but only contains one IP address.
+            if item.num_addresses > 1:
+                return IpUtils.add_network(session=session,
+                                           workspace=workspace,
+                                           network=address,
+                                           source=source,
+                                           report_item=report_item)
+            else:
+                return IpUtils.add_host(session=session,
+                                        workspace=workspace,
+                                        address=str(item.network_address),
+                                        source=source,
+                                        report_item=report_item)
+        except ValueError:
+            pass
+        # Try adding as address
+        result = IpUtils.add_host(session=session,
+                                  workspace=workspace,
+                                  address=address,
+                                  source=source,
+                                  report_item=report_item)
+        return result
+
+    @staticmethod
     def add_host(session: Session,
                  workspace: Workspace,
                  address: str,
@@ -2348,7 +2497,7 @@ class IpUtils(BaseUtils):
                  in_scope: bool = None,
                  report_item: ReportItem = None) -> Host:
         """
-        This method shall be used to add an IPv4 address to the database
+        This method shall be used to add an IPv4/IPv6 address to the database
         :param session: Database session used to add the email address
         :param workspace: The workspace to which the network shall be added
         :param address: IPv4/IPv6 address that should be added to the database
@@ -2358,7 +2507,11 @@ class IpUtils(BaseUtils):
         :return: Database object
         """
         rvalue = None
-        if address and IpUtils.is_valid_address(address):
+        is_valid = IpUtils.is_valid_address(address)
+        if not is_valid and "/" in address:
+            address = address.split("/")[0]
+            is_valid = IpUtils.is_valid_address(address)
+        if address and is_valid:
             rvalue = session.query(Host).filter_by(address=address, workspace_id=workspace.id).one_or_none()
             if not rvalue:
                 rvalue = Host(address=address, workspace=workspace, in_scope=in_scope)
@@ -2372,6 +2525,9 @@ class IpUtils(BaseUtils):
                 report_item.details = "potentially new host: {}".format(address)
                 report_item.report_type = "IP"
                 report_item.notify()
+        else:
+            logger.info("IpUtils.add_host: the following IP address is not valid "
+                        "and therefore is not added: {}".format(address))
         return rvalue
 
     @staticmethod
@@ -2428,8 +2584,8 @@ class IpUtils(BaseUtils):
 
 class DomainUtils(BaseUtils):
     """This class provides utils in regard to domains"""
-    RE_DOMAIN = "(?P<domain>(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9])\.?"
-    RE_EMAIL = "(?P<email>[\w\.%\+\-_]+@(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9])"
+    RE_DOMAIN = "(?P<domain>(?:[a-z0-9](?:[a-z0-9-_]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-_]{0,61}[a-z0-9])\.?"
+    RE_EMAIL = "(?P<email>[\w\.%\+\-_]+@(?:[a-z0-9](?:[a-z0-9-_]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-_]{0,61}[a-z0-9])"
 
     def __init__(self, **args):
         super().__init__(**args)
