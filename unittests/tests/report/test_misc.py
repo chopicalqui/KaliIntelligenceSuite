@@ -46,7 +46,7 @@ class TestReportCreation(BaseReportTestCase):
         # create report
         with tempfile.TemporaryDirectory() as temp_dir:
             excel_file = os.path.join(temp_dir, "excel.xlsx")
-            self.execute(subcommand="excel", arguments="{} -w {}".format(excel_file, " ".join(self._workspaces)))
+            self.execute(subcommand="excel", arguments="{} -w {} -r all".format(excel_file, " ".join(self._workspaces)))
             self.assertTrue(os.path.isfile(excel_file))
 
     def test_final_creation(self):
@@ -74,7 +74,12 @@ class TestReportCreation(BaseReportTestCase):
             if module_name in ["excel", "file"]:
                 continue
             elif module_name not in ["additionalinfo", "breach", "cert", "tls", "cname", "credential", "file", "path", "vulnerability"]:
-                self.execute(subcommand=module_name, arguments="-w {} --text".format(workspaces))
+                if module_name == "service":
+                    self.execute(subcommand=module_name, arguments="-w {} --text".format(workspaces))
+                    self.execute(subcommand=module_name, arguments="-w {} -r domain --text".format(workspaces))
+                    self.execute(subcommand=module_name, arguments="-w {} -r all --text".format(workspaces))
+                else:
+                    self.execute(subcommand=module_name, arguments="-w {} --text".format(workspaces))
             else:
                 self.execute(subcommand=module_name,
                              arguments="-w {} --text".format(workspaces),
@@ -90,10 +95,26 @@ class TestReportCreation(BaseReportTestCase):
         report_classes = ReportGenerator.add_argparser_arguments()
         workspaces = " ".join(self._workspaces)
         for module_name in report_classes.keys():
-            if module_name in ["excel", "file"]:
+            if module_name in ["excel", "final"]:
                 continue
             else:
                 self.execute(subcommand=module_name, arguments="-w {} --csv".format(workspaces))
+
+    def _check_csv_report_columns(self, report, module_name):
+        try:
+            rows = report.get_csv()
+            if len(rows) > 1:
+                header_count = len(rows[0])
+                for row in rows[1:]:
+                    row_count = len(row)
+                    if row_count != header_count:
+                        self.fail("In report '{}' row count mismatch between "
+                                  "header ({}) and content columns ({})".format(module_name,
+                                                                                header_count,
+                                                                                row_count))
+                    self.assertEqual(header_count, row_count)
+        except NotImplementedError:
+            pass
 
     def test_csv_check_column_count(self):
         self.init_db(load_cipher_suites=True)
@@ -105,19 +126,24 @@ class TestReportCreation(BaseReportTestCase):
         with self._engine.session_scope() as session:
             workspaces = DomainUtils.get_workspaces(session=session)
             for module_name in self._report_classes.keys():
-                args = self._parser.parse_args([module_name, "--csv"])
-                report = self._generator.create_report_instance(args=args, session=session, workspaces=workspaces)
-                try:
-                    rows = report.get_csv()
-                    if len(rows) > 1:
-                        header_count = len(rows[0])
-                        for row in rows[1:]:
-                            row_count = len(row)
-                            if row_count != header_count:
-                                self.fail("In report '{}' row count mismatch between "
-                                          "header ({}) and content columns ({})".format(module_name,
-                                                                                        header_count,
-                                                                                        row_count))
-                            self.assertEqual(header_count, row_count)
-                except NotImplementedError:
-                    pass
+                if module_name != "service":
+                    args = self._parser.parse_args([module_name, "--csv"])
+                    report = self._generator.create_report_instance(args=args, session=session, workspaces=workspaces)
+                    self._check_csv_report_columns(report, module_name)
+            # Test service report
+            module_name = "service"
+            report = self._generator.create_report_instance(args=self._parser.parse_args([module_name, "--csv"]),
+                                                            session=session,
+                                                            workspaces=workspaces)
+            self._check_csv_report_columns(report, module_name)
+            report = self._generator.create_report_instance(args=self._parser.parse_args([module_name,
+                                                                                          "--csv", "-r", "all"]),
+                                                            session=session,
+                                                            workspaces=workspaces)
+            self._check_csv_report_columns(report, module_name)
+            report = self._generator.create_report_instance(args=self._parser.parse_args([module_name,
+                                                                                          "--csv",
+                                                                                          "-r", "domain"]),
+                                                            session=session,
+                                                            workspaces=workspaces)
+            self._check_csv_report_columns(report, module_name)

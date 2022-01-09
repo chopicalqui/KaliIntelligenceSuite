@@ -1317,7 +1317,7 @@ class BaseUtils:
                                          report_item=report_item,
                                          source=source)
         if not host_name:
-            logger.info("ignoring host name in line: {}".format(url_object.hostname))
+            logger.warning("ignoring host name in line: {}".format(url_object.hostname))
         else:
             port = url_object.port
             if not port:
@@ -1829,6 +1829,15 @@ class BaseUtils:
         elif host_name:
             session.delete(host_name)
 
+    def extract_domain_name_from_host_name(self, name: str):
+        """
+        This method extracts the second-level domain from the given host name.
+        """
+        host_name_items = self.split_host_name(name)
+        if not host_name_items or len(host_name_items) < 2:
+            raise ValueError("{} is not a valid sub-domain".format(name))
+        return ".".join(host_name_items[-2:])
+
     def add_host_name(self,
                       session: Session,
                       workspace: Workspace,
@@ -1843,10 +1852,7 @@ class BaseUtils:
             return result
         name = name.lstrip("*.")
         name = name.lower()
-        host_name_items = self.split_host_name(name)
-        if not host_name_items or len(host_name_items) < 2:
-            raise ValueError("{} is not a valid sub-domain".format(name))
-        domain_name = ".".join(host_name_items[-2:])
+        domain_name = self.extract_domain_name_from_host_name(name=name)
         # The host name's second-level domain must exist
         if session.query(DomainName)\
             .join(Workspace)\

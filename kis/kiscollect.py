@@ -171,6 +171,9 @@ inside the Docker container from directory /kis:
 $ mkdir /var/lib/docker/volumes/kaliintelsuite_kis_data/_data/scan1
 $ cp *.xml /var/lib/docker/volumes/kaliintelsuite_kis_data/_data/scan1
 
+if you are working on windows, then you have to replace the above path by:
+\\\\wsl$\\docker-desktop-data\\version-pack-data\\community\\docker\\volumes\\kaliintelsuite_kis_data\\_data\\scan1
+
 import nmap scan results as well as in-scope IPv4/IPv6 networks/addresses into database and execute collection
 $ docker exec -it kaliintelsuite kismanage workspace --add $ws
 $ docker exec -it kaliintelsuite kismanage network -w $ws --add $networks
@@ -214,11 +217,17 @@ kis_shell> exit
 copy the newly created screenshots form the docker volume:
 $ mv /var/lib/docker/volumes/kaliintelsuite_kis_data/_data/aquatone .
 
+if you are working on windows, then you have to replace the above path by:
+\\\\wsl$\\docker-desktop-data\\version-pack-data\\community\\docker\\volumes\\kaliintelsuite_kis_data\\_data\\scan1
+
 export collected information into microsoft excel
 $ docker exec -it kaliintelsuite kisreport excel /kis/kis-scan-results.xlsx -w $ws
 
 copy the newly created microsoft excel file form the docker volume:
 $ mv /var/lib/docker/volumes/kaliintelsuite_kis_data/_data/kis-scan-results.xlsx .
+
+if you are working on windows, then you have to replace the above path by:
+\\\\wsl$\\docker-desktop-data\\version-pack-data\\community\\docker\\volumes\\kaliintelsuite_kis_data\\_data\\scan1
 
 review scan results of all relevant commands (note that option --visibility hides commands whose output was fully 
 processed by KIS and therefore do not require manual inspection anymore)

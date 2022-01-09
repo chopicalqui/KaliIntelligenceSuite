@@ -94,6 +94,11 @@ class CollectorClass(BaseCrobat, Ipv4NetworkCollector):
         :param process: The PopenCommand object that executed the given result. This object holds stderr, stdout, return
         code etc.
         """
+        super().verify_results(session=session,
+                               command=command,
+                               source=source,
+                               report_item=report_item,
+                               process=process)
         command_output = os.linesep.join(command.stdout_output)
         for item in self._re_entry.findall(command_output):
             json_object = json.loads(item)

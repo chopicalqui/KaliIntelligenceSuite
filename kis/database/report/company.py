@@ -37,7 +37,7 @@ class ReportClass(BaseReport):
     def __init__(self, **kwargs) -> None:
         super().__init__(name="company info",
                          title="Overview Identified Company Names",
-                         description="The table provides an overview of all identified companies.",
+                         description="The table provides an overview about all identified companies.",
                          **kwargs)
 
     @staticmethod
@@ -92,7 +92,7 @@ class ReportClass(BaseReport):
         for workspace in self._workspaces:
             results = self._session.query(Company)\
                 .join(Workspace)\
-                .filter(Workspace.id == workspace.id).all()
+                .filter(Workspace.id == workspace.id).order_by(Company.name).all()
             for company in results:
                 if self._filter(company):
                     has_results = False

@@ -91,6 +91,11 @@ class CollectorClass(BaseCrobat, DomainCollector):
         :param process: The PopenCommand object that executed the given result. This object holds stderr, stdout, return
         code etc.
         """
+        super().verify_results(session=session,
+                               command=command,
+                               source=source,
+                               report_item=report_item,
+                               process=process)
         for line in command.stdout_output:
             line = line.strip()
             if line:

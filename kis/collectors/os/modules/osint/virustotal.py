@@ -45,7 +45,7 @@ class CollectorClass(BaseKisImportDomain, DomainCollector):
                          timeout=0,
                          argument_name="--virustotal",
                          source=Virustotal.SOURCE_NAME,
-                         delay_min=3,
+                         delay_min=5,
                          delay_max=5,
                          **kwargs)
 

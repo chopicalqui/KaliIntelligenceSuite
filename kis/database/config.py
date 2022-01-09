@@ -390,19 +390,19 @@ class ScannerConfig(BaseConfig):
 
     @property
     def tcp_nse_scripts(self) -> List[str]:
-        return [item.strip() for item in self.get_config_str("NMmapScripts", "tcp").split(",")]
+        return [item for item in self.get_config_str("NMmapScripts", "tcp").split(",") if item]
 
     @property
     def udp_nse_scripts(self) -> List[str]:
-        return [item.strip() for item in self.get_config_str("NMmapScripts", "udp").split(",")]
+        return [item for item in self.get_config_str("NMmapScripts", "udp").split(",") if item]
 
     @property
     def nmap_tcp_options(self) -> List[str]:
-        return [item.strip() for item in self.get_config_str("NmapSettings", "tcp_options").split(" ")]
+        return [item for item in self.get_config_str("NmapSettings", "tcp_options").split(" ") if item]
 
     @property
     def nmap_udp_options(self) -> List[str]:
-        return [item.strip() for item in self.get_config_str("NmapSettings", "udp_options").split(" ")]
+        return [item for item in self.get_config_str("NmapSettings", "udp_options").split(" ") if item]
 
     @property
     def nmap_general_settings(self) -> List[str]:

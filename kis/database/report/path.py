@@ -102,11 +102,13 @@ class ReportClass(BaseReport):
                  "TCP/UDP",
                  "Port",
                  "Type (Path)",
-                 "Access Code",
-                 "Size Bytes",
+                 "Status Code",
+                 "Response Size [Bytes]",
                  "Full Path",
                  "Root Directory",
                  "Query",
+                 "Sources (NSLD)",
+                 "Sources (Service)",
                  "Sources (Path)",
                  "DB ID (Path)"]]
         for workspace in self._workspaces:
@@ -114,54 +116,60 @@ class ReportClass(BaseReport):
                 for host_name in domain.host_names:
                     hosts_str = host_name.get_host_host_name_mappings_str([DnsResourceRecordType.a,
                                                                            DnsResourceRecordType.aaaa])
+                    sources = host_name.sources_str
                     for service in host_name.services:
+                        sources_service = service.sources_str
                         for path in service.paths:
                             if self._filter(path):
                                 if path.queries:
                                     for query in path.queries:
-                                        rows.append([workspace.name,
-                                                     "vhost",
-                                                     host_name.domain_name.name,
-                                                     host_name.domain_name.scope_str,
-                                                     host_name.domain_name.companies_str,
-                                                     host_name.full_name,
-                                                     host_name._in_scope,
-                                                     host_name.in_scope(CollectorType.vhost_service),
-                                                     hosts_str,
-                                                     host_name.summary,
-                                                     service.summary,
-                                                     service.protocol_str,
-                                                     service.port,
-                                                     path.type_str,
-                                                     path.return_code,
-                                                     path.size_bytes,
-                                                     path.get_path(),
-                                                     path.name == "/",
-                                                     query.query,
-                                                     path.sources_str,
-                                                     path.id])
+                                        rows.append([workspace.name, # Workspace
+                                                     "vhost", # Type
+                                                     host_name.domain_name.name, # Network/Second-Level-Domain (NSLD)
+                                                     host_name.domain_name.scope_str, # Scope (NSLD)
+                                                     host_name.domain_name.companies_str, # Company (NSLD)
+                                                     host_name.full_name, # Address
+                                                     host_name._in_scope, # In Scope (Address)
+                                                     host_name.in_scope(CollectorType.vhost_service), # In Scope (Vhost)
+                                                     hosts_str, # Resolves To (RT)
+                                                     host_name.summary, # Summary (IP/Vhost)
+                                                     service.summary, # Summary (Service)
+                                                     service.protocol_str, # TCP/UDP
+                                                     service.port, # Port
+                                                     path.type_str, # Type (Path)
+                                                     path.return_code, # Status Code
+                                                     path.size_bytes, # Response Size [Bytes]
+                                                     path.get_path(), # Full Path
+                                                     path.name == "/", # Root Directory
+                                                     query.query, # Query
+                                                     sources, # Sources (NSLD)
+                                                     sources_service, # Sources (Service)
+                                                     path.sources_str, # Sources (Path)
+                                                     path.id]) # DB ID (Path)
                                 else:
-                                    rows.append([workspace.name,
-                                                 "vhost",
-                                                 host_name.domain_name.name,
-                                                 host_name.domain_name.scope_str,
-                                                 host_name.domain_name.companies_str,
-                                                 host_name.full_name,
-                                                 host_name._in_scope,
-                                                 host_name.in_scope(CollectorType.vhost_service),
-                                                 hosts_str,
-                                                 host_name.summary,
-                                                 service.summary,
-                                                 service.protocol_str,
-                                                 service.port,
-                                                 path.type_str,
-                                                 path.return_code,
-                                                 path.size_bytes,
-                                                 path.get_path(),
-                                                 path.name == "/",
-                                                 None,
-                                                 path.sources_str,
-                                                 path.id])
+                                    rows.append([workspace.name, # Workspace
+                                                 "vhost", # Type
+                                                 host_name.domain_name.name, # Network/Second-Level-Domain (NSLD)
+                                                 host_name.domain_name.scope_str, # Scope (NSLD)
+                                                 host_name.domain_name.companies_str, # Company (NSLD)
+                                                 host_name.full_name, # Address
+                                                 host_name._in_scope, # In Scope (Address)
+                                                 host_name.in_scope(CollectorType.vhost_service), # In Scope (Vhost)
+                                                 hosts_str, # Resolves To (RT)
+                                                 host_name.summary, # Summary (IP/Vhost)
+                                                 service.summary, # Summary (Service)
+                                                 service.protocol_str, # TCP/UDP
+                                                 service.port, # Port
+                                                 path.type_str, # Type (Path)
+                                                 path.return_code, # Status Code
+                                                 path.size_bytes, # Response Size [Bytes]
+                                                 path.get_path(), # Full Path
+                                                 path.name == "/", # Root Directory
+                                                 None, # Query
+                                                 sources, # Sources (NSLD)
+                                                 sources_service, # Sources (Service)
+                                                 path.sources_str, # Sources (Path)
+                                                 path.id]) # DB ID (Path)
             for host in workspace.hosts:
                 host_names = host.get_host_host_name_mappings_str([DnsResourceRecordType.a,
                                                                    DnsResourceRecordType.aaaa])
@@ -169,56 +177,63 @@ class ReportClass(BaseReport):
                     ipv4_network = host.ipv4_network.network
                     scope = host.ipv4_network.scope_str
                     companies = host.ipv4_network.companies_str
+                    sources = host.ipv4_network.sources_str
                 else:
                     ipv4_network = None
                     scope = None
                     companies = None
+                    sources = None
                 for service in host.services:
+                    sources_service = service.sources_str
                     for path in service.paths:
                         if self._filter(path):
                             if path.queries:
                                 for query in path.queries:
-                                    rows.append([workspace.name,
-                                                 "host",
-                                                 ipv4_network,
-                                                 scope,
-                                                 companies,
-                                                 host.address,
-                                                 host.in_scope,
-                                                 None,
-                                                 host_names,
-                                                 host.summary,
-                                                 service.summary,
-                                                 service.protocol_str,
-                                                 service.port,
-                                                 path.type_str,
-                                                 path.return_code,
-                                                 path.size_bytes,
-                                                 path.get_path(),
-                                                 path.name == "/",
-                                                 query.query,
-                                                 path.sources_str,
-                                                 path.id])
+                                    rows.append([workspace.name, # Workspace
+                                                 "host", # Type
+                                                 ipv4_network, # Network/Second-Level-Domain (NSLD)
+                                                 scope, # Scope (NSLD)
+                                                 companies, # Company (NSLD)
+                                                 host.address, # Address
+                                                 host.in_scope, # In Scope (Address)
+                                                 None, # In Scope (Vhost)
+                                                 host_names, # Resolves To (RT)
+                                                 host.summary, # Summary (IP/Vhost)
+                                                 service.summary, # Summary (Service)
+                                                 service.protocol_str, # TCP/UDP
+                                                 service.port, # Port
+                                                 path.type_str, # Type (Path)
+                                                 path.return_code, # Status Code
+                                                 path.size_bytes, # Response Size [Bytes]
+                                                 path.get_path(), # Full Path
+                                                 path.name == "/", # Root Directory
+                                                 query.query, # Query
+                                                 sources, # Sources (NSLD)
+                                                 sources_service, # Sources (Service)
+                                                 path.sources_str, # Sources (Path)
+                                                 path.id]) # DB ID (Path)
                             else:
-                                rows.append([workspace.name,
-                                             "host",
-                                             ipv4_network,
-                                             scope,
-                                             companies,
-                                             host.address,
-                                             host.in_scope,
-                                             None,
-                                             host_names,
-                                             host.summary,
-                                             service.summary,
-                                             service.protocol_str,
-                                             service.port,
-                                             path.type_str,
-                                             path.return_code,
-                                             path.size_bytes,
-                                             path.get_path(),
-                                             path.name == "/",
-                                             None,
-                                             path.sources_str,
-                                             path.id])
+                                rows.append([workspace.name, # Workspace
+                                             "host", # Type
+                                             ipv4_network, # Network/Second-Level-Domain (NSLD)
+                                             scope, # Scope (NSLD)
+                                             companies, # Company (NSLD)
+                                             host.address, # Address
+                                             host.in_scope, # In Scope (Address)
+                                             None, # In Scope (Vhost)
+                                             host_names, # Resolves To (RT)
+                                             host.summary, # Summary (IP/Vhost)
+                                             service.summary, # Summary (Service)
+                                             service.protocol_str, # TCP/UDP
+                                             service.port, # Port
+                                             path.type_str, # Type (Path)
+                                             path.return_code, # Status Code
+                                             path.size_bytes, # Response Size [Bytes]
+                                             path.get_path(), # Full Path
+                                             path.name == "/", # Root Directory
+                                             None, # Query
+                                             sources, # Sources (NSLD)
+                                             sources_service, # Sources (Service)
+                                             path.sources_str, # Sources (Path)
+                                             path.id]) # DB ID (Path)
         return rows

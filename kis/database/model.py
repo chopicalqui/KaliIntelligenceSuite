@@ -143,6 +143,12 @@ class MutableDict(Mutable, dict):
         self.changed()
 
 
+class TextReportDetails(enum.Flag):
+    meta_data = enum.auto()
+    item_info = enum.auto()
+    service_info = enum.auto()
+
+
 class VhostChoice(enum.Enum):
     all = enum.auto()
     domain = enum.auto()
@@ -902,6 +908,12 @@ class Host(DeclarativeBase):
                     break
         return rvalue
 
+    def get_completed_commands(self) -> list:
+        """
+        This method returns all commands that have a status above status collecting
+        """
+        return [item for item in self.commands if item.status.value > CommandStatus.collecting.value]
+
     def is_processable(self,
                        included_items: List[str],
                        excluded_items: List[str],
@@ -964,22 +976,25 @@ class Host(DeclarativeBase):
 
     def get_text(self,
                  ident: int = 0,
-                 show_metadata: bool = True,
+                 details: TextReportDetails = None,
                  report_visibility: ReportVisibility = None,
                  color: bool = False,
                  **kwargs) -> List[str]:
         """
         :param ident: Number of spaces to indent
-        :param show_metadata: True, if all meta information and not just command outputs shall be returned
+        :param details: Documents which information should be returned
         :param report_visibility: Specifies which information shall be shown
+        :param color: Specifies whether output should be color-coded
         :return: String for console output
         """
+        if not details:
+            details = TextReportDetails(TextReportDetails.meta_data | TextReportDetails.item_info)
         rvalue = []
         has_open_services = self.has_open_services(strict=True)
         has_given_collectors = self.has_given_collectors(**kwargs)
         if has_given_collectors and ((has_open_services and report_visibility == ReportVisibility.relevant) or
                                      report_visibility is None or report_visibility == ReportVisibility.irrelevant):
-            if show_metadata:
+            if bool(details & TextReportDetails.meta_data):
                 host_names = self.get_host_host_name_mappings_str(types=[DnsResourceRecordType.a,
                                                                          DnsResourceRecordType.aaaa,
                                                                          DnsResourceRecordType.ptr])
@@ -1012,23 +1027,23 @@ class Host(DeclarativeBase):
                     if items:
                         rvalue.extend(items)
             hashes_dedup = {}
-            for service in self.services:
-                if service.has_given_collectors(**kwargs):
-                    items = service.get_command_text(ident=ident,
-                                                     hashes_dedup=hashes_dedup,
-                                                     show_metadata=show_metadata,
-                                                     report_visibility=report_visibility,
-                                                     color=color,
-                                                     **kwargs)
-                    if items:
-                        rvalue.extend(items)
-            hashes_dedup = {}
-            items = self.get_command_text(ident=ident,
-                                          hashes_dedup=hashes_dedup,
-                                          show_metadata=show_metadata,
-                                          report_visibility=report_visibility,
-                                          color=color,
-                                          **kwargs)
+            items = []
+            if bool(details & TextReportDetails.service_info):
+                for service in self.services:
+                    if service.has_given_collectors(**kwargs):
+                        items += service.get_command_text(ident=ident,
+                                                          hashes_dedup=hashes_dedup,
+                                                          details=details,
+                                                          report_visibility=report_visibility,
+                                                          color=color,
+                                                          **kwargs)
+            if bool(details & TextReportDetails.item_info):
+                items += self.get_command_text(ident=ident,
+                                               hashes_dedup=hashes_dedup,
+                                               details=details,
+                                               report_visibility=report_visibility,
+                                               color=color,
+                                               **kwargs)
             if items:
                 rvalue.extend(items)
             rvalue.append(os.linesep * 2)
@@ -1132,6 +1147,12 @@ class Network(DeclarativeBase):
         """This method verifies whether the given IPv4 address is in scope"""
         return self.in_scope and self.is_in_network(address)
 
+    def get_completed_commands(self) -> list:
+        """
+        This method returns all commands that have a status above status collecting
+        """
+        return [item for item in self.commands if item.status.value > CommandStatus.collecting.value]
+
     def is_processable(self,
                        included_items: List[str],
                        excluded_items: List[str],
@@ -1156,18 +1177,20 @@ class Network(DeclarativeBase):
 
     def get_text(self,
                  ident: int = 0,
-                 show_metadata: bool = True,
+                 details: TextReportDetails = None,
                  report_visibility: ReportVisibility = None,
                  color: bool = False,
                  **kwargs) -> List[str]:
         """
         :param ident: Number of spaces
-        :param show_metadata: True, if all meta information and not just command outputs shall be returned
+        :param details: Documents which information should be returned
         :param report_visibility: Specifies which information shall be shown
         :return: String for console output
         """
         rvalue = []
-        if show_metadata:
+        if not details:
+            details = TextReportDetails(TextReportDetails.meta_data | TextReportDetails.item_info)
+        if bool(details & TextReportDetails.meta_data):
             full = report_visibility != ReportVisibility.relevant if ReportVisibility else True
             Utils.get_text(rvalue, ident, True, "KIS intel report for {}", self.network,
                            color=FontColor.BLUE + FontColor.BOLD if color else None)
@@ -1182,7 +1205,7 @@ class Network(DeclarativeBase):
         items = self.get_command_text(ident=ident,
                                       hashes_dedup=hashes_dedup,
                                       report_visibility=report_visibility,
-                                      show_metadata=show_metadata,
+                                      details=details,
                                       color=color,
                                       **kwargs)
         if items:
@@ -1278,10 +1301,7 @@ class HostName(DeclarativeBase):
 
     @property
     def companies_str(self) -> str:
-        result = None
-        if self.domain_name and self.domain_name.companies:
-            result = ", ".join(["{} (in scope: {})".format(item.name, item.in_scope) for item in self.domain_name.companies])
-        return result
+        return self.domain_name.companies_str
 
     @property
     def canonical_name_records(self) -> list:
@@ -1366,6 +1386,12 @@ class HostName(DeclarativeBase):
             result = self.full_name
         return result
 
+    def get_completed_commands(self) -> list:
+        """
+        This method returns all commands that have a status above status collecting
+        """
+        return [item for item in self.commands if item.status.value > CommandStatus.collecting.value]
+
     def is_processable(self,
                        included_items: List[str],
                        excluded_items: List[str],
@@ -1440,17 +1466,19 @@ class HostName(DeclarativeBase):
 
     def get_text(self,
                  ident: int = 0,
-                 companies: Dict[str, str] = {},
-                 show_metadata: bool = True,
+                 details: TextReportDetails = None,
                  report_visibility: ReportVisibility = None,
                  color: bool = False,
                  **kwargs) -> List[str]:
         """
         :param ident: Number of spaces to indent
-        :param show_metadata: True, if all meta information and not just command outputs shall be returned
+        :param details: Documents which information should be returned
         :param report_visibility: Specifies which information shall be shown
+        :param color: Specifies whether output should be color-coded
         :return: String for console output
         """
+        if not details:
+            details = TextReportDetails(TextReportDetails.meta_data | TextReportDetails.item_info)
         rvalue = []
         has_open_services = self.has_open_services(strict=True)
         has_given_collectors = self.has_given_collectors(**kwargs)
@@ -1461,7 +1489,7 @@ class HostName(DeclarativeBase):
             hosts = " ({})".format(hosts)
         if has_given_collectors and ((has_open_services and report_visibility == ReportVisibility.relevant) or
                                      report_visibility is None or report_visibility == ReportVisibility.irrelevant):
-            if show_metadata:
+            if bool(details & TextReportDetails.meta_data):
                 full = report_visibility != ReportVisibility.relevant if ReportVisibility else True
                 Utils.get_text(rvalue, ident, True, "KIS intel report for {}{}", self.full_name, hosts,
                                color=FontColor.BLUE + FontColor.BOLD if color else None)
@@ -1469,7 +1497,7 @@ class HostName(DeclarativeBase):
                                self.in_scope(CollectorType.vhost_service))
                 Utils.get_text(rvalue, ident, True, "| Workspace:       {}", self.workspace.name)
                 Utils.get_text(rvalue, ident, True, "| Host name:       {}", self.full_name)
-                Utils.get_text(rvalue, ident, full, "| Companies:       {}", companies[self.domain_name.name])
+                Utils.get_text(rvalue, ident, full, "| Companies:       {}", self.companies_str)
                 sources = ", ".join([item.name for item in self.sources])
                 Utils.get_text(rvalue, ident, full, "|_Sources:         {}", sources)
                 rvalue.append("")
@@ -1477,23 +1505,32 @@ class HostName(DeclarativeBase):
                                color=FontColor.BOLD if color else None)
             for service in self.services:
                 items = service.get_text(ident=ident,
-                                         show_metadata=show_metadata,
+                                         details=details,
                                          report_visibility=report_visibility,
                                          color=color,
                                          **kwargs)
                 if items:
                     rvalue.extend(items)
             hashes_dedup = {}
-            for service in self.services:
-                if service.has_given_collectors(**kwargs):
-                    items = service.get_command_text(ident=ident,
-                                                     hashes_dedup=hashes_dedup,
-                                                     show_metadata=show_metadata,
-                                                     report_visibility=report_visibility,
-                                                     color=color,
-                                                     **kwargs)
-                    if items:
-                        rvalue.extend(items)
+            items = []
+            if bool(details & TextReportDetails.service_info):
+                for service in self.services:
+                    if service.has_given_collectors(**kwargs):
+                        items += service.get_command_text(ident=ident,
+                                                          hashes_dedup=hashes_dedup,
+                                                          details=details,
+                                                          report_visibility=report_visibility,
+                                                          color=color,
+                                                          **kwargs)
+            if bool(details & TextReportDetails.item_info):
+                items += self.get_command_text(ident=ident,
+                                               hashes_dedup=hashes_dedup,
+                                               details=details,
+                                               report_visibility=report_visibility,
+                                               color=color,
+                                               **kwargs)
+            if items:
+                rvalue.extend(items)
             rvalue.append(os.linesep)
         return rvalue
 
@@ -1750,20 +1787,22 @@ class DomainName(DeclarativeBase):
 
     def get_text(self,
                  ident: int = 0,
-                 show_metadata: bool = True,
+                 details: TextReportDetails = None,
                  report_visibility: ReportVisibility = None,
                  color: bool = False,
                  **kwargs) -> List[str]:
         """
         :param ident: Number of spaces
-        :param show_metadata: True, if all meta information and not just command outputs shall be returned
+        :param details: Documents which information should be returned
         :param report_visibility: Specifies which information shall be shown
         :return: String for console output
         """
+        if not details:
+            details = TextReportDetails(TextReportDetails.meta_data | TextReportDetails.item_info)
         rvalue = []
         has_given_collectors = self.has_given_collectors(**kwargs)
         if has_given_collectors:
-            if show_metadata:
+            if bool(details & TextReportDetails.meta_data):
                 full = report_visibility != ReportVisibility.relevant if ReportVisibility else True
                 Utils.get_text(rvalue, ident, True, "KIS intel report for {}", self.name,
                                color=FontColor.BLUE + FontColor.BOLD if color else None)
@@ -1786,14 +1825,15 @@ class DomainName(DeclarativeBase):
                 Utils.get_text(rvalue, ident, full, "|_Sources:         {}", sources)
             hashes_dedup = {}
             for host_name in self.host_names:
-                items = host_name.get_command_text(ident=ident,
-                                                   hashes_dedup=hashes_dedup,
-                                                   show_metadata=show_metadata,
-                                                   report_visibility=report_visibility,
-                                                   color=color,
-                                                   **kwargs)
-                if items:
-                    rvalue.extend(items)
+                if host_name.name is None:
+                    items = host_name.get_command_text(ident=ident,
+                                                       hashes_dedup=hashes_dedup,
+                                                       details=details,
+                                                       report_visibility=report_visibility,
+                                                       color=color,
+                                                       **kwargs)
+                    if items:
+                        rvalue.extend(items)
         return rvalue
 
 
@@ -1833,6 +1873,12 @@ class Email(DeclarativeBase):
         if self.sources:
             result = ", ".join([item.name for item in self.sources])
         return result
+
+    def get_completed_commands(self) -> list:
+        """
+        This method returns all commands that have a status above status collecting
+        """
+        return [item for item in self.commands if item.status.value > CommandStatus.collecting.value]
 
     def is_processable(self,
                        included_items: List[str],
@@ -1883,16 +1929,18 @@ class Email(DeclarativeBase):
 
     def get_text(self,
                  ident: int = 0,
-                 show_metadata: bool = True,
+                 details: TextReportDetails = None,
                  report_visibility: ReportVisibility = None,
                  color: bool = False,
                  **args) -> List[str]:
         """
         :param ident: Number of spaces
-        :param show_metadata: True, if all meta information and not just command outputs shall be returned
+        :param details: Documents which information should be returned
         :param report_visibility: Specifies which information shall be shown
         :return: String for console output
         """
+        if not details:
+            details = TextReportDetails(TextReportDetails.meta_data | TextReportDetails.item_info)
         rvalue = []
         breaches = []
         for info in self.additional_info:
@@ -1901,7 +1949,7 @@ class Email(DeclarativeBase):
         sources = [item.name for item in self.sources]
         breaches.sort()
         sources.sort()
-        if show_metadata:
+        if bool(details & TextReportDetails.meta_data):
             full = report_visibility != ReportVisibility.relevant if ReportVisibility else True
             Utils.get_text(rvalue, ident, True, "KIS intel report for {}", self.email_address,
                            color=FontColor.BLUE + FontColor.BOLD if color else None)
@@ -1912,7 +1960,7 @@ class Email(DeclarativeBase):
         hashes_dedup = {}
         items = self.get_command_text(ident=ident,
                                       hashes_dedup=hashes_dedup,
-                                      show_metadata=show_metadata,
+                                      details=details,
                                       report_visibility=report_visibility,
                                       color=color,
                                       **args)
@@ -2230,20 +2278,22 @@ class Service(DeclarativeBase):
 
     def get_text(self,
                  ident: int = 0,
-                 show_metadata: bool = True,
+                 details: TextReportDetails = None,
                  report_visibility: ReportVisibility = None,
                  color: bool = False,
                  **kwargs) -> List[str]:
         """
         :param ident: Number of spaces
-        :param show_metadata: True, if all meta information and not just command outputs shall be returned
+        :param details: Documents which information should be returned
         :param report_visibility: Specifies which information shall be shown
         :return: String for console output
         """
+        if not details:
+            details = TextReportDetails(TextReportDetails.meta_data)
         rvalue = []
         has_given_collectors = self.has_given_collectors(**kwargs)
         is_open = self.is_open(strict=True)
-        if show_metadata and has_given_collectors and ((
+        if bool(details & TextReportDetails.meta_data) and has_given_collectors and ((
                 is_open and report_visibility == ReportVisibility.relevant) or
                                                        report_visibility == ReportVisibility.irrelevant or
                                                        report_visibility is None):
@@ -2841,6 +2891,22 @@ class Command(DeclarativeBase):
             result = self.status.value
         return result
 
+    @property
+    def raw_data_summary(self) -> str:
+        """This property returns a string documenting, what raw data the command contains."""
+        result = []
+        if self.stdout_output:
+            result.append("stdout")
+        if self.stderr_output:
+            result.append("stderr")
+        if self.xml_output:
+            result.append("xml")
+        if self.json_output:
+            result.append("json")
+        if self.binary_output:
+            result.append("binary")
+        return ", ".join(result)
+
     def reset(self):
         """
         This method resets the commands content
@@ -3030,23 +3096,25 @@ class Command(DeclarativeBase):
     def get_text(self,
                  ident: int = 0,
                  hashes_dedup: Dict[str, bool] = {},
-                 show_metadata: bool = True,
+                 details: TextReportDetails = None,
                  report_visibility: ReportVisibility = None,
                  color: bool = False,
                  **args) -> List[str]:
         """
         :param ident: Number of spaces
-        :param show_metadata: True, if all meta information and not just command outputs shall be returned
+        :param details: Documents which information should be returned
         :param report_visibility: Specifies which information shall be shown
         :return: String for console output
         """
+        if not details:
+            details = TextReportDetails(TextReportDetails.meta_data)
         rvalue = []
         if self.status_value and self.status_value > CommandStatus.collecting.value and ((
                 self.hide and report_visibility == ReportVisibility.irrelevant) or (
                 not self.hide and report_visibility == ReportVisibility.relevant) or
                 report_visibility is None):
             rvalue.append("")
-            if show_metadata:
+            if bool(details & TextReportDetails.meta_data):
                 delta = self.execution_time_delta
                 delta = " ({}s)".format(delta.seconds) if delta else ""
                 execution_time = "{} - {}{}".format(self.start_time_str, self.stop_time_str, delta) \
@@ -3069,6 +3137,7 @@ class Command(DeclarativeBase):
                 Utils.get_text(rvalue, ident, True, "# Database ID:    {}", self.id)
                 Utils.get_text(rvalue, ident, True, "# Execution time: {}", execution_time)
                 Utils.get_text(rvalue, ident, True, "# Execution user: {}", username if username else "root")
+                Utils.get_text(rvalue, ident, True, "# Output formats: {}", self.raw_data_summary)
                 Utils.get_text(rvalue, ident, True, "# Status:         {}{}", self.status_str, hidden,
                                color=status_color)
                 Utils.get_text(rvalue, ident, True, "# Return code:    {}", return_code)
@@ -3407,6 +3476,12 @@ class Company(DeclarativeBase):
             result = ", ".join([item.name for item in self.sources])
         return result
 
+    def get_completed_commands(self) -> list:
+        """
+        This method returns all commands that have a status above status collecting
+        """
+        return [item for item in self.commands if item.status.value > CommandStatus.collecting.value]
+
     def is_processable(self,
                        included_items: List[str],
                        excluded_items: List[str],
@@ -3450,20 +3525,22 @@ class Company(DeclarativeBase):
 
     def get_text(self,
                  ident: int = 0,
-                 show_metadata: bool = True,
+                 details: TextReportDetails = None,
                  report_visibility: ReportVisibility = None,
                  color: bool = False,
                  **args) -> List[str]:
         """
         :param ident: Number of spaces
-        :param show_metadata: True, if all meta information and not just command outputs shall be returned
+        :param details: Documents which information should be returned
         :param report_visibility: Specifies which information shall be shown
         :return: String for console output
         """
+        if not details:
+            details = TextReportDetails(TextReportDetails.meta_data | TextReportDetails.item_info)
         rvalue = []
         sources = [item.name for item in self.sources]
         sources.sort()
-        if show_metadata:
+        if bool(details & TextReportDetails.meta_data):
             full = report_visibility != ReportVisibility.relevant if ReportVisibility else True
             Utils.get_text(rvalue, ident, True, "KIS intel report for {}", self.name,
                            color=FontColor.BLUE + FontColor.BOLD if color else None)
@@ -3473,7 +3550,7 @@ class Company(DeclarativeBase):
         hashes_dedup = {}
         items = self.get_command_text(ident=ident,
                                       hashes_dedup=hashes_dedup,
-                                      show_metadata=show_metadata,
+                                      details=details,
                                       report_visibility=report_visibility,
                                       **args)
         if items:

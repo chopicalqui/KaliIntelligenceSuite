@@ -91,7 +91,7 @@ class ReportClass(BaseReport):
         This method returns all information as CSV.
         :return:
         """
-        rows = [["DB ID", "Workspace", "Email", "Domain", "In Scope", "Sources"]]
+        rows = [["DB ID", "Workspace", "Email", "Domain", "In Scope", "Sources", "No. Commands"]]
         for workspace in self._workspaces:
             email_addresses = self._session.query(Email)\
                 .join(HostName)\
@@ -105,7 +105,8 @@ class ReportClass(BaseReport):
                            email_address.email_address,
                            email_address.host_name.full_name,
                            email_address.host_name.domain_name.in_scope,
-                           email_address.sources_str]
+                           email_address.sources_str,
+                           len(email_address.get_completed_commands())]
                     rows.append(row)
         return rows
 

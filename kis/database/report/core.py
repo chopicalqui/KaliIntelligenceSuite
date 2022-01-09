@@ -34,7 +34,6 @@ from openpyxl.worksheet.table import Table, TableStyleInfo
 from openpyxl.worksheet.worksheet import Worksheet
 from openpyxl.utils.exceptions import IllegalCharacterError
 from typing import List
-from database.utils import Engine
 from database.model import CollectorName
 from database.model import Workspace
 from database.model import ReportScopeType
@@ -62,11 +61,12 @@ class ReportLanguage(enum.Enum):
 
 
 class ExcelReport(enum.Enum):
-    host = enum.auto()
-    vhost = enum.auto()
-    domain = enum.auto()
-    cname = enum.auto()
     network = enum.auto()
+    host = enum.auto()
+    domain = enum.auto()
+    hostname = enum.auto()
+    service = enum.auto()
+    cname = enum.auto()
     email = enum.auto()
     company = enum.auto()
     path = enum.auto()
@@ -359,18 +359,21 @@ class ReportGenerator:
                 os.unlink(args.FILE)
             workbook = Workbook()
             first = True
+            processed = []
             for report_str in args.reports:
-                print("* creating report for: {}".format(report_str))
-                report = self._report_classes[report_str].create_instance(session=session,
-                                                                          workspaces=workspaces,
-                                                                          args=args)
-                csv_list = report.get_csv()
-                if len(csv_list) > 1:
-                    if first:
-                        report.fill_excel_sheet(workbook.active, csv_list=csv_list)
-                        first = False
-                    else:
-                        report.fill_excel_sheet(workbook.create_sheet(), csv_list=csv_list)
+                if report_str not in processed:
+                    print("* creating report for: {}".format(report_str))
+                    processed.append(report_str)
+                    report = self._report_classes[report_str].create_instance(session=session,
+                                                                              workspaces=workspaces,
+                                                                              args=args)
+                    csv_list = report.get_csv()
+                    if len(csv_list) > 1:
+                        if first:
+                            report.fill_excel_sheet(workbook.active, csv_list=csv_list)
+                            first = False
+                        else:
+                            report.fill_excel_sheet(workbook.create_sheet(), csv_list=csv_list)
             workbook.save(args.FILE)
         elif args.module == "final":
             if os.path.exists(args.FILE):

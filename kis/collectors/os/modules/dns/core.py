@@ -375,6 +375,28 @@ class BaseCrobat(BaseDnsCollector):
             collectors.append(collector)
         return collectors
 
+    def verify_results(self, session: Session,
+                       command: Command,
+                       source: Source,
+                       report_item: ReportItem,
+                       process: PopenCommand = None, **kwargs) -> None:
+        """This method analyses the results of the command execution.
+
+        After the execution, this method checks the OS command's results to determine the command's execution status as
+        well as existing vulnerabilities (e.g. weak login credentials, NULL sessions, hidden Web folders). The
+        stores the output in table command. In addition, the collector might add derived information to other tables as
+        well.
+
+        :param session: Sqlalchemy session that manages persistence operations for ORM-mapped objects
+        :param command: The command instance that contains the results of the command execution
+        :param source: The source object of the current collector
+        :param report_item: Item that can be used for reporting potential findings in the UI
+        :param process: The PopenCommand object that executed the given result. This object holds stderr, stdout, return
+        code etc.
+        """
+        if command.return_code and command.return_code > 0:
+            self._set_execution_failed(session, command)
+
 
 class BaseDnsAxfr(BaseDnsCollector):
     """This class implements the base class for zone transfers."""

@@ -23,8 +23,11 @@ __version__ = 0.1
 import argparse
 from typing import List
 from database.model import Network
+from database.model import ServiceState
 from database.model import ReportScopeType
 from database.model import ReportVisibility
+from database.model import TextReportDetails
+from database.model import DnsResourceRecordType
 from database.report.core import BaseReport
 
 
@@ -106,7 +109,7 @@ class ReportClass(BaseReport):
                                                    exclude_collectors=self._excluded_collectors,
                                                    include_collectors=self._included_collectors,
                                                    scope=self._scope,
-                                                   show_metadata=False))
+                                                   details=TextReportDetails(TextReportDetails.item_info)))
         return result
 
     def get_csv(self) -> List[List[str]]:
@@ -114,18 +117,73 @@ class ReportClass(BaseReport):
         This method returns all information as CSV.
         :return:
         """
-        rows = [["DB ID", "Workspace", "Network", "Version", "Companies", "Scope", "Sources", "Number IPs"]]
+        rows = [["Workspace",
+                 "Network",
+                 "IP Version",
+                 "Netmask",
+                 "Companies",
+                 "Scope",
+                 "In Scope (Company)",
+                 "Sources (NW)",
+                 "No. Allocated IPs",
+                 "No. Allocated In-Scope IPs",
+                 "No. Open Services",
+                 "No. Open In-Scope Services",
+                 "No. Closed Services",
+                 "No. Resolved Host Names",
+                 "No. Resolved In-Scope Host Names",
+                 "No. Commands",
+                 "DB ID"]]
         for workspace in self._workspaces:
             for network in workspace.ipv4_networks:
                 if self._filter(network):
-                    rows.append([network.id,
-                                 workspace.name,
-                                 network.network,
-                                 network.version_str,
-                                 network.companies_str,
-                                 network.scope_str,
-                                 network.sources_str,
-                                 len(network.hosts)])
+                    # Calculate statistics
+                    any_company_in_scope = any([item.in_scope for item in network.companies])
+                    no_allocated_ips = 0
+                    no_allocated_in_scope_ips = 0
+                    no_open_services = 0
+                    no_open_in_scope_services = 0
+                    no_closed_services = 0
+                    no_resolved_host_names = 0
+                    no_resolved_in_scope_host_names = 0
+                    # Obtain statistics about IP addresses within the network
+                    for host in network.hosts:
+                        no_allocated_ips += 1
+                        if host.in_scope:
+                            no_allocated_in_scope_ips += 1
+                        # Obtain statistics about services
+                        for service in host.services:
+                            if service.state == ServiceState.Open:
+                                no_open_services += 1
+                                if service.host.in_scope:
+                                    no_open_in_scope_services += 1
+                            else:
+                                no_closed_services += 1
+                        # Obtain statistics about host names that resolve to IPs within the network
+                        host_host_mappings = host.get_host_host_name_mappings([DnsResourceRecordType.a,
+                                                                               DnsResourceRecordType.aaaa])
+                        for mapping in host_host_mappings:
+                            no_resolved_host_names += 1
+                            if mapping.host_name._in_scope:
+                                no_resolved_in_scope_host_names += 1
+                    ip_network = network.ip_network
+                    rows.append([workspace.name,                    # Workspace
+                                 network.network,                   # Network (NW)
+                                 network.version_str,               # Version
+                                 ip_network.prefixlen,              # Netmask
+                                 network.companies_str,             # Companies
+                                 network.scope_str,                 # Scope (NW)
+                                 any_company_in_scope,              # In Scope (Company)
+                                 network.sources_str,               # Sources (NW)
+                                 no_allocated_ips,                  # No. Allocated IPs
+                                 no_allocated_in_scope_ips,         # No. Allocated In-Scope IPs
+                                 no_open_services,                  # No. Open Services
+                                 no_open_in_scope_services,         # No. Open In-Scope Services
+                                 no_closed_services,                # No. Closed Services
+                                 no_resolved_host_names,            # No. Resolved Host Names
+                                 no_resolved_in_scope_host_names,   # No. Resolved In-Scope Host Names
+                                 len(network.get_completed_commands()), # No.Commands
+                                 network.id])                       # DB ID
         return rows
 
     def get_text(self) -> List[str]:

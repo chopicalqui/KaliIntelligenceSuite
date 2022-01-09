@@ -262,14 +262,15 @@ class BaseNmap(BaseCollector):
         if command.return_code and command.return_code > 0:
             self._set_execution_failed(session, command)
             return
-        with open(os.devnull, "w") as f:
-            di = NmapDatabaseImporter(session,
-                                      command.workspace,
-                                      [],
-                                      stdout=f,
-                                      report_item=report_item,
-                                      service_states=[ServiceState.Open, ServiceState.Closed])
-            di.import_content(command.xml_output)
+        if command.xml_output:
+            with open(os.devnull, "w") as f:
+                di = NmapDatabaseImporter(session=session,
+                                          workspace=command.workspace,
+                                          input_files=[],
+                                          stdout=f,
+                                          report_item=report_item,
+                                          service_states=[ServiceState.Open, ServiceState.Closed])
+                di.import_content(command.xml_output)
 
 
 class BaseMasscan(BaseCollector):

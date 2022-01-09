@@ -436,8 +436,8 @@ class BaseCollector(config.Collector):
         self._http_proxy = urlparse(http_proxy) if http_proxy else None
         self._cookies = cookies if cookies else []
         self._kwargs = kwargs
-        self._min_delay = force_delay_min if force_delay_min else delay_min
-        self._max_delay = force_delay_max if force_delay_max else delay_max
+        self._min_delay = force_delay_min if force_delay_min and force_delay_min > delay_min else delay_min
+        self._max_delay = force_delay_max if force_delay_max and force_delay_max > delay_max else delay_max
         self._max_threads = 1 if self._min_delay or self._max_delay else max_threads
         self._dns_server = self.get_commandline_argument_value("dns_server")
         self._user_agent = self.get_commandline_argument_value("user_agent")
@@ -585,10 +585,12 @@ class BaseCollector(config.Collector):
         return self._kwargs[argument_name] if argument_name in self._kwargs else None
 
     def _set_execution_failed(self, session: Session, command: Command) -> None:
-        command.status = CommandStatus.failed
+        if command.status.value > CommandStatus.collecting.value:
+            command.status = CommandStatus.failed
 
     def _set_execution_complete(self, session: Session, command: Command) -> None:
-        command.status = CommandStatus.completed
+        if command.status.value > CommandStatus.collecting.value:
+            command.status = CommandStatus.completed
 
     @staticmethod
     def create_credential_arguments(argument_name_username: str = None,

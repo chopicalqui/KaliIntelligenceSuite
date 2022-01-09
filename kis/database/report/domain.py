@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-This module allows querying information about second-level domains and host names.
+This module allows querying information about second-level domains.
 """
 
 __author__ = "Lukas Reiter"
@@ -24,35 +24,25 @@ __version__ = 0.1
 
 import argparse
 from typing import List
-from openpyxl import Workbook
 from database.model import DomainName
 from database.model import ServiceState
-from database.model import CollectorType
 from database.model import ReportScopeType
 from database.model import ReportVisibility
+from database.model import TextReportDetails
+from database.model import DnsResourceRecordType
 from database.report.core import BaseReport
-from database.report.core import ReportLanguage
 
 
 class ReportClass(BaseReport):
     """
-    this module allows querying information about second-level domains and host names
+    this module allows querying information about second-level domains
     """
 
     def __init__(self, **kwargs) -> None:
         super().__init__(name="domain info",
-                         title="Domain name details",
+                         title="Second-Level Domain Details",
                          description="The table provides an overview about all identified second-level domains "
-                                     "(see column 'Second-Level Domain (SLD)') and their sub-domains (see "
-                                     "column 'Host Name (HN)'). In addition, it documents to which IP addresses the "
-                                     "respective sub-domains resolve. If no IP address is available, then either "
-                                     "collector dnshostpublic or dnshost have not been executed or the sub-domain "
-                                     "could not be resolved. "
-                                     ""
-                                     "Note that column 'In Scope (HN)' is true, if the respective host name itself "
-                                     "is in scope of the engagement. Column 'In Scope (VHost)' is true, if column "
-                                     "'In Scope (HN)' is true and the respective host name resolves to at least one "
-                                     "IP address, which is in scope of the engagement as well.",
+                                     "(see column 'Second-Level Domain (SLD)').",
                          **kwargs)
 
     @staticmethod
@@ -120,7 +110,7 @@ class ReportClass(BaseReport):
                                              exclude_collectors=self._excluded_collectors,
                                              include_collectors=self._included_collectors,
                                              scope=self._scope,
-                                             show_metadata=False))
+                                             details=TextReportDetails(TextReportDetails.item_info)))
         return result
 
     def get_text(self) -> List[str]:
@@ -179,145 +169,76 @@ class ReportClass(BaseReport):
         :return:
         """
         rows = [["Workspace",
-                 "Second-Level Domain (SLD)",
-                 "Scope (SLD)",
-                 "Host Name (HN)",
-                 "In Scope (HN)",
-                 "In Scope (Vhost)",
-                 "Companies (SLD)",
-                 "Sources (HN)",
-                 "Name Only (HN)",
-                 "Environment (HN)",
-                 "Record Type",
-                 "Resolves To",
-                 "Resolves To In Scope",
-                 "Resolves to Network",
-                 "Resolves to Companies",
-                 "Number of Open Services",
-                 "Number of Closed Services",
-                 "DB ID (SLD)",
-                 "DB ID (HN)"]]
+                 "Second-Level Domain",
+                 "Companies",
+                 "Scope",
+                 "In Scope (Company)",
+                 "Sources",
+                 "No. Subdomains",
+                 "No. In-Scope Subdomains",
+                 "No. Resolved IPs",
+                 "No. Resolved Private IPs",
+                 "No. Resolved In-Scope IPs",
+                 "No. Open Services",
+                 "No. Open In-Scope Services",
+                 "No. Closed Services",
+                 "No. Commands",
+                 "DB ID"]]
         for workspace in self._workspaces:
             for domain in workspace.domain_names:
                 if self._filter(domain):
+                    # Calculate statistics
+                    any_company_in_scope = any([item.in_scope for item in domain.companies])
+                    domain_scope = domain.scope_str
+                    companies = domain.companies_str
+                    domain_sources = None
+                    no_sub_domains = 0
+                    no_in_scope_sub_domains = 0
+                    no_resolved_ips = 0
+                    no_resolved_private_ips = 0
+                    no_resolved_in_scope_ips = 0
+                    no_open_services = 0
+                    no_open_in_scope_services = 0
+                    no_closed_services = 0
+                    no_commands = 0
+                    # Obtain statistics about subdomains
                     for host_name in domain.host_names:
-                        sources = host_name.sources_str
-                        environment = self._domain_config.get_environment(host_name)
-                        printed = False
-                        for mapping in host_name.resolved_host_name_mappings:
-                            printed = True
-                            rows.append([workspace.name,
-                                         domain.name,
-                                         domain.scope_str,
-                                         host_name.full_name,
-                                         host_name._in_scope,
-                                         host_name.in_scope(CollectorType.vhost_service),
-                                         domain.companies_str,
-                                         sources,
-                                         host_name.name,
-                                         environment,
-                                         mapping.type_str,
-                                         mapping.resolved_host_name.full_name,
-                                         mapping.resolved_host_name.in_scope(CollectorType.vhost_service),
-                                         None,
-                                         mapping.resolved_host_name.domain_name.companies_str
-                                         if mapping.resolved_host_name.domain_name else None,
-                                         None,
-                                         None,
-                                         domain.id,
-                                         host_name.id])
-                        for mapping in host_name.host_host_name_mappings:
-                            printed = True
-                            open_services = len([service for service in mapping.host.services
-                                                 if service.state == ServiceState.Open])
-                            closed_services = len([service for service in mapping.host.services
-                                                   if service.state == ServiceState.Closed])
-                            rows.append([workspace.name,
-                                         domain.name,
-                                         domain.scope_str,
-                                         host_name.full_name,
-                                         host_name._in_scope,
-                                         host_name.in_scope(CollectorType.vhost_service),
-                                         domain.companies_str,
-                                         sources,
-                                         host_name.name,
-                                         environment,
-                                         mapping.type_str,
-                                         mapping.host.address,
-                                         mapping.host.in_scope,
-                                         mapping.host.ipv4_network.network if mapping.host.ipv4_network else None,
-                                         mapping.host.ipv4_network.companies_str
-                                         if mapping.host.ipv4_network else None,
-                                         open_services,
-                                         closed_services,
-                                         domain.id,
-                                         host_name.id])
-                        if not printed:
-                            rows.append([workspace.name,
-                                         domain.name,
-                                         domain.scope_str,
-                                         host_name.full_name,
-                                         host_name._in_scope,
-                                         host_name.in_scope(CollectorType.vhost_service),
-                                         domain.companies_str,
-                                         sources,
-                                         host_name.name,
-                                         environment,
-                                         None,
-                                         None,
-                                         None,
-                                         None,
-                                         None,
-                                         None,
-                                         None,
-                                         domain.id,
-                                         host_name.id])
+                        no_sub_domains += 1
+                        no_commands += len(host_name.get_completed_commands())
+                        if host_name.name is None:
+                            domain_sources = host_name.sources_str
+                        if host_name._in_scope:
+                            no_in_scope_sub_domains += 1
+                        # Obtain statistics about hosts
+                        for mapping in host_name.get_host_host_name_mappings([DnsResourceRecordType.a,
+                                                                              DnsResourceRecordType.aaaa]):
+                            no_resolved_ips += 1
+                            if mapping.host.ip_address.is_private:
+                                no_resolved_private_ips += 1
+                            if mapping.host.in_scope:
+                                no_resolved_in_scope_ips += 1
+                            # Obtain statistics about networks
+                            for service in mapping.host.services:
+                                if service.state == ServiceState.Open:
+                                    no_open_services += 1
+                                    if service.host.in_scope:
+                                        no_open_in_scope_services += 1
+                                else:
+                                    no_closed_services += 1
+                    rows.append([workspace.name,            # Workspace
+                                 domain.name,               # Second-Level Domain
+                                 companies,                 # Companies
+                                 domain_scope,              # Scope
+                                 any_company_in_scope,      # In Scope (Company)
+                                 domain_sources,            # Sources
+                                 no_sub_domains,            # No. Subdomains
+                                 no_in_scope_sub_domains,   # No. In-Scope Subdomains
+                                 no_resolved_ips,           # No. Resolved IPs
+                                 no_resolved_private_ips,   # No. Resolved Private IPs
+                                 no_resolved_in_scope_ips,  # No. Resolved In-Scope IPs
+                                 no_open_services,          # No. Open Services
+                                 no_open_in_scope_services, # No. Open In-Scope Services
+                                 no_closed_services,        # No. Closed Services
+                                 no_commands,               # No. Commands
+                                 domain.id])                # DB ID (SLD)
         return rows
-
-    def final_report(self, workbook: Workbook):
-        """
-        This method creates all tables that are relevant to the final report.
-        """
-        result = [["Second-Level Domain",
-                   "Host Name",
-                   "Record\nType",
-                   "Resolves To",
-                   "Source\nHost Name"]]
-        if self._args.language == ReportLanguage.de:
-            result = [["Second-Level Domain",
-                       "Hostname",
-                       "DNS-\nTyp",
-                       "Löst auf zu",
-                       "Quelle\nHostname"]]
-        for workspace in self._workspaces:
-            for domain in workspace.domain_names:
-                for host_name in domain.host_names:
-                    if host_name._in_scope:
-                        full_name = host_name.full_name
-                        printed = False
-                        for mapping in host_name.resolved_host_name_mappings:
-                            printed = True
-                            result.append([domain.name,
-                                           full_name,
-                                           mapping.type_str,
-                                           mapping.resolved_host_name.full_name,
-                                           host_name.sources_str])
-                        for mapping in host_name.host_host_name_mappings:
-                            printed = True
-                            result.append([domain.name,
-                                           full_name,
-                                           mapping.type_str,
-                                           mapping.host.address,
-                                           host_name.sources_str])
-                        if not printed:
-                            result.append([domain.name,
-                                           full_name,
-                                           None,
-                                           None,
-                                           host_name.sources_str])
-        if len(result) > 1:
-            self.fill_excel_sheet(worksheet=workbook.create_sheet(),
-                                  csv_list=result,
-                                  name="Domain Results",
-                                  title="",
-                                  description="")

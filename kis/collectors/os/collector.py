@@ -355,7 +355,7 @@ class CollectorProducer(Thread):
                 self._number_of_threads = value
             elif key == "workspace" and value:
                 self._workspace = value
-            elif key == "print_commands" and value:
+            elif key in ["print-commands", "print_commands"] and value:
                 self._print_commands = value
             elif key == "filter" and value:
                 self._included_items = [item[1:] for item in value if item[0] == '+'] if value else []
@@ -366,17 +366,17 @@ class CollectorProducer(Thread):
                 self._analyze_results = value
             elif key == "strict" and value:
                 self._strict_open = value
-            elif key == "delay_min" and value:
+            elif key == ["force-delay-min", "force_delay_min"] and value:
                 self._delay_min = value
-            elif key == "delay_max" and value:
+            elif key == ["force-delay-max", "force_delay_max"] and value:
                 self._delay_max = value
             elif key == "vhost" and value:
                 self._vhost = VhostChoice[value]
             elif key == "continue" and value:
                 self._continue_execution = value
-            elif key == "output_dir" and value:
+            elif key == ["output-dir", "output_dir"] and value:
                 os.chmod(value, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
-            kwargs[key] = value
+            kwargs[key.replace("-", "_")] = value
         with self._engine.session_scope() as session:
             for item in to_instantiate:
                 item.create_instance(engine=self._engine, **kwargs)

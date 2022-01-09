@@ -1,2 +1,4 @@
 export PS1="kis_shell> "
-alias ll='ls -l'
+export PYTHONPATH="/opt/kaliintelsuite/kis/"
+alias ll='ls -lah'
+source /opt/kaliintelsuite/.venv/bin/activate

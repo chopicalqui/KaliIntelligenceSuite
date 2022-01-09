@@ -45,6 +45,7 @@ from database.model import Source
 from database.model import DomainName
 from database.model import ProtocolType
 from database.model import ServiceState
+from database.model import DomainNameNotFound
 from collectors.core import IpUtils
 from collectors.core import DomainUtils
 from collectors.filesystem.nmap import DatabaseImporter as NmapDatabaseImporter
@@ -299,15 +300,24 @@ class ManageDatabase:
         if self._arguments.module == "hostname":
             scope = ReportScopeType[self._arguments.scope]
             in_scope = scope == ReportScopeType.within
+            exception_thrown = None
             for host_name_str in self._get_items("HOSTNAME"):
                 if self._arguments.add or self._arguments.Add:
-                    host_name = self._domain_utils.add_host_name(session=session,
-                                                                 workspace=workspace,
-                                                                 name=host_name_str,
-                                                                 in_scope=in_scope,
-                                                                 source=source)
-                    if not host_name:
-                        raise ValueError("adding host name '{}' failed".format(host_name_str))
+                    try:
+                        host_name = self._domain_utils.add_host_name(session=session,
+                                                                     workspace=workspace,
+                                                                     name=host_name_str,
+                                                                     in_scope=in_scope,
+                                                                     source=source)
+                        if not host_name:
+                            raise ValueError("adding host name '{}' failed".format(host_name_str))
+                    except DomainNameNotFound as ex:
+                        if self._arguments.debug:
+                            domain_name_str = self._domain_utils.extract_domain_name_from_host_name(name=host_name_str)
+                            print(domain_name_str)
+                            exception_thrown = ex
+                        else:
+                            raise ex
                 elif self._arguments.sharphound:
                     for host_name_str in self._get_items("HOSTNAME"):
                         with open(host_name_str, "rb") as file:
@@ -317,19 +327,29 @@ class ManageDatabase:
                                 for item in json_object["computers"]:
                                     if "Properties" in item and "name" in item["Properties"]:
                                         computer_name = item["Properties"]["name"]
-                                        host_name = self._domain_utils.add_host_name(session=session,
-                                                                                     workspace=workspace,
-                                                                                     name=computer_name,
-                                                                                     in_scope=in_scope,
-                                                                                     source=source)
-                                        if not host_name:
-                                            raise ValueError("adding host name '{}' failed".format(item))
+                                        try:
+                                            host_name = self._domain_utils.add_host_name(session=session,
+                                                                                         workspace=workspace,
+                                                                                         name=computer_name,
+                                                                                         in_scope=in_scope,
+                                                                                         source=source)
+                                            if not host_name:
+                                                raise ValueError("adding host name '{}' failed".format(item))
+                                        except DomainNameNotFound as ex:
+                                            if self._arguments.debug:
+                                                domain_name_str = self._domain_utils.extract_domain_name_from_host_name(name=computer_name)
+                                                print(domain_name_str)
+                                                exception_thrown = ex
+                                            else:
+                                                raise ex
                                     else:
                                         raise KeyError("invalid sharphound computer file. file does not contain "
                                                        "attribute 'Properties' and/or 'name'")
                             else:
                                 raise KeyError("invalid sharphound computer file. file does not contain "
                                                "attribute 'computers'")
+                    if exception_thrown:
+                        raise exception_thrown
                 elif self._arguments.delete or self._arguments.Delete:
                     self._domain_utils.delete_host_name(session=session,
                                                         workspace=workspace,
@@ -342,6 +362,8 @@ class ManageDatabase:
                         raise ValueError("cannot set scope as host name '{}' does not exist".format(host_name_str))
                     elif result._in_scope != in_scope:
                         result._in_scope = in_scope
+            if exception_thrown:
+                raise exception_thrown
 
     def _manage_email(self, session: Session, workspace: Workspace, source: Source):
         if self._arguments.module == "email":
@@ -699,8 +721,8 @@ $ docker exec -it kaliintelsuite kismanage workspace --add $workspace
                                   help="set the given host names HOSTNAME in or out of scope. note that KIS only "
                                        "actively collects information from in-scope host names",
                                   default=ReportScopeType.within.name)
-    parser_host_name_group.add_argument("--source", metavar="SOURCE", type=str,
-                                        help="specify the source of the host name to be added")
+    parser_host_name.add_argument("--source", metavar="SOURCE", type=str,
+                                  help="specify the source of the host name to be added")
     # setup email parser
     parser_email.add_argument('EMAIL', type=str, nargs="+")
     parser_email.add_argument("-w", "--workspace",

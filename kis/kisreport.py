@@ -27,6 +27,7 @@ import sys
 import argparse
 import traceback
 from collectors.core import DomainUtils
+from database.model import VhostChoice
 from database.model import WorkspaceNotFound
 from database.model import ReportScopeType
 from database.config import SortingHelpFormatter
@@ -68,6 +69,10 @@ if __name__ == "__main__":
                               nargs="+",
                               default=[item.name for item in ExcelReport],
                               help='import only the following reports into Microsoft Excel')
+    parser_excel.add_argument("-r", "--report-level",
+                              choices=[item.name for item in VhostChoice],
+                              default=VhostChoice.all.name,
+                              help="specifies the information that shall be displayed in the sheet 'service info'.")
     # setup final parser
     parser_final = sub_parser.add_parser('final', help='allows writing final report tables into microsoft excel file')
     parser_final.add_argument('FILE', type=str,

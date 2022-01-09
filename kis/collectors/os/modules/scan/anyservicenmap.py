@@ -25,6 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 __version__ = 0.1
 
+import os
 import logging
 from typing import List
 from collectors.os.modules.scan.core import BaseNmap
@@ -38,8 +39,10 @@ from database.model import Service
 from database.model import ServiceState
 from database.model import ProtocolType
 from database.model import ExecutionInfoType
+from collectors.filesystem.nmap import DatabaseImporter as NmapDatabaseImporter
 from view.core import ReportItem
 from sqlalchemy.orm.session import Session
+from collectors.os.modules.http.core import HttpServiceDescriptor
 
 logger = logging.getLogger('anyservicenmap')
 
@@ -50,6 +53,7 @@ class CollectorClass(BaseNmap, ServiceCollector):
     def __init__(self, **kwargs):
         super().__init__(priority=1350,
                          exec_user="root",
+                         service_descriptors=[HttpServiceDescriptor()],
                          timeout=0,
                          **kwargs)
 
@@ -86,7 +90,8 @@ class CollectorClass(BaseNmap, ServiceCollector):
                 os_command.append("-6")
             os_command += self._nmap_config.nmap_general_settings
             os_command += nmap_options
-            os_command += ["--version-all", "--script={}".format(",".join(nse_scripts))]
+            if nse_scripts:
+                os_command.append("--script={}".format(",".join(nse_scripts)))
             os_command += ["-oX", ExecutionInfoType.xml_output_file.argument]
             os_command.append(service.host.address)
             collector = self._get_or_create_command(session,
@@ -116,9 +121,21 @@ class CollectorClass(BaseNmap, ServiceCollector):
         :param process: The PopenCommand object that executed the given result. This object holds stderr, stdout, return
         code etc.
         """
-        super().verify_results(session=session,
-                               command=command,
-                               source=source,
-                               report_item=report_item,
-                               process=process)
-        command.hide = True
+        # We overwrite BaseNmap.verify_results because we want to process any service states not just
+        # ServiceState.Open, ServiceState.Closed in order to update a service's current state.
+        if command.return_code and command.return_code > 0:
+            self._set_execution_failed(session, command)
+            return
+        if command.xml_output:
+            with open(os.devnull, "w") as f:
+                di = NmapDatabaseImporter(session=session,
+                                          workspace=command.workspace,
+                                          input_files=[],
+                                          stdout=f,
+                                          report_item=report_item)
+                di.import_content(command.xml_output)
+            if command.service.state != ServiceState.Open:
+                self._set_execution_failed(session, command)
+            else:
+                self._set_execution_complete(session, command)
+            command.hide = True
