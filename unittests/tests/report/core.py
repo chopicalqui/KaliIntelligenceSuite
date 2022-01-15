@@ -38,11 +38,8 @@ class BaseReportTestCase(BaseTestKisCommand):
     def __init__(self, **kwargs):
         super().__init__(command=KisCommandEnum.kisreport, **kwargs)
         # Setup arguments
-        self._parser = argparse.ArgumentParser(description=__doc__)
-        self._parser.add_argument('--testing',
-                                  action="store_true",
-                                  help="if specified, then KIS uses the testing instead of the production database")
-        sub_parser = self._parser.add_subparsers(help='list of available database modules', dest="module")
+        self._parser = ReportGenerator.get_report_argument_parser()
+        sub_parser = ReportGenerator.add_sub_argument_parsers(self._parser)
         self._report_classes = ReportGenerator.add_argparser_arguments(sub_parser)
         self._generator = ReportGenerator(report_classes=self._report_classes)
 

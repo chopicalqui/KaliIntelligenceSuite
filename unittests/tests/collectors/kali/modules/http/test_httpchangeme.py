@@ -109,5 +109,5 @@ class BaseHttpChangemeCollectorTestCase(BaseKaliHttpCollectorTestCase):
             results = session.query(Credentials).one()
             self.assertEqual("tomcat", results.username)
             self.assertEqual("tomcat", results.password)
-            results = session.query(Path).one()
-            self.assertEqual("/manager/status", results.name)
+            results = [item.name for item in session.query(Path).all()]
+            self.assertListEqual(["/", "/manager/status"], results)

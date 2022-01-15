@@ -467,3 +467,4 @@ Finally, you might want to re-run the entire process to collect further informat
                 KisCollectConsole(args=args, producer_thread=producer).cmdloop()
     except Exception as e:
         traceback.print_exc(file=sys.stderr)
+        sys.exit(1)

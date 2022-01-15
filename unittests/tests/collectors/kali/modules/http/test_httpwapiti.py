@@ -163,6 +163,6 @@ A report has been generated in the file /tmp/kis/127.0.0.1/httpwapiti_127.0.0.1-
                                           report_item=self._report_item)
         with self._engine.session_scope() as session:
             results = session.query(Path).count()
-            self.assertEqual(1, results)
-            results = session.query(Path).one()
-            self.assertEqual("/select", results.name)
+            self.assertEqual(2, results)
+            results = [item.name for item in session.query(Path).all()]
+            self.assertListEqual(["/", "/select"], results)

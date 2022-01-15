@@ -6,6 +6,7 @@ in the fast, autonomous, central, and comprehensive collection of intelligence b
  -  executing Kali Linux tools (e.g., dnsrecon, gobuster, hydra, nmap, etc.)
  -  querying publicly available APIs (e.g., Censys.io, Haveibeenpwned.com, Hunter.io, Securitytrails.com,
  DNSdumpster.com, Shodan.io, etc.)
+ - sending data to third-party applications like Burp Suite Professional or Aquatone
  -  storing the collected data in a central PostgreSQL database (see next section)
  -  providing an interface to query and analyze the gathered intelligence
 
@@ -91,9 +92,9 @@ Scopes can be set on the following items by using the script `kismanage`:
       # verify the initial setup
       docker exec -it kaliintelsuite bash
       kis_shell> kisreport host -w example --csv | csvcut -c "Network (NW)","Scope (NW)","IP Address (IP)","In Scope (IP)" | csvlook
-      | Network (NW)   | Scope (NW)    | IP Address (IP) | "In Scope (IP)" |
-      | -------------- | ------------- | --------------- | --------------- |
-      | 192.168.1.0/24 | all           | 192.168.1.1     |            True |
+      | Network (NW)   | Scope (NW)    | IP Address (IP) | In Scope (IP) |
+      | -------------- | ------------- | --------------- | ------------- |
+      | 192.168.1.0/24 | all           | 192.168.1.1     |          True |
       kis_shell> exit
       ```
     * `strict`: Sets the given IP networks' (e.g., 192.168.1.0/24) scope to `strict`. In contrast to type `all`, the
@@ -118,9 +119,9 @@ Scopes can be set on the following items by using the script `kismanage`:
       # verify the initial setup
       docker exec -it kaliintelsuite bash
       kis_shell> kisreport host -w example --csv | csvcut -c "Network (NW)","Scope (NW)","IP Address (IP)","In Scope (IP)" | csvlook
-      | Network (NW)   | Scope (NW)    | IP Address (IP) | "In Scope (IP)" |
-      | -------------- | ------------- | --------------- | --------------- |
-      | 192.168.1.0/24 | strict        | 192.168.1.1     |            True |
+      | Network (NW)   | Scope (NW)    | IP Address (IP) | In Scope (IP) |
+      | -------------- | ------------- | --------------- | ------------- |
+      | 192.168.1.0/24 | strict        | 192.168.1.1     |          True |
       kis_shell> exit
       ```
     * `exclude`: Sets the given IP network (e.g., 192.168.1.0/24) together with all IP addresses (e.g., 192.168.1.1) 
@@ -198,51 +199,57 @@ Scopes can be set on the following items by using the script `kismanage`:
     automatically identified by KIS (e.g., via extraction from certificates, etc.). Thus, it is not necessary to 
     explicitly set this scope type. Nevertheless, this scope type can be used to manually exclude 
     second-level domains at a later time.
- - **Virtual hosts (vhost)**: KIS supports scanning vhosts (https://httpd.apache.org/docs/2.4/vhosts/) by using tools 
- like Nikto or Burp Suite Professional (see argument `--vhost` of script `kiscollect`. Which vhosts are in 
+ - **Virtual hosts (vhost)**: KIS supports scanning [vhosts](https://httpd.apache.org/docs/2.4/vhosts/) by using tools
+ like Nikto or Burp Suite Professional (see argument `--vhost` of script `kiscollect`). Which vhosts are in
  scope and which are not is indirectly specified by scoping **IP networks** and **IP addresses** (see above) together 
- with **Second-level domain** and **host names** (see above). Below are two examples to demonstrate how it works:
+ with **Second-level domain** and **host names** (see above). Only if the host name as well as the IP address, to
+ which the host name resolves, is in scope, then also the vhost is in scope and kiscollect performs a collection.
+ Below are two examples to demonstrate how it works:
  
-   * Example 1: Let's assume the second-level domain google.com together with all sub-level domains that resolve to a 
-   network range within 172.217.0.0/16 are in scope. In this case, the top-level domain google.com is added to the KIS 
-   database with scope type `all` as documented below:
-   
+   * Example 1: Let's assume the second-level domain google.com together with all its sub-level domains that resolve
+   to a network range within 172.217.0.0/16 are in scope. In this case, we add network 172.217.0.0/16 with scope type
+   `all` (default) to the KIS database because all IP addresses within this network are in scope.
+
      ```bash
      # create a new workspace example
      docker exec -it kaliintelsuite kismanage workspace -a example
 
-     # add the second-level domain google.com to workspace example and set the scope to all (default)
-     docker exec -it kaliintelsuite kismanage domain -w example -a google.com
-     ```
-
-     In this case, KIS is able to, among other things, enumerate any sub-level domains as well as resolve their 
-     corresponding IP addresses. In addition, to ensure that KIS scans any host with an IP address within the IP 
-     network range 172.217.0.0/16, this network range must be added to KIS with scope type `all` as well:
-     
-     ```bash
-     # add the network 172.217.0.0/16 to workspace example and set the scope to all (default)
+     # add the network 172.217.0.0/16 to workspace example and set its scope to all (default)
      docker exec -it kaliintelsuite kismanage network -w example -a 172.217.0.0/16
      ```
-     
-   * Example 2: Let's assume the second-level domain google.com together with all sub-level domains that resolve to 
-   any network range are in scope. In this case, the top-level domain google.com is added to the KIS database with 
-   scope type `all` as documented below:
+
+   As only the second-level domain google.com and any of its subdomains are in scope that resolve to an IP address
+   within 172.217.0.0/16, we also have to add second-level domain google.com to the KIS database and set its scope
+   to `vhost`:
+
+     ```bash
+     # add the second-level domain google.com to workspace example and set the scope to vhost
+     docker exec -it kaliintelsuite kismanage domain -w example -a google.com
+     ```
+
+   With this configuration, google.com and any of its subdomains are per default out of scope except, they resolve to
+   an in-scope IP address within 172.217.0.0/16.
+
+   * Example 2: Let's assume the second-level domain google.com together with all its subdomains that resolve to
+   any IP address are in scope. In this case, we add the network 0.0.0.0/0 with scope type `vhost` to the KIS
+   database.
      
      ```bash
      # create a new workspace example
      docker exec -it kaliintelsuite kismanage workspace -a example
 
-     # add the second-level domain google.com to workspace example and set the scope to all (default)
-     docker exec -it kaliintelsuite kismanage domain -w example -a google.com
+     # add network 0.0.0.0/0 to workspace example and set the scope to vhost
+     docker exec -it kaliintelsuite kismanage network -w example -s vhost -a 0.0.0.0/0
      ```
-     
-     In this case, KIS is able to, among other things, enumerate any sub-level domains as well as resolve their 
-     corresponding IP addresses. In addition, to ensure that KIS scans any host, the network range 0.0.0.0/0 must 
-     be added to KIS with scope type `all` as well:
+
+     In this case, any IP address is per default out-of-scope except, an in-scope host name resolves to it.
+
+     Next, we add second-level domain google.com together with all its subdomains to the KIS database by using
+     scope type `all` (default).
      
      ```bash
-     # add network 0.0.0.0/0 to workspace example and set the scope to all (default)
-     docker exec -it kaliintelsuite kismanage network -w example -a 0.0.0.0/0
+     # add the second-level domain google.com to workspace example and set the scope to all (default)
+     docker exec -it kaliintelsuite kismanage domain -w example -a google.com
      ```
 
 

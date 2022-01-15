@@ -45,7 +45,13 @@ class TestReportCreation(BaseReportTestCase):
                 self._populate_all_tables(session, workspace_str)
         # create report
         with tempfile.TemporaryDirectory() as temp_dir:
-            excel_file = os.path.join(temp_dir, "excel.xlsx")
+            excel_file = os.path.join(temp_dir, "excel1.xlsx")
+            self.execute(subcommand="excel", arguments="{} -w {}".format(excel_file, " ".join(self._workspaces)))
+            self.assertTrue(os.path.isfile(excel_file))
+            excel_file = os.path.join(temp_dir, "excel2.xlsx")
+            self.execute(subcommand="excel", arguments="{} -w {} -r domain".format(excel_file, " ".join(self._workspaces)))
+            self.assertTrue(os.path.isfile(excel_file))
+            excel_file = os.path.join(temp_dir, "excel3.xlsx")
             self.execute(subcommand="excel", arguments="{} -w {} -r all".format(excel_file, " ".join(self._workspaces)))
             self.assertTrue(os.path.isfile(excel_file))
 
@@ -61,6 +67,19 @@ class TestReportCreation(BaseReportTestCase):
             self.execute(subcommand="final", arguments="{} -w {}".format(excel_file, " ".join(self._workspaces)))
             self.assertTrue(os.path.isfile(excel_file))
 
+    def test_file_export(self):
+        self.init_db(load_cipher_suites=True)
+        # create database
+        with self._engine.session_scope() as session:
+            for workspace_str in self._workspaces:
+                self._populate_all_tables(session, workspace_str)
+        workspaces = " ".join(self._workspaces)
+        # create report
+        with tempfile.TemporaryDirectory() as temp_dir:
+            self.execute(subcommand="file", arguments="-w {} -o {}".format(workspaces, temp_dir))
+            result = os.listdir(temp_dir)
+            self.assertListEqual(['test_001', 'test'], result)
+
     def test_text_creation(self):
         self.init_db(load_cipher_suites=True)
         # create database
@@ -71,7 +90,7 @@ class TestReportCreation(BaseReportTestCase):
         report_classes = ReportGenerator.add_argparser_arguments()
         workspaces = " ".join(self._workspaces)
         for module_name in report_classes.keys():
-            if module_name in ["excel", "file"]:
+            if module_name in ["excel", "final", "file"]:
                 continue
             elif module_name not in ["additionalinfo", "breach", "cert", "tls", "cname", "credential", "file", "path", "vulnerability"]:
                 if module_name == "service":

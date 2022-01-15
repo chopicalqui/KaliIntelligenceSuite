@@ -272,6 +272,7 @@ class BaseKisTestCase(unittest.TestCase):
                        nmap_service_name: str = None,
                        nmap_tunnel: str = None,
                        nmap_service_confidence: int = None,
+                       nessus_service_name: str = None,
                        scope: ScopeType = ScopeType.all) -> Service:
         host = None
         host_name = None
@@ -293,7 +294,8 @@ class BaseKisTestCase(unittest.TestCase):
                                                  nmap_service_confidence=nmap_service_confidence,
                                                  nmap_tunnel=nmap_tunnel,
                                                  host=host,
-                                                 host_name=host_name)
+                                                 host_name=host_name,
+                                                 nessus_service_name=nessus_service_name)
         return service
 
     def create_email(self,
@@ -913,9 +915,9 @@ class BaseKisTestCase(unittest.TestCase):
         self.assertEqual("shodanhost", host.services[0].sources[0].name)
         self.assertEqual("PUT", host.services[0].service_methods[0].name)
         # check path and query
-        self.assertEqual("/test", host.services[0].paths[0].name)
-        self.assertEqual("nikto", host.services[0].paths[0].sources[0].name)
-        self.assertEqual("a=b", host.services[0].paths[0].queries[0].query)
+        self.assertListEqual(["/", "/test"], [item.name for item in host.services[0].paths])
+        self.assertEqual("nikto", host.services[0].paths[1].sources[0].name)
+        self.assertEqual("a=b", host.services[0].paths[1].queries[0].query)
         # check credentials
         self.assertEqual("test", host.services[0].credentials[0].password)
         self.assertEqual("ftphydra", host.services[0].credentials[0].sources[0].name)

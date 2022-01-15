@@ -36,6 +36,7 @@ from database.model import HostName
 from database.model import DomainName
 from database.model import Path
 from database.model import PathType
+from database.model import ServiceState
 from database.model import AdditionalInfo
 from database.model import Command
 from database.model import CollectorName
@@ -43,6 +44,7 @@ from database.model import CollectorType
 from database.model import HostHostNameMapping
 from database.model import HostNameHostNameMapping
 from database.model import ScopeType
+from database.model import ProtocolType
 from database.model import VHostNameMapping
 from sqlalchemy.orm.session import Session
 
@@ -526,7 +528,7 @@ class TestDeleteService(BaseKisTestCase):
         # delete workspace
         with self._engine.session_scope() as session:
             service = session.query(Service).one()
-            self.assertEqual(1, len(service.paths))
+            self.assertEqual(2, len(service.paths))
             session.delete(service)
         # check database
         with self._engine.session_scope() as session:
@@ -796,8 +798,13 @@ class TestDeletePath(BaseKisTestCase):
         self.init_db()
         # create database
         with self._engine.session_scope() as session:
-            service = self.create_service(session=session, workspace_str=self._workspaces[0])
-            path = self.create_path(session=session, workspace_str=self._workspaces[0], service=service)
+            workspace = self._ip_utils.add_workspace(session=session, name=self._workspaces[0])
+            host = self._ip_utils.add_host(session=session, workspace=workspace, address="192.168.1.1")
+            service = self._domain_utils.add_service(session=session,
+                                                     protocol_type=ProtocolType.tcp,
+                                                     port=80, host=host,
+                                                     state=ServiceState.Open)
+            path = self._domain_utils.add_path(session=session, service=service, path="/", path_type=PathType.http)
             self._engine.get_or_create(session, HttpQuery, query="a=b&c=d", path=path)
         # delete workspace
         with self._engine.session_scope() as session:
@@ -833,7 +840,7 @@ class TestDeleteHttpQuery(BaseKisTestCase):
         with self._engine.session_scope() as session:
             self.assertEqual(1, session.query(Service).count())
             self.assertEqual(0, session.query(HttpQuery).count())
-            self.assertEqual(1, session.query(Path).count())
+            self.assertEqual(2, session.query(Path).count())
 
 
 class TestDeleteHostNameHostNameMapping(BaseKisTestCase):

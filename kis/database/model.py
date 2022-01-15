@@ -2389,7 +2389,7 @@ class Service(DeclarativeBase):
 
     def __repr__(self):
         return "<{} protocol={} port={} service={}/>".format(self.__class__.__name__,
-                                                             self.protocol.name.lower(0),
+                                                             self.protocol.name.lower(),
                                                              self.port,
                                                              self.nmap_service_name)
 

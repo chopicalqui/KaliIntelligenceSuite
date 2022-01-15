@@ -29,16 +29,18 @@ import pkgutil
 import argparse
 import importlib
 from database.config import DomainConfig
+from database.config import SortingHelpFormatter
 from openpyxl import Workbook
 from openpyxl.worksheet.table import Table, TableStyleInfo
 from openpyxl.worksheet.worksheet import Worksheet
 from openpyxl.utils.exceptions import IllegalCharacterError
 from typing import List
-from database.model import CollectorName
+from database.model import FontColor
+from database.model import VhostChoice
 from database.model import Workspace
+from database.model import CollectorName
 from database.model import ReportScopeType
 from database.model import ReportVisibility
-from database.model import FontColor
 from sqlalchemy.orm.session import Session
 
 
@@ -212,7 +214,7 @@ class BaseReport:
             results = self.grep_text()
             csv_writer = csv.writer(sys.stdout, dialect='excel')
             csv_writer.writerows(results)
-        elif "file" in self._args.module:
+        elif "file" in self._args.module and "export_path" in self._args and getattr(self._args, "export_path"):
             if os.path.isdir(self._args.export_path):
                 self.export_files()
             else:
@@ -315,6 +317,69 @@ class ReportGenerator:
                 report_group = sub_parser.add_parser(name, help=item.description)
                 item.report_class.get_add_argparse_arguments(report_group)
         return result
+
+    @staticmethod
+    def get_report_argument_parser() -> argparse.ArgumentParser:
+        """
+        This method creates and initializes kisreport's argparser.
+        """
+        parser = argparse.ArgumentParser(description=__doc__, formatter_class=SortingHelpFormatter)
+        parser.add_argument("--nocolor", action="store_true", help="disable colored output")
+        parser.add_argument("-l", "--list", action='store_true', help="list existing workspaces")
+        parser.add_argument('--testing',
+                            action="store_true",
+                            help="if specified, then KIS uses the testing instead of the production database")
+        return parser
+
+    @staticmethod
+    def add_sub_argument_parsers(parser: argparse.ArgumentParser) -> argparse._SubParsersAction:
+        """
+        This method adds kisreport's generic su_parsers.
+        """
+        sub_parser = parser.add_subparsers(help='list of available database modules', dest="module")
+        # setup excel parser
+        parser_excel = sub_parser.add_parser('excel', help='allows writing all identified information into a '
+                                                           'microsoft excel file')
+        parser_excel.add_argument('FILE', type=str,
+                                  help="the path to the microsoft excel file")
+        parser_excel.add_argument("-w", "--workspaces",
+                                  metavar="WORKSPACE",
+                                  help="query the given workspaces",
+                                  nargs="+",
+                                  type=str)
+        parser_excel.add_argument('--filter', metavar='DOMAIN|HOSTNAME|IP|NETWORK|EMAIL', type=str, nargs='*',
+                                  help='list of second-level domains (e.g., megacorpone.com), host names '
+                                       '(e.g., www.megacorpone.com), IP addresses (e.g., 192.168.1.1), networks (e.g., '
+                                       '192.168.0.0/24), or email addresses (e.g., test@megacorpone.com) whose '
+                                       'information shall be returned. per default, mentioned items are excluded. add + '
+                                       'in front of each item (e.g., +192.168.0.1) to return only these items')
+        parser_excel.add_argument('--scope', choices=[item.name for item in ReportScopeType],
+                                  help='return only in scope (within) or out of scope (outside) items. per default, '
+                                       'all information is returned')
+        parser_excel.add_argument('--reports', choices=[item.name for item in ExcelReport],
+                                  nargs="+",
+                                  default=[item.name for item in ExcelReport],
+                                  help='import only the following reports into Microsoft Excel')
+        parser_excel.add_argument("-r", "--report-level",
+                                  choices=[item.name for item in VhostChoice],
+                                  default=VhostChoice.all.name,
+                                  help="specifies the information that shall be displayed in the sheet 'service info'.")
+        # setup final parser
+        parser_final = sub_parser.add_parser('final',
+                                             help='allows writing final report tables into microsoft excel file')
+        parser_final.add_argument('FILE', type=str,
+                                  help="the path to the microsoft excel file")
+        parser_final.add_argument("-w", "--workspaces",
+                                  metavar="WORKSPACE",
+                                  help="query the given workspaces",
+                                  nargs="+",
+                                  type=str)
+        parser_final.add_argument('-l', '--language',
+                                  type=ReportLanguage.argparse,
+                                  choices=list(ReportLanguage),
+                                  default=ReportLanguage.en,
+                                  help="the final report's language")
+        return sub_parser
 
     @staticmethod
     def _load_reports() -> dict:

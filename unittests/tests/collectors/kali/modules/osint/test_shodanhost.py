@@ -188,7 +188,7 @@ class BaseShodanHostCollectorTestCase(BaseKaliCollectorTestCase):
             results = session.query(Path).filter_by().all()
             results = [item.name for item in results]
             results.sort()
-            paths = ["/", "/en/start", "/secret"]
+            paths = ["/", "/", "/en/start", "/secret"]
             self.assertListEqual(paths, results)
             # Check HostName
             results = session.query(HostName).filter_by().all()

@@ -101,6 +101,8 @@ class ReportClass(BaseReport):
                  "Summary (Service)",
                  "TCP/UDP",
                  "Port",
+                 "State",
+                 "Banner Information",
                  "Type (Path)",
                  "Status Code",
                  "Response Size [Bytes]",
@@ -136,6 +138,8 @@ class ReportClass(BaseReport):
                                                      service.summary, # Summary (Service)
                                                      service.protocol_str, # TCP/UDP
                                                      service.port, # Port
+                                                     service.state_str, # State
+                                                     service.nmap_product_version,  # Banner Information
                                                      path.type_str, # Type (Path)
                                                      path.return_code, # Status Code
                                                      path.size_bytes, # Response Size [Bytes]
@@ -160,6 +164,8 @@ class ReportClass(BaseReport):
                                                  service.summary, # Summary (Service)
                                                  service.protocol_str, # TCP/UDP
                                                  service.port, # Port
+                                                 service.state_str, # State
+                                                 service.nmap_product_version,  # Banner Information
                                                  path.type_str, # Type (Path)
                                                  path.return_code, # Status Code
                                                  path.size_bytes, # Response Size [Bytes]
@@ -202,6 +208,8 @@ class ReportClass(BaseReport):
                                                  service.summary, # Summary (Service)
                                                  service.protocol_str, # TCP/UDP
                                                  service.port, # Port
+                                                 service.state_str, # State
+                                                 service.nmap_product_version,  # Banner Information
                                                  path.type_str, # Type (Path)
                                                  path.return_code, # Status Code
                                                  path.size_bytes, # Response Size [Bytes]
@@ -226,6 +234,8 @@ class ReportClass(BaseReport):
                                              service.summary, # Summary (Service)
                                              service.protocol_str, # TCP/UDP
                                              service.port, # Port
+                                             service.state_str, # State
+                                             service.nmap_product_version,  # Banner Information
                                              path.type_str, # Type (Path)
                                              path.return_code, # Status Code
                                              path.size_bytes, # Response Size [Bytes]

@@ -30,8 +30,6 @@ import logging
 import hashlib
 import io
 import csv
-import sys
-import traceback
 from database.config import Collector as CollectorConfig
 from urllib.parse import urlparse
 from xml.etree.ElementTree import Element

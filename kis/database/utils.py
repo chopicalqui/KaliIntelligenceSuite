@@ -271,6 +271,10 @@ class Engine:
 
     def _create_functions(self) -> None:
         """This method creates all functions"""
+        # Note: For debugging triggers, you can use the following command:
+        # RAISE NOTICE 'Hello World!';
+        # This might not show Hello World in the logs but will only display it in the psql console
+
         # Triggers for setting host_names in or out of scope
         # pre_update_domain_name_scope_changes
         # todo: update pre_command_changes for new collector
@@ -313,6 +317,16 @@ class Engine:
                         WHERE workspace_id = NEW.workspace_id AND
                               COALESCE(scope, 'exclude') = 'vhost') THEN
                     RAISE EXCEPTION 'scope vhost cannot be set at domain and network level at the same time';
+            END IF;
+            RETURN NEW;
+        END;
+        $$ LANGUAGE PLPGSQL;""")
+        # This trigger ensures that updating the service's port or protocol cannot be updated.
+        self._engine.execute("""CREATE OR REPLACE FUNCTION update_service_check()
+        RETURNS TRIGGER AS $$
+        BEGIN
+            IF (TG_OP = 'UPDATE' AND (OLD.protocol <> NEW.protocol OR OLD.port <> NEW.port)) THEN
+                    RAISE EXCEPTION 'the service port or protocol cannot be updated as they are part of the primary key. delete service and create a new one.';
             END IF;
             RETURN NEW;
         END;
@@ -592,13 +606,15 @@ class Engine:
         self._engine.execute("""CREATE OR REPLACE FUNCTION assign_services_to_host_name()
         RETURNS TRIGGER AS $$
         DECLARE
-        service_cursor CURSOR(id_host integer) FOR SELECT * FROM service WHERE service.host_id = id_host;
+        host_service_cursor CURSOR(id_host integer) FOR SELECT * FROM service WHERE service.host_id = id_host;
+        host_name_service_cursor CURSOR(id_host_name integer) FOR SELECT * FROM service WHERE service.host_name_id = id_host_name;
         current_row service%%ROWTYPE;
         BEGIN
-            IF (new.type & 1) < 3  THEN
-                OPEN service_cursor(NEW.host_id);
+            IF (NEW.type & 1) = 1 OR (NEW.type & 2) = 2 THEN
+                -- 1. Sync host services to host name
+                OPEN host_service_cursor(NEW.host_id);
                 LOOP
-                    FETCH service_cursor INTO current_row;
+                    FETCH host_service_cursor INTO current_row;
                     EXIT WHEN NOT FOUND;
                     IF (NOT EXISTS(SELECT * FROM service WHERE protocol = current_row.protocol AND port = current_row.port AND host_name_id = NEW.host_name_id)) THEN
                         INSERT INTO service (host_name_id,
@@ -632,7 +648,46 @@ class Engine:
                                                                     NOW());
                     END IF;
                 END LOOP;
-                CLOSE service_cursor;
+                CLOSE host_service_cursor;
+                
+                -- 2. Sync host name services to host
+                OPEN host_name_service_cursor(NEW.host_name_id);
+                LOOP
+                    FETCH host_name_service_cursor INTO current_row;
+                    EXIT WHEN NOT FOUND;
+                    IF (NOT EXISTS(SELECT * FROM service WHERE protocol = current_row.protocol AND port = current_row.port AND host_id = NEW.host_id)) THEN
+                        INSERT INTO service (host_id,
+                                             protocol,
+                                             port,
+                                             nmap_service_name,
+                                             nessus_service_name,
+                                             nmap_service_confidence,
+                                             nessus_service_confidence,
+                                             nmap_service_name_original,
+                                             state,
+                                             nmap_service_state_reason,
+                                             nmap_product,
+                                             nmap_version,
+                                             nmap_tunnel,
+                                             nmap_os_type,
+                                             creation_date) VALUES (NEW.host_id,
+                                                                    current_row.protocol,
+                                                                    current_row.port,
+                                                                    current_row.nmap_service_name,
+                                                                    current_row.nessus_service_name,
+                                                                    current_row.nmap_service_confidence,
+                                                                    current_row.nessus_service_confidence,
+                                                                    current_row.nmap_service_name_original,
+                                                                    current_row.state,
+                                                                    current_row.nmap_service_state_reason,
+                                                                    current_row.nmap_product,
+                                                                    current_row.nmap_version,
+                                                                    current_row.nmap_tunnel,
+                                                                    current_row.nmap_os_type,
+                                                                    NOW());
+                    END IF;
+                END LOOP;
+                CLOSE host_name_service_cursor;
             END IF;
             RETURN NULL;
         END;
@@ -641,173 +696,205 @@ class Engine:
         self._engine.execute("""CREATE OR REPLACE FUNCTION add_services_to_host_name() 
         RETURNS TRIGGER AS $$
         DECLARE
-        mapping_host_name_cursor CURSOR(id_service integer) FOR SELECT host_host_name_mapping.host_name_id FROM 
-            host_host_name_mapping 
-            INNER JOIN host ON host.id = host_host_name_mapping.host_id
+        mapping_host_name_cursor CURSOR(id_service integer) FOR SELECT hhnm.host_name_id FROM
+            host_host_name_mapping hhnm
+            INNER JOIN host ON host.id = hhnm.host_id
             INNER JOIN service ON service.host_id = host.id
-            INNER JOIN host_name ON host_name.id = host_host_name_mapping.host_name_id
-            WHERE host_host_name_mapping.type < 3 AND service.id = id_service;
+            INNER JOIN host_name ON host_name.id = hhnm.host_name_id
+            WHERE ((hhnm.type & 1) = 1 OR (hhnm.type & 2) = 2) AND service.id = id_service;
         id_host_name integer;
-        mapping_host_cursor CURSOR(id_service integer) FOR SELECT host_host_name_mapping.host_id FROM 
-            host_host_name_mapping 
-            INNER JOIN host_name ON host_name.id = host_host_name_mapping.host_name_id
+        mapping_host_cursor CURSOR(id_service integer) FOR SELECT hhnm.host_id FROM
+            host_host_name_mapping hhnm
+            INNER JOIN host_name ON host_name.id = hhnm.host_name_id
             INNER JOIN service ON service.host_name_id = host_name.id
-            INNER JOIN host ON host.id = host_host_name_mapping.host_id
-            WHERE host_host_name_mapping.type < 3 AND service.id = id_service;
+            INNER JOIN host ON host.id = hhnm.host_id
+            WHERE ((hhnm.type & 1) = 1 OR (hhnm.type & 2) = 2) AND service.id = id_service;
         id_host integer;
         BEGIN
             IF (pg_trigger_depth() = 1) THEN
-                IF (NEW.host_id IS NOT NULL) THEN
-                    OPEN mapping_host_name_cursor(NEW.id);
-                    LOOP
-                        FETCH mapping_host_name_cursor INTO id_host_name;
-                        EXIT WHEN NOT FOUND;
-                        IF (NOT EXISTS(SELECT * FROM service WHERE protocol = NEW.protocol AND port = NEW.port AND host_name_id = id_host_name)) THEN
-                            INSERT INTO service (host_name_id,
-                                                 protocol,
-                                                 port,
-                                                 nmap_service_name,
-                                                 nessus_service_name,
-                                                 nmap_service_confidence,
-                                                 nessus_service_confidence,
-                                                 nmap_service_name_original,
-                                                 state,
-                                                 nmap_service_state_reason,
-                                                 nmap_product,
-                                                 nmap_version,
-                                                 nmap_tunnel,
-                                                 nmap_os_type,
-                                                 creation_date) SELECT id_host_name,
-                                                                       protocol,
-                                                                       port,
-                                                                       nmap_service_name,
-                                                                       nessus_service_name,
-                                                                       nmap_service_confidence,
-                                                                       nessus_service_confidence,
-                                                                       nmap_service_name_original,
-                                                                       state,
-                                                                       nmap_service_state_reason,
-                                                                       nmap_product,
-                                                                       nmap_version,
-                                                                       nmap_tunnel,
-                                                                       nmap_os_type,
-                                                                       NOW() FROM service WHERE id = NEW.id;
-                        ELSIF (NEW.host_id = OLD.host_id AND NEW.protocol = OLD.protocol AND NEW.port = OLD.port) THEN
-                            UPDATE service
-                            SET protocol = t.protocol,
-                                port = t.port,
-                                nmap_service_name = t.nmap_service_name,
-                                nessus_service_name = t.nessus_service_name,
-                                nmap_service_confidence = t.nmap_service_confidence,
-                                nessus_service_confidence = t.nessus_service_confidence,
-                                nmap_service_name_original = t.nmap_service_name_original,
-                                state = t.state,
-                                nmap_service_state_reason = t.nmap_service_state_reason,
-                                nmap_product = t.nmap_product,
-                                nmap_version = t.nmap_version,
-                                nmap_tunnel = t.nmap_tunnel,
-                                nmap_os_type = t.nmap_os_type
-                            FROM service AS s
-                            JOIN (SELECT id_host_name AS host_name_id,
-                                         protocol,
-                                         port,
-                                         nmap_service_name,
-                                         nessus_service_name,
-                                         nmap_service_confidence,
-                                         nessus_service_confidence,
-                                         nmap_service_name_original,
-                                         state,
-                                         nmap_service_state_reason,
-                                         nmap_product,
-                                         nmap_version,
-                                         nmap_tunnel,
-                                         nmap_os_type FROM service WHERE id = NEW.id) AS t ON t.host_name_id = s.host_name_id AND
-                                                                                              t.port = s.port AND
-                                                                                              t.protocol = s.protocol
-                            WHERE service.id = s.id;
-                        END IF;
-                    END LOOP;
-                    CLOSE mapping_host_name_cursor;
-                ELSIF (NEW.host_name_id IS NOT NULL) THEN
-                    OPEN mapping_host_cursor(NEW.id);
-                    LOOP
-                        FETCH mapping_host_cursor INTO id_host;
-                        EXIT WHEN NOT FOUND;
-                        IF (NOT EXISTS(SELECT * FROM service WHERE protocol = NEW.protocol AND port = NEW.port AND host_id = id_host)) THEN 
-                            INSERT INTO service (host_id,
-                                                 protocol,
-                                                 port,
-                                                 nmap_service_name,
-                                                 nessus_service_name,
-                                                 nmap_service_confidence,
-                                                 nessus_service_confidence,
-                                                 nmap_service_name_original,
-                                                 state,
-                                                 nmap_service_state_reason,
-                                                 nmap_product,
-                                                 nmap_version,
-                                                 nmap_tunnel,
-                                                 nmap_os_type,
-                                                 creation_date) SELECT id_host,
-                                                                       protocol,
-                                                                       port,
-                                                                       nmap_service_name,
-                                                                       nessus_service_name,
-                                                                       nmap_service_confidence,
-                                                                       nessus_service_confidence,
-                                                                       nmap_service_name_original,
-                                                                       state,
-                                                                       nmap_service_state_reason,
-                                                                       nmap_product,
-                                                                       nmap_version,
-                                                                       nmap_tunnel,
-                                                                       nmap_os_type,
-                                                                       NOW() FROM service WHERE id = NEW.id;
-                        ELSIF (NEW.host_name_id = OLD.host_name_id AND NEW.protocol = OLD.protocol AND NEW.port = OLD.port) THEN
-                            UPDATE service
-                            SET protocol = t.protocol,
-                                port = t.port,
-                                nmap_service_name = t.nmap_service_name,
-                                nessus_service_name = t.nessus_service_name,
-                                nmap_service_confidence = t.nmap_service_confidence,
-                                nessus_service_confidence = t.nessus_service_confidence,
-                                nmap_service_name_original = t.nmap_service_name_original,
-                                state = t.state,
-                                nmap_service_state_reason = t.nmap_service_state_reason,
-                                nmap_product = t.nmap_product,
-                                nmap_version = t.nmap_version,
-                                nmap_tunnel = t.nmap_tunnel,
-                                nmap_os_type = t.nmap_os_type
-                            FROM service AS s
-                            JOIN (SELECT id_host AS host_id,
-                                         protocol,
-                                         port,
-                                         nmap_service_name,
-                                         nessus_service_name,
-                                         nmap_service_confidence,
-                                         nessus_service_confidence,
-                                         nmap_service_name_original,
-                                         state,
-                                         nmap_service_state_reason,
-                                         nmap_product,
-                                         nmap_version,
-                                         nmap_tunnel,
-                                         nmap_os_type FROM service WHERE id = NEW.id) AS t ON t.host_id = s.host_id AND
-                                                                                              t.port = s.port AND
-                                                                                              t.protocol = s.protocol
-                            WHERE service.id = s.id;
-                        END IF;
-                    END LOOP;
-                    CLOSE mapping_host_cursor;
+                IF (TG_OP = 'INSERT' OR TG_OP = 'UPDATE') THEN
+                    IF (NEW.host_id IS NOT NULL) THEN
+                        OPEN mapping_host_name_cursor(NEW.id);
+                        LOOP
+                            FETCH mapping_host_name_cursor INTO id_host_name;
+                            EXIT WHEN NOT FOUND;
+                            IF (NOT EXISTS(SELECT * FROM service WHERE protocol = NEW.protocol AND port = NEW.port AND host_name_id = id_host_name)) THEN
+                                INSERT INTO service (host_name_id,
+                                                     protocol,
+                                                     port,
+                                                     nmap_service_name,
+                                                     nessus_service_name,
+                                                     nmap_service_confidence,
+                                                     nessus_service_confidence,
+                                                     nmap_service_name_original,
+                                                     state,
+                                                     nmap_service_state_reason,
+                                                     nmap_product,
+                                                     nmap_version,
+                                                     nmap_tunnel,
+                                                     nmap_extra_info,
+                                                     nmap_os_type,
+                                                     creation_date) SELECT id_host_name,
+                                                                           protocol,
+                                                                           port,
+                                                                           nmap_service_name,
+                                                                           nessus_service_name,
+                                                                           nmap_service_confidence,
+                                                                           nessus_service_confidence,
+                                                                           nmap_service_name_original,
+                                                                           state,
+                                                                           nmap_service_state_reason,
+                                                                           nmap_product,
+                                                                           nmap_version,
+                                                                           nmap_tunnel,
+                                                                           nmap_extra_info,
+                                                                           nmap_os_type,
+                                                                           NOW() FROM service WHERE id = NEW.id;
+                            ELSIF (NEW.host_id = OLD.host_id AND NEW.protocol = OLD.protocol AND NEW.port = OLD.port) THEN
+                                UPDATE service
+                                SET protocol = t.protocol,
+                                    port = t.port,
+                                    nmap_service_name = t.nmap_service_name,
+                                    nessus_service_name = t.nessus_service_name,
+                                    nmap_service_confidence = t.nmap_service_confidence,
+                                    nessus_service_confidence = t.nessus_service_confidence,
+                                    nmap_service_name_original = t.nmap_service_name_original,
+                                    state = t.state,
+                                    nmap_service_state_reason = t.nmap_service_state_reason,
+                                    nmap_product = t.nmap_product,
+                                    nmap_version = t.nmap_version,
+                                    nmap_tunnel = t.nmap_tunnel,
+                                    nmap_extra_info = t.nmap_extra_info,
+                                    nmap_os_type = t.nmap_os_type
+                                FROM service AS s
+                                JOIN (SELECT id_host_name AS host_name_id,
+                                             protocol,
+                                             port,
+                                             nmap_service_name,
+                                             nessus_service_name,
+                                             nmap_service_confidence,
+                                             nessus_service_confidence,
+                                             nmap_service_name_original,
+                                             state,
+                                             nmap_service_state_reason,
+                                             nmap_product,
+                                             nmap_version,
+                                             nmap_tunnel,
+                                             nmap_extra_info,
+                                             nmap_os_type FROM service WHERE id = NEW.id) AS t ON t.host_name_id = s.host_name_id AND
+                                                                                                  t.port = s.port AND
+                                                                                                  t.protocol = s.protocol
+                                WHERE service.id = s.id;
+                            END IF;
+                        END LOOP;
+                        CLOSE mapping_host_name_cursor;
+                    ELSIF (NEW.host_name_id IS NOT NULL) THEN
+                        OPEN mapping_host_cursor(NEW.id);
+                        LOOP
+                            FETCH mapping_host_cursor INTO id_host;
+                            EXIT WHEN NOT FOUND;
+                            IF (NOT EXISTS(SELECT * FROM service WHERE protocol = NEW.protocol AND port = NEW.port AND host_id = id_host)) THEN
+                                INSERT INTO service (host_id,
+                                                     protocol,
+                                                     port,
+                                                     nmap_service_name,
+                                                     nessus_service_name,
+                                                     nmap_service_confidence,
+                                                     nessus_service_confidence,
+                                                     nmap_service_name_original,
+                                                     state,
+                                                     nmap_service_state_reason,
+                                                     nmap_product,
+                                                     nmap_version,
+                                                     nmap_tunnel,
+                                                     nmap_extra_info,
+                                                     nmap_os_type,
+                                                     creation_date) SELECT id_host,
+                                                                           protocol,
+                                                                           port,
+                                                                           nmap_service_name,
+                                                                           nessus_service_name,
+                                                                           nmap_service_confidence,
+                                                                           nessus_service_confidence,
+                                                                           nmap_service_name_original,
+                                                                           state,
+                                                                           nmap_service_state_reason,
+                                                                           nmap_product,
+                                                                           nmap_version,
+                                                                           nmap_tunnel,
+                                                                           nmap_extra_info,
+                                                                           nmap_os_type,
+                                                                           NOW() FROM service WHERE id = NEW.id;
+                            ELSIF (NEW.host_name_id = OLD.host_name_id AND NEW.protocol = OLD.protocol AND NEW.port = OLD.port) THEN
+                                UPDATE service
+                                SET protocol = t.protocol,
+                                    port = t.port,
+                                    nmap_service_name = t.nmap_service_name,
+                                    nessus_service_name = t.nessus_service_name,
+                                    nmap_service_confidence = t.nmap_service_confidence,
+                                    nessus_service_confidence = t.nessus_service_confidence,
+                                    nmap_service_name_original = t.nmap_service_name_original,
+                                    state = t.state,
+                                    nmap_service_state_reason = t.nmap_service_state_reason,
+                                    nmap_product = t.nmap_product,
+                                    nmap_version = t.nmap_version,
+                                    nmap_tunnel = t.nmap_tunnel,
+                                    nmap_extra_info = t.nmap_extra_info,
+                                    nmap_os_type = t.nmap_os_type
+                                FROM service AS s
+                                JOIN (SELECT id_host AS host_id,
+                                             protocol,
+                                             port,
+                                             nmap_service_name,
+                                             nessus_service_name,
+                                             nmap_service_confidence,
+                                             nessus_service_confidence,
+                                             nmap_service_name_original,
+                                             state,
+                                             nmap_service_state_reason,
+                                             nmap_product,
+                                             nmap_version,
+                                             nmap_tunnel,
+                                             nmap_extra_info,
+                                             nmap_os_type FROM service WHERE id = NEW.id) AS t ON t.host_id = s.host_id AND
+                                                                                                  t.port = s.port AND
+                                                                                                  t.protocol = s.protocol
+                                WHERE service.id = s.id;
+                            END IF;
+                        END LOOP;
+                        CLOSE mapping_host_cursor;
+                    END IF;
+
+                    -- If web service, then add the default path '/' to the path table
+                    IF (NEW.state = 'Open' AND NEW.protocol = 'tcp' AND
+                        (NEW.nmap_service_name IN ('ssl|http', 'http', 'https', 'http-alt', 'https-alt', 'http-proxy', 'https-proxy', 'sgi-soap', 'caldav') OR
+                         NEW.nessus_service_name IN ('www', 'http', 'https', 'http-alt', 'https-alt', 'pcsync-http', 'pcsync-https', 'homepage', 'greenbone-administrator', 'openvas-administrator') OR
+                         NEW.port = 80 OR NEW.port = 443) AND
+                        NOT EXISTS(SELECT * FROM path WHERE service_id = NEW.id AND name = '/')) THEN
+                        INSERT INTO path (service_id, name, type, creation_date) VALUES (NEW.id, '/', 'http', NOW());
+                    END IF;
+                ELSIF (TG_OP = 'DELETE') THEN
+                    RAISE NOTICE 'DELETE';
+                    IF (OLD.host_id IS NOT NULL) THEN
+                        RAISE NOTICE 'DELETE host name service';
+                        -- Check if a host's service was deleted. If so, then delete the corresponding host name service
+                        DELETE FROM service
+                        WHERE id IN (SELECT s.id FROM service s
+                                     INNER JOIN host_name hn ON s.host_name_id = hn.id
+                                     INNER JOIN host_host_name_mapping hhnm ON hhnm.host_name_id = hn.id AND ((hhnm.type & 1) = 1 OR (hhnm.type & 2) = 2)
+                                     INNER JOIN host h ON hhnm.host_id = h.id
+                                     WHERE s.protocol = OLD.protocol AND s.port = OLD.port AND h.id = OLD.host_id);
+                    ELSIF (OLD.host_name_id IS NOT NULL) THEN
+                        RAISE NOTICE 'DELETE host name service';
+                        -- Check if a host's service was deleted. If so, then delete the corresponding host name service
+                        DELETE FROM service
+                        WHERE id IN (SELECT s.id FROM service s
+                                     INNER JOIN host h ON s.host_id = h.id
+                                     INNER JOIN host_host_name_mapping hhnm ON hhnm.host_id = h.id AND ((hhnm.type & 1) = 1 OR (hhnm.type & 2) = 2)
+                                     INNER JOIN host_name hn ON hhnm.host_name_id = hn.id
+                                     WHERE s.protocol = OLD.protocol AND s.port = OLD.port AND hn.id = OLD.host_name_id);
+                    END IF;
                 END IF;
-            END IF;
-            
-            -- If web service, then add the default path '/' to the path table
-            IF ((TG_OP = 'INSERT' OR TG_OP = 'UPDATE') AND NEW.state = 'Open' AND
-                (NEW.nmap_service_name IN ('ssl|http', 'http', 'https', 'http-alt', 'https-alt', 'http-proxy', 'https-proxy', 'sgi-soap', 'caldav') OR
-                 NEW.nessus_service_name IN ('www', 'http', 'https', 'http-alt', 'https-alt', 'pcsync-http', 'pcsync-https', 'homepage', 'greenbone-administrator', 'openvas-administrator')) AND
-                NOT EXISTS(SELECT * FROM path WHERE service_id = NEW.id AND name = '/')) THEN
-                INSERT INTO path (service_id, name, type, creation_date) VALUES (NEW.id, '/', 'http', NOW());
             END IF;
             RETURN NULL;
         END;
@@ -824,6 +911,7 @@ class Engine:
         self._engine.execute("""DROP FUNCTION pre_update_hosts_after_host_changes;""")
         self._engine.execute("""DROP FUNCTION assign_services_to_host_name;""")
         self._engine.execute("""DROP FUNCTION add_services_to_host_name;""")
+        self._engine.execute("""DROP FUNCTION update_service_check;""")
 
     def _create_triggers(self) -> None:
         """This method creates all triggers."""
@@ -850,8 +938,10 @@ class Engine:
  FOR EACH ROW EXECUTE PROCEDURE pre_update_hosts_after_host_changes();""")
         self._engine.execute("""CREATE TRIGGER host_host_name_mapping_insert AFTER INSERT OR UPDATE ON host_host_name_mapping
  FOR EACH ROW EXECUTE PROCEDURE assign_services_to_host_name();""")
-        self._engine.execute("""CREATE TRIGGER service_insert AFTER INSERT OR UPDATE ON service
+        self._engine.execute("""CREATE TRIGGER service_insert AFTER UPDATE OR INSERT OR DELETE ON service
  FOR EACH ROW EXECUTE PROCEDURE add_services_to_host_name();""")
+        self._engine.execute("""CREATE TRIGGER check_service_update BEFORE UPDATE ON service
+ FOR EACH ROW EXECUTE PROCEDURE update_service_check();""")
 
     def _drop_trigger(self) -> None:
         """This method drops all triggers."""
@@ -863,6 +953,7 @@ class Engine:
         self._engine.execute("""DROP TRIGGER pre_update_host_scope_trigger ON host""")
         self._engine.execute("""DROP TRIGGER host_name_mapping_insert ON host_name_mapping""")
         self._engine.execute("""DROP TRIGGER service_insert ON service""")
+        self._engine.execute("""DROP TRIGGER check_service_update ON service""")
 
     @staticmethod
     def get_or_create(session, model, one_or_none=True, **kwargs):
