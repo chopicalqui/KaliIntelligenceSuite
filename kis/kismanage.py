@@ -46,6 +46,8 @@ from database.model import DomainName
 from database.model import ProtocolType
 from database.model import ServiceState
 from database.model import DomainNameNotFound
+from database.model import DatabaseVersionMismatchError
+from database.model import DatabaseUninitializationError
 from collectors.core import IpUtils
 from collectors.core import DomainUtils
 from collectors.filesystem.nmap import DatabaseImporter as NmapDatabaseImporter
@@ -155,6 +157,8 @@ class ManageDatabase:
                   kali_packages=ManageDatabase.KALI_PACKAGES,
                   git_repositories=ManageDatabase.GIT_REPOSITORIES,
                   debug=True).test()
+        elif self._arguments.version:
+            engine.print_version_information()
         else:
             if self._arguments.drop:
                 if BaseConfig.is_docker() or self._arguments.testing:
@@ -566,6 +570,7 @@ $ docker exec -it kaliintelsuite kismanage workspace --add $workspace
     parser_database.add_argument("--drop",
                                  help="drops tables, views, functions, and triggers in the KIS database",
                                  action="store_true")
+    parser_database.add_argument("--version", help="obtain version information", action="store_true")
     if not BaseConfig.is_docker():
         parser_database.add_argument("--backup", metavar="FILE", type=str, help="writes database backup to FILE")
         parser_database.add_argument("--restore", metavar="FILE", type=str, help="restores database backup from FILE")
@@ -987,19 +992,26 @@ $ docker exec -it kaliintelsuite kismanage workspace --add $workspace
         parser.print_help()
         sys.exit(1)
     try:
-        exit_code = 0
         engine = Engine(production=not args.testing)
         domain_utils = DomainUtils()
         ipv4_address_utils = IpUtils()
         DeclarativeBase.metadata.bind = engine.engine
+        # Check KIS' database status and version
+        if args.module != "database":
+            engine.perform_preflight_check()
         ManageDatabase(engine=engine, arguments=args, parser=parser).run()
+    except DatabaseVersionMismatchError as ex:
+        print(ex, file=sys.stderr)
+        sys.exit(1)
+    except DatabaseUninitializationError as ex:
+        print(ex, file=sys.stderr)
+        sys.exit(1)
     except WorkspaceNotFound as ex:
         print(ex, file=sys.stderr)
-        exit_code = 1
+        sys.exit(1)
     except ApiCollectionFailed as ex:
         print(ex, file=sys.stderr)
-        exit_code = 1
+        sys.exit(1)
     except Exception as e:
         traceback.print_exc(file=sys.stderr)
-        exit_code = 1
-    sys.exit(exit_code)
+        sys.exit(1)

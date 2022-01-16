@@ -54,6 +54,8 @@ from view.console import KisCollectConsole
 from database.utils import Engine
 from database.utils import DeclarativeBase
 from collectors.os.collector import CollectorProducer
+from database.model import DatabaseVersionMismatchError
+from database.model import DatabaseUninitializationError
 
 
 if __name__ == "__main__":
@@ -280,6 +282,8 @@ Finally, you might want to re-run the entire process to collect further informat
         producer.add_argparser_arguments(collector_group)
 
         args = parser.parse_args()
+        # Check KIS' database status and version
+        engine.perform_preflight_check()
         if os.geteuid() != 0 and not args.print_commands:
             config = Collector()
             print("{} must be executed with root privileges. afterwards, it is possible to execute "
@@ -333,6 +337,12 @@ Finally, you might want to re-run the entire process to collect further informat
                 producer.join()
             else:
                 KisCollectConsole(args=args, producer_thread=producer).cmdloop()
+    except DatabaseVersionMismatchError as ex:
+        print(ex, file=sys.stderr)
+        sys.exit(1)
+    except DatabaseUninitializationError as ex:
+        print(ex, file=sys.stderr)
+        sys.exit(1)
     except Exception as e:
         traceback.print_exc(file=sys.stderr)
         sys.exit(1)

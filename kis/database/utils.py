@@ -18,7 +18,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
-__version__ = 0.1
+__version__ = "0.3.0"
 
 import sys
 import grp
@@ -221,6 +221,45 @@ class Engine:
                                                                         CommandStatus.collecting])).subquery()
             session.query(Command).filter(Command.id.in_(commands_email)).delete(synchronize_session='fetch')
 
+    def perform_preflight_check(self, test_version: str = None):
+        """
+        This method shall be called during startup to check KIS' data model.
+        :param test_version: This parameter is only used by unittests.
+        """
+        current_kis_version = Version(test_version if test_version else str(__version__))
+        result = self._engine.execute("SELECT * FROM information_schema.tables WHERE table_name = 'workspace';")
+        if result.rowcount != 1:
+            raise DatabaseUninitializationError()
+        # If the version table is missing, then we are definitely dealing with an outdated version
+        result = self._engine.execute("SELECT * FROM information_schema.tables WHERE table_name = 'version';")
+        if result.rowcount != 1:
+            raise DatabaseVersionMismatchError(reason=DatabaseVersionMismatchEnum.model_outdated)
+        with self.session_scope() as session:
+            database_version = session.query(Version).one()
+            if database_version < current_kis_version:
+                raise DatabaseVersionMismatchError(reason=DatabaseVersionMismatchEnum.model_outdated)
+            elif database_version > current_kis_version:
+                raise DatabaseVersionMismatchError(reason=DatabaseVersionMismatchEnum.model_newer)
+
+    def print_version_information(self):
+        """
+        This method returns the version of the currently deployed database.
+        """
+        with self.session_scope() as session:
+            try:
+                result = self._engine.execute("SELECT * FROM information_schema.tables WHERE table_name = 'workspace';")
+                if result.rowcount != 1:
+                    print("database has not been initialized.")
+                else:
+                    database_version = session.query(Version).one()
+                    print("Deployed database version: {:>10}".format(str(database_version)))
+            except Exception as e:
+                if 'relation "version" does not exist' in str(e):
+                    database_version = Version("0.3.0")
+                    print("Deployed database version: {:>10}".format("< " + str(database_version)))
+                else:
+                    raise e
+
     def init(self, load_cipher_suites: bool):
         """This method initializes the database."""
         self._create_tables()
@@ -256,6 +295,11 @@ class Engine:
     def _create_tables(self) -> None:
         """This method creates all tables."""
         DeclarativeBase.metadata.create_all(self._engine, checkfirst=True)
+        # Record the database model's current version
+        with self.session_scope() as session:
+            versions = session.query(Version).all()
+            if len(versions) == 0:
+                session.add(Version(str(__version__)))
 
     def _create_views(self) -> None:
         """This method creates all views."""

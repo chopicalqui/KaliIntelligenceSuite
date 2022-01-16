@@ -218,17 +218,17 @@ Scopes can be set on the following items by using the script `kismanage`:
      docker exec -it kaliintelsuite kismanage network -w example -a 172.217.0.0/16
      ```
 
-   As only the second-level domain google.com and any of its subdomains are in scope that resolve to an IP address
-   within 172.217.0.0/16, we also have to add second-level domain google.com to the KIS database and set its scope
-   to `vhost`:
+     As only the second-level domain google.com and any of its subdomains are in scope that resolve to an IP address
+     within 172.217.0.0/16, we also have to add second-level domain google.com to the KIS database and set its scope
+     to `vhost`:
 
      ```bash
      # add the second-level domain google.com to workspace example and set the scope to vhost
      docker exec -it kaliintelsuite kismanage domain -w example -a google.com
      ```
 
-   With this configuration, google.com and any of its subdomains are per default out of scope except, they resolve to
-   an in-scope IP address within 172.217.0.0/16.
+     With this configuration, google.com and any of its subdomains are per default out of scope except, they resolve to
+     an in-scope IP address within 172.217.0.0/16.
 
    * Example 2: Let's assume the second-level domain google.com together with all its subdomains that resolve to
    any IP address are in scope. In this case, we add the network 0.0.0.0/0 with scope type `vhost` to the KIS

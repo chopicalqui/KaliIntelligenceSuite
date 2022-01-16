@@ -27,6 +27,8 @@ import sys
 import traceback
 from collectors.core import DomainUtils
 from database.model import WorkspaceNotFound
+from database.model import DatabaseVersionMismatchError
+from database.model import DatabaseUninitializationError
 from database.report.core import ReportGenerator
 from database.utils import Engine
 from database.utils import DeclarativeBase
@@ -45,6 +47,8 @@ if __name__ == "__main__":
     try:
         engine = Engine(production=not args.testing)
         DeclarativeBase.metadata.bind = engine.engine
+        # Check KIS' database status and version
+        engine.perform_preflight_check()
         with engine.session_scope() as session:
             if args.workspaces:
                 workspaces = []
@@ -60,6 +64,12 @@ if __name__ == "__main__":
             if workspaces:
                 generator = ReportGenerator(report_classes=report_classes)
                 generator.run(args=args, session=session, workspaces=workspaces)
+    except DatabaseVersionMismatchError as ex:
+        print(ex, file=sys.stderr)
+        sys.exit(1)
+    except DatabaseUninitializationError as ex:
+        print(ex, file=sys.stderr)
+        sys.exit(1)
     except WorkspaceNotFound as ex:
         print(ex, file=sys.stderr)
         sys.exit(1)

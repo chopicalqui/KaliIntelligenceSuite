@@ -99,6 +99,33 @@ class HostNotFound(Exception):
         super().__init__("host '{}' does not exist in database".format(ip_address))
 
 
+class DatabaseUninitializationError(Exception):
+    def __init__(self):
+        super().__init__("""the database has not been initialized. run the following command to initialize the database:
+
+docker exec -it kaliintelsuite kismanage database --init
+""")
+
+
+class DatabaseVersionMismatchEnum(enum.Enum):
+    model_outdated = enum.auto()
+    model_newer = enum.auto()
+
+
+class DatabaseVersionMismatchError(Exception):
+    def __init__(self, reason: DatabaseVersionMismatchEnum):
+        if reason == DatabaseVersionMismatchEnum.model_outdated:
+            message = "the database model version in the postgresql database is outdated and is not supported by " \
+                      "KIS anymore. Before you can continue, you have to update KIS' postgresql database model. " \
+                      "For more information, refer to the following Wiki page (see Option 2): " \
+                      "https://github.com/chopicalqui/KaliIntelligenceSuite/wiki/Updating-the-KIS-database"
+        else:
+            message = "the database model version in the postgresql database is newer than the one of KIS's " \
+                      "currents version."
+        super().__init__(message)
+        self.reason = reason
+
+
 class CastingArray(ARRAY):
     def bind_expression(self, bindvalue):
         return sa.cast(bindvalue, self)
@@ -344,6 +371,7 @@ class TlsPreference(enum.Enum):
     indeterminate = enum.auto()
 # sudo -u postgres psql kis -c "alter type public.tlspreference add value 'indeterminate';"
 
+
 class CipherSuiteSecurity(enum.Enum):
     insecure = enum.auto()
     weak = enum.auto()
@@ -465,6 +493,49 @@ class CollectionTechniqueType(enum.Enum):
     leak_search = enum.auto()
     password_bruteforce = enum.auto()
     path_discovery = enum.auto()
+
+
+class Version(DeclarativeBase):
+    """This class holds the data model's version"""
+
+    __tablename__ = "version"
+    id = Column(Integer, primary_key=True)
+    major_number = Column(Integer, nullable=False)
+    minor_number = Column(Integer, nullable=False)
+    revision_number = Column(Integer, nullable=False)
+    creation_date = Column(DateTime, nullable=False, default=datetime.utcnow())
+    last_modified = Column(DateTime, nullable=True, onupdate=datetime.utcnow())
+    __table_args__ = (UniqueConstraint("major_number", "minor_number", "revision_number", name="_version_unique"),)
+
+    def __init__(self, version: str):
+        if version.count(".") < 1 or version.count(".") > 2:
+            raise ValueError("version string has incorrect format.")
+        tmp = version.split(".")
+        if not all([item.isnumeric() and int(item) >= 0 for item in tmp]):
+            raise ValueError("version string has incorrect format.")
+        self.major_number = int(tmp[0])
+        self.minor_number = int(tmp[1])
+        self.revision_number = int(tmp[2]) if len(tmp) == 3 else 0
+
+    def __eq__(self, version):
+        return self.major_number == version.major_number and \
+               self.minor_number == version.minor_number and \
+               self.revision_number == version.revision_number
+
+    def __lt__(self, version):
+        return self.major_number < version.major_number or \
+               (self.major_number == version.major_number and self.minor_number < version.minor_number) or \
+               (self.major_number == version.major_number and self.minor_number == version.minor_number
+                and self.revision_number < version.revision_number)
+
+    def __gt__(self, version):
+        return self.major_number > version.major_number or \
+               (self.major_number == version.major_number and self.minor_number > version.minor_number) or \
+               (self.major_number == version.major_number and self.minor_number == version.minor_number and
+                self.revision_number > version.revision_number)
+
+    def __repr__(self):
+        return "v{}.{}.{}".format(self.major_number, self.minor_number, self.revision_number)
 
 
 class Workspace(DeclarativeBase):
