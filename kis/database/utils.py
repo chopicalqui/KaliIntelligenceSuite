@@ -649,7 +649,7 @@ class Engine:
                     END IF;
                 END LOOP;
                 CLOSE host_service_cursor;
-                
+
                 -- 2. Sync host name services to host
                 OPEN host_name_service_cursor(NEW.host_name_id);
                 LOOP

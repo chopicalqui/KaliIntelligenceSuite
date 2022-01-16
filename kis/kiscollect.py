@@ -42,22 +42,18 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 __version__ = 0.1
 
-import argparse
+import os
 import sys
 import queue
-import traceback
-import os
 import logging
 import tempfile
-from database.config import SortingHelpFormatter
-from database.config import BaseConfig
+import traceback
 from database.config import Collector
-from collectors.os.collector import CollectorProducer
+from database.config import BaseConfig
 from view.console import KisCollectConsole
-from database.model import CommandStatus
-from database.model import VhostChoice
 from database.utils import Engine
 from database.utils import DeclarativeBase
+from collectors.os.collector import CollectorProducer
 
 
 if __name__ == "__main__":
@@ -279,138 +275,10 @@ $ docker exec -it kaliintelsuite kiscollect -w $ws --debug --strict -t5 --dnshos
 
 Finally, you might want to re-run the entire process to collect further information.
 '''
-        parser = argparse.ArgumentParser(description=__doc__, formatter_class=SortingHelpFormatter, epilog=epilog)
-        collector_group = parser.add_argument_group('collectors', 'use the following arguments to collect intelligence')
-        ogroup = parser.add_argument_group('general options', 'use the following arguments to specify how intelligence '
-                                                              'is collected')
-        testing_group = parser.add_argument_group('internal options', 'this options are only used by KIS itself and '
-                                                                      'therefore should not be used by end users')
+        parser = CollectorProducer.get_argument_parser(description=__doc__, epilog=epilog)
+        collector_group = CollectorProducer.add_collector_argument_group(parser)
         producer.add_argparser_arguments(collector_group)
-        testing_group.add_argument('--testing',
-                                   action="store_true",
-                                   help="if specified, then KIS uses the testing instead of the production database")
-        ogroup.add_argument("--http-proxy",
-                            type=str,
-                            help="specify an HTTP(S) proxy that shall be used by collectors in the format "
-                                 "https://$ip:$port")
-        ogroup.add_argument("-S", "--print-commands",
-                            action="store_true",
-                            help="print commands to be executed in console instead of executing them. use this option "
-                                 "to see how tools (e.g., dnsenum) are executed")
-        ogroup.add_argument("--vhost", choices=[item.name for item in VhostChoice],
-                            help="per default all HTTP(S) collectors (e.g., httpnikto, httpgobuster) use the IPv4/IPv6 "
-                                 "address to scan the target web application. virtual hosts, which are not accessible "
-                                 "via this IPv4/IPv6 address are not scanned. if this argument is specified, then the "
-                                 "HTTP(S) service intelligence gathering is performed on all known in-scope host "
-                                 "names. use choice 'domain' if you want to collect intel just on the host names or "
-                                 "use choice 'all' to collect intel based on both - IPv4/IPv6 addresses and host names")
-        ogroup.add_argument("--tld",
-                            action="store_true",
-                            help="usually vhost collectors like httpgobuster do not create commands for "
-                                 "top-level domains (TLDs), if they resolve to an in-scope IP address. use this "
-                                 "argument to use TLDs as well")
-        ogroup.add_argument("--debug",
-                            action="store_true",
-                            help="prints extra information to log file")
-        ogroup.add_argument("-a", "--autostart",
-                            action="store_true",
-                            help="automatically start collection when application starts")
-        ogroup.add_argument("--strict",
-                            action="store_true",
-                            help="collect information only from services that are definitely open (nmap state is "
-                                 "open). ports with nmap status 'open|filtered' are ignored. this option decreases the "
-                                 "intel collection time but might not be as comprehensive")
-        ogroup.add_argument("--restart", choices=[CommandStatus.failed.name,
-                                                  CommandStatus.terminated.name,
-                                                  CommandStatus.completed.name], nargs='+',
-                            help="per default, kiscollect continues the collection from the last interruption point, "
-                                 "and ignores all previously failed or terminated commands. With this option the "
-                                 "collection of commands with statuses failed, terminated, or completed can be "
-                                 "restarted.")
-        ogroup.add_argument("-A", "--analyze",
-                            action="store_true",
-                            help="re-analyze the already collected information. use this option if you updated the "
-                                 "verify_results method of a collector and you want to import the update into the "
-                                 "database")
-        ogroup.add_argument("--filter",
-                            type=str,
-                            metavar="IP|NETWORK|HOST",
-                            nargs='+',
-                            help='list of IPv4/IPv6 networks/addresses or domain/host names that shall be processed.'
-                                 'per default, mentioned items are excluded. add + in front of item (e.g., +127.0.0.1) '
-                                 ' to process only these items')
-        ogroup.add_argument("-t", "--threads",
-                            type=int,
-                            default=1,
-                            help="number of threads that execute collection")
-        ogroup.add_argument("-w", "--workspace",
-                            type=str,
-                            required=True,
-                            default=1,
-                            help="the workspace within the collection is executed")
-        ogroup.add_argument("-l", "--list", action='store_true', help="list existing workspaces")
-        ogroup.add_argument("-o", dest="output_dir",
-                            type=str,
-                            help="KIS uses a temporary working directory to store all temporary files. this working "
-                                 "directory is deleted when KIS quits. use this argument to specify an alternative "
-                                 "working directory, which must be manually deleted. this argument is usually useful "
-                                 "during debugging")
-        ogroup.add_argument('--cookies', metavar='N', type=str, nargs='+',
-                            help='list of cookies that shall be used by collectors (e.g. "Cookie: JSESSION=123")')
-        ogroup.add_argument('--user-agent', metavar='AGENT', type=str,
-                            help='set a user agent string')
-        ogroup.add_argument('-C', '--combo-file', type=str,
-                            help='user name password combo files that shall be used by collectors. the internal '
-                                 'structure of the combo file varies depending on the used collectors. for example, '
-                                 'hydra collectors have a different structure than medusa collectors')
-        ogroup.add_argument("-P","--password-file",
-                            type=str,
-                            help="file containing passwords that shall be used by collectors")
-        ogroup.add_argument("-U", "--user-file",
-                            type=str,
-                            help="file containing user names that shall be used by collectors")
-        ogroup.add_argument("-u", "--user",
-                            type=str,
-                            help="username that shall be used by collectors")
-        ogroup.add_argument("-d", "--domain",
-                            type=str,
-                            help="domain or workgroup that shall be used by collectors")
-        ogroup.add_argument("-p", "--password",
-                            type=str,
-                            help="password that shall be used by collectors")
-        ogroup.add_argument("--hashes",
-                            action="store_true",
-                            help="if specified, then the passwords specified via arguments -p or -P are interpreted as "
-                                 "hashes (this adds arguments -m 'LocalHash' to hydra and -m PASS:HASH to medusa)")
-        ogroup.add_argument("-L", "--wordlist-files",
-                            type=str, nargs='+',
-                            help="list of files containing words (e.g., host names or URLs) that shall be used by "
-                                 "collectors. usually KIS creates one command per specified word list")
-        ogroup.add_argument("-D", "--delay-min", metavar='MIN', dest="force-delay-min",
-                            type=int,
-                            help="minimum number of seconds between each operating system command executions. if "
-                                 "specified together with option -M, then KIS randomly computes a delay between MIN "
-                                 "and MAX per execution else, the delay is always MIN")
-        ogroup.add_argument("-M", "--delay-max", metavar='MAX', dest="force-delay-max",
-                            type=int,
-                            help="maximum number of seconds between each operating system command executions. if "
-                                 "specified together with option -D, then KIS randomly computes a delay between MIN "
-                                 "and MAX per execution else, the delay is always MAX")
-        ogroup.add_argument("-T", "--timeout",
-                            dest="force-timeout",
-                            type=int,
-                            help="the maximum execution time for each collector command. use this argument to ensure "
-                                 "that each command is not executed longer than timeout seconds")
-        ogroup.add_argument("--dns-server", metavar='SERVER',
-                            type=str,
-                            help="DNS server (e.g., 8.8.8.8) that shall be used by collectors to query DNS "
-                                 "information. otherwise, the system's DNS server is used")
-        ogroup.add_argument("--proxychains",
-                            action="store_true",
-                            help="perform all collections via proxychains")
-        ogroup.add_argument("--continue",
-                            action="store_true",
-                            help="indefinitely repeat the execution of selected collectors")
+
         args = parser.parse_args()
         if os.geteuid() != 0 and not args.print_commands:
             config = Collector()

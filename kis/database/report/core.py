@@ -334,7 +334,7 @@ class ReportGenerator:
     @staticmethod
     def add_sub_argument_parsers(parser: argparse.ArgumentParser) -> argparse._SubParsersAction:
         """
-        This method adds kisreport's generic su_parsers.
+        This method adds kisreport's generic sub_parsers.
         """
         sub_parser = parser.add_subparsers(help='list of available database modules', dest="module")
         # setup excel parser

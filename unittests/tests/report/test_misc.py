@@ -104,6 +104,46 @@ class TestReportCreation(BaseReportTestCase):
                              arguments="-w {} --text".format(workspaces),
                              expected_return_code=2)
 
+    def test_grep_creation(self):
+        self.init_db(load_cipher_suites=True)
+        # create database
+        with self._engine.session_scope() as session:
+            for workspace_str in self._workspaces:
+                self._populate_all_tables(session, workspace_str)
+        # create reports
+        report_classes = ReportGenerator.add_argparser_arguments()
+        workspaces = " ".join(self._workspaces)
+        for module_name in report_classes.keys():
+            if module_name in ["excel", "final", "file"]:
+                continue
+            elif module_name not in ["excel",
+                                     "final",
+                                     "file",
+                                     "additionalinfo",
+                                     "breach",
+                                     "cert",
+                                     "cname",
+                                     "command",
+                                     "company",
+                                     "credential",
+                                     "email",
+                                     "file",
+                                     "path",
+                                     "tls",
+                                     "vulnerability"]:
+                print(module_name)
+                self.execute(subcommand=module_name, arguments="-w {} --grep test".format(workspaces))
+                self.execute(subcommand=module_name, arguments="-w {} --igrep test".format(workspaces))
+                self.execute(subcommand=module_name, arguments="-w {} --not --grep test".format(workspaces))
+                self.execute(subcommand=module_name, arguments="-w {} --not --igrep test".format(workspaces))
+            else:
+                self.execute(subcommand=module_name,
+                             arguments="-w {} --grep".format(workspaces),
+                             expected_return_code=2)
+                self.execute(subcommand=module_name,
+                             arguments="-w {} --egrep".format(workspaces),
+                             expected_return_code=2)
+
     def test_csv_creation(self):
         self.init_db(load_cipher_suites=True)
         # create database
