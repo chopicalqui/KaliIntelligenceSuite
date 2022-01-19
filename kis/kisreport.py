@@ -49,21 +49,24 @@ if __name__ == "__main__":
         DeclarativeBase.metadata.bind = engine.engine
         # Check KIS' database status and version
         engine.perform_preflight_check()
-        with engine.session_scope() as session:
-            if args.workspaces:
-                workspaces = []
-                for item in args.workspaces:
-                    workspace = DomainUtils.get_workspace(session=session, name=item)
-                    if not workspace:
-                        raise WorkspaceNotFound(item)
-                    workspace = engine.get_workspace(session, item)
-                    if workspace:
-                        workspaces.append(workspace)
-            else:
-                workspaces = DomainUtils.get_workspaces(session=session)
-            if workspaces:
-                generator = ReportGenerator(report_classes=report_classes)
-                generator.run(args=args, session=session, workspaces=workspaces)
+        if args.list:
+            engine.print_workspaces()
+        else:
+            with engine.session_scope() as session:
+                if args.workspaces:
+                    workspaces = []
+                    for item in args.workspaces:
+                        workspace = DomainUtils.get_workspace(session=session, name=item)
+                        if not workspace:
+                            raise WorkspaceNotFound(item)
+                        workspace = engine.get_workspace(session, item)
+                        if workspace:
+                            workspaces.append(workspace)
+                else:
+                    workspaces = DomainUtils.get_workspaces(session=session)
+                if workspaces:
+                    generator = ReportGenerator(report_classes=report_classes)
+                    generator.run(args=args, session=session, workspaces=workspaces)
     except DatabaseVersionMismatchError as ex:
         print(ex, file=sys.stderr)
         sys.exit(1)

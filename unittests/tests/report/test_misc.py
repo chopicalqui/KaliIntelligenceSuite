@@ -37,6 +37,12 @@ class TestReportCreation(BaseReportTestCase):
     def __init__(self, test_name: str):
         super().__init__(test_name=test_name)
 
+    def test_list_workspaces(self):
+        self.init_db()
+        with self._engine.session_scope() as session:
+            self.create_workspace(session=session)
+            self.execute(arguments="-l")
+
     def test_excel_creation(self):
         self.init_db(load_cipher_suites=True)
         # create database
