@@ -379,8 +379,8 @@ class BaseUtils:
         :param host: Host object to which the command belongs
         :param host_name: Host object to which the command belongs
         :param output_path: Path to the commands's output directory
-        :param input_file: File which contains all the information for the target application (e.g. list of URLs for httpeyewitness)
-        :param input_file_2: File which contains all the information for the target application (e.g. list of URLs for httpeyewitness)
+        :param input_file: File which contains all the information for the target application
+        :param input_file_2: File which contains all the information for the target application
         :param generic_file_name: Path to the command's generic output file name. The command then adds the file extension to
         the file and therefore, the full file name cannot be specified by KIS. This argument must be used in combination
         with xml_file, json_file or binary_file, which specify the final location of the input files.

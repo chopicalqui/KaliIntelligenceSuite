@@ -4,9 +4,8 @@ Kali Intelligence Suite (KIS) is an intelligence gathering and data mining tool 
 in the fast, autonomous, central, and comprehensive collection of intelligence by automatically:
 
  -  executing Kali Linux tools (e.g., dnsrecon, gobuster, hydra, nmap, etc.)
- -  querying publicly available APIs (e.g., Censys.io, Haveibeenpwned.com, Hunter.io, Securitytrails.com,
- DNSdumpster.com, Shodan.io, etc.)
- - sending data to third-party applications like Burp Suite Professional or Aquatone
+ -  querying publicly available APIs (e.g., Censys.io, Haveibeenpwned.com, Hunter.io, Securitytrails.com, Shodan.io, etc.)
+ -  sending data to third-party applications like Burp Suite Professional or Aquatone
  -  storing the collected data in a central PostgreSQL database (see next section)
  -  providing an interface to query and analyze the gathered intelligence
 
@@ -301,7 +300,6 @@ The column **User** specifies the user with which the respective operating syste
 | 127      | hostio                    | domain          | Active*  | -          | -       | nobody |
 | 130      | censysdomain              | domain          | Active*  | -          | -       | kali   |
 | 131      | securitytrails            | domain          | Active*  | -          | -       | nobody |
-| 132      | dnsdumpster               | domain          | Active*  | -          | -       | nobody |
 | 133      | certspotter               | domain          | Active*  | -          | -       | nobody |
 | 134      | crtshdomain               | domain          | Active*  | -          | -       | nobody |
 | 135      | virustotal                | domain          | Active*  | -          | -       | nobody |
@@ -420,7 +418,6 @@ The column **User** specifies the user with which the respective operating syste
 | 91600    | mysqlhydra                | service         | Active   | IPv4, IPv6 | -       | nobody |
 | 92200    | httpwapiti                | service, vhost  | Active   | IPv4, IPv6 | -       | nobody |
 | 100000   | vncviewer                 | service         | Active   | IPv4       | -       | nobody |
-| 100100   | httpeyewitness            | service, vhost  | Active   | IPv4, IPv6 | 3600    | kali   |
 
 
 

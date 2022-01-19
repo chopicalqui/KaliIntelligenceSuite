@@ -27,7 +27,6 @@ from collectors.os.modules.core import BaseCollector
 from collectors.os.modules.core import BaseHydra
 from collectors.os.modules.core import BaseNmap
 from collectors.os.modules.core import BaseMsfConsole
-from collectors.os.modules.core import BaseEyeWitness
 from collectors.os.modules.core import ServiceDescriptorBase
 from collectors.os.modules.core import BaseExtraServiceInfoExtraction
 
@@ -59,17 +58,6 @@ class BaseVncCollector(BaseCollector):
 class BaseVncHydra(BaseHydra):
     """
     This class implements basic functionality for VNC collectors that use Hydra.
-    """
-    def __init__(self, priority, timeout, **kwargs):
-        super().__init__(priority=priority,
-                         timeout=timeout,
-                         service_descriptors=VncServiceDescriptor(),
-                         **kwargs)
-
-
-class BaseVncEyewitness(BaseEyeWitness):
-    """
-    This class implements basic functionality for VNC collectors that use Eyewitness.
     """
     def __init__(self, priority, timeout, **kwargs):
         super().__init__(priority=priority,

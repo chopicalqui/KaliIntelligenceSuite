@@ -14,8 +14,8 @@ execution, they perform the following tasks:
   * enrich the data (e.g., newly identified IPv4/IPv6 addresses, host names, URLs, credentials, etc.) in the database to
   ensure that subsequent collectors can re-use it
 
-collectors are executed in a specific order to ensure that information required by one collector (e.g., httpeyewitness)
-is already collected by another (e.g., httpgobuster).
+collectors are executed in a specific order to ensure that information required by one collector is already collected
+by another.
 
 Note: service-level collectors identify services from which they can collect intelligence by comparing the protocol
 (TCP or UDP) and port number or by the nmap service name. the nmap service name is useful, if services are running on
@@ -79,7 +79,7 @@ $ docker exec -it kaliintelsuite kismanage workspace --add $ws
 $ docker exec -it kaliintelsuite kismanage domain -w $ws --add $domains
 $ docker exec -it kaliintelsuite kismanage hostname -w $ws --add $domains $hostnames
 $ docker exec -it kaliintelsuite kiscollect -w $ws --debug --awsslurp --builtwith --censysdomain \
---certspotter --crtshdomain --dnsamasspassive --dnscrobatdomain --dnscrobattld --dnsdumpster --dnshostpublic \
+--certspotter --crtshdomain --dnsamasspassive --dnscrobatdomain --dnscrobattld --dnshostpublic \
 --dnsspf --dnssublist3r --haveibeenbreach --haveibeenpaste --hostio --hunter --securitytrails --theharvester \
 --virustotal --whoisdomain --whoishost --autostart
 
@@ -128,7 +128,7 @@ $ docker exec -it kaliintelsuite kismanage company -w $ws -s within $companies
 continue collection with updated scope
 $ docker exec -it kaliintelsuite kiscollect -w $ws --debug --awsslurp --builtwith --censysdomain \
 --certspotter --crtshcompany --crtshdomain --dnsamasspassive --dnscrobatdomain --dnscrobatreversehost \
---dnscrobatreversenetwork --dnscrobattld --dnsdumpster --dnshostpublic --dnsreverselookup --dnsspf --dnssublist3r \
+--dnscrobatreversenetwork --dnscrobattld --dnshostpublic --dnsreverselookup --dnsspf --dnssublist3r \
 --haveibeenbreach --haveibeenpaste --hostio --hunter --reversewhois --securitytrails --shodanhost --shodannetwork \
 --theharvester --virustotal --whoisdomain --whoishost --autostart
 

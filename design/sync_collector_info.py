@@ -148,7 +148,6 @@ class AnalyzeCollectorTableUpdates(AnalyzerBase):
                                    "mysqlhydra": ["add_credential"],
                                    "smbmedusa": ["add_credential"],
                                    "securitytrails": ["add_domain_name"],
-                                   "dnsdumpster": ["add_domain_name", "add_ipv4_address", "add_host_host_name_mapping"],
                                    "hunter": ["add_email"],
                                    "haveibeenbreach": ["add_additional_info"],
                                    "haveibeenpaste": ["add_additional_info"],

@@ -5,10 +5,9 @@ shodan
 censys==1.1.1
 cryptography
 passgen
-dnsdumpster
 openpyxl
 psutil
 pytest
 pysqlcipher3
 pandas
-
+bs4

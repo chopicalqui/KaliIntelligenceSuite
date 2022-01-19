@@ -29,7 +29,6 @@ from collectors.os.modules.core import CommandFailureRule
 from collectors.os.modules.core import OutputType
 from collectors.os.modules.core import BaseNmap
 from collectors.os.modules.core import BaseMsfConsole
-from collectors.os.modules.core import BaseEyeWitness
 from collectors.os.modules.core import BaseChangeme
 from collectors.os.modules.core import BaseCollector
 from collectors.os.modules.core import BaseHydra
@@ -86,19 +85,6 @@ class BaseHttpHydra(BaseHydra):
     This class implements basic functionality for HTTP collectors that use Hydra.
     """
     def __init__(self, priority, timeout, **kwargs):
-        super().__init__(priority=priority,
-                         timeout=timeout,
-                         service_descriptors=HttpServiceDescriptor(),
-                         **kwargs)
-
-
-class BaseHttpEyewitness(BaseEyeWitness):
-    """
-    This class implements basic functionality for HTTP collectors that use Eyewitness.
-    """
-    def __init__(self, priority,
-                 timeout,
-                 **kwargs):
         super().__init__(priority=priority,
                          timeout=timeout,
                          service_descriptors=HttpServiceDescriptor(),

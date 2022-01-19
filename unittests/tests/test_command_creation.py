@@ -902,7 +902,7 @@ class TestCreatingAllCommands(BaseKisTestCase):
                         timeout = match.group("timeout").strip()
                         timeout = int(timeout) if timeout.isnumeric() else 0
                         username = match.group("username").strip()
-                        if collector_name not in ["vnceyewitness", "httpnikto"]:
+                        if collector_name not in ["httpnikto"]:
                             self._collector_info[collector_name] = {"priority": priority,
                                                                     "levels": level,
                                                                     "ipversions": ip_version,

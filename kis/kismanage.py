@@ -59,7 +59,6 @@ from collectors.apis.shodan import ShodanNetwork
 from collectors.apis.censys import CensysIpv4
 from collectors.apis.censys import CensysCertificate
 from collectors.apis.hunter import Hunter
-from collectors.apis.dnsdumpster import DnsDumpster
 from collectors.apis.securitytrails import SecurityTrails
 from collectors.apis.haveibeenpwned import HaveIBeenPwnedBreachedAcccount
 from collectors.apis.haveibeenpwned import HaveIBeenPwnedPasteAcccount
@@ -120,7 +119,7 @@ class KisImportArgumentParser(argparse.ArgumentParser):
 class ManageDatabase:
     KIS_SCRIPTS = ["kiscollect.py", "kismanage.py", "kisreport.py"]
     GIT_REPOSITORIES = []
-    KALI_PACKAGES = ["eyewitness", "gobuster", "nfs-common", "ftp", "ntpdate", "csvkit", "wapiti",
+    KALI_PACKAGES = ["gobuster", "nfs-common", "ftp", "ntpdate", "csvkit", "wapiti",
                      "changeme", "theharvester", "sidguesser", "smtp-user-enum", "sublist3r",
                      "tcptraceroute", "crackmapexec", "dotdotpwn", "seclists", "smbclient", "enum4linux"]
 
@@ -913,11 +912,6 @@ $ docker exec -it kaliintelsuite kismanage workspace --add $workspace
                    api_metavar='DOMAIN',
                    api_name='securitytrails.com',
                    api_class=SecurityTrails)
-    parser.add_api_query_argument(parser_kiscollect_group,
-                                  argument_name='--dnsdumpster',
-                                  metavar='DOMAIN',
-                                  api_name='dnsdumpster.com',
-                                  api_class=DnsDumpster)
     parser.add_all(parser=parser_kiscollect_group,
                    api_argument_name='--haveibeenbreach',
                    file_argument_name='--haveibeenbreach-files',

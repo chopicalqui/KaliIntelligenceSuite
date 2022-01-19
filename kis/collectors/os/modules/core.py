@@ -2049,8 +2049,7 @@ class BaseCollector(config.Collector):
         :param host: Host object to which the command belongs
         :param host_name: Host object to which the command belongs
         :param output_path: Path to the commands's output directory
-        :param input_file: File which contains all the information for the target application (e.g. list of URLs for
-        httpeyewitness)
+        :param input_file: File which contains all the information for the target application
         :return: The queried or newly created collector class
         """
         # todo: update for new collector
@@ -2574,115 +2573,6 @@ class BaseMsfConsole(BaseCollector):
         return collectors
 
 
-class BaseEyeWitness(BaseCollector):
-    """
-    This class implements basic functionality for collectors that use Eyewitness
-    """
-    def __init__(self,
-                 priority: int,
-                 timeout: int,
-                 service_descriptors: ServiceDescriptorBase,
-                 file_extension: str,
-                 **kwargs):
-        super().__init__(priority=priority,
-                         timeout=timeout,
-                         service_descriptors=service_descriptors,
-                         **kwargs)
-        self._file_extension = file_extension
-
-    @staticmethod
-    def get_failed_regex() -> List[CommandFailureRule]:
-        """
-        This method returns regular expressions that allows KIS to identify failed command executions
-        """
-        return [CommandFailureRule(regex=re.compile("^\[\*\] WebDriverError when connecting to.*$"),
-                                   output_type=OutputType.stdout)]
-
-    def _create_commands(self,
-                         session: Session,
-                         service: Service,
-                         collector_name: CollectorName,
-                         protocol: str,
-                         output_path: str,
-                         options: List[str] = [],
-                         url_str: str = None,
-                         input_file: str = None) -> List[BaseCollector]:
-        """This method creates and returns a list of commands based on the given service.
-
-        This method determines whether the command exists already in the database. If it does, then it does nothing,
-        else, it creates a new Collector entry in the database for each new command as well as it creates a corresponding
-        operating system command and attaches it to the respective newly created Collector class.
-
-        :param session: Sqlalchemy session that manages persistence operations for ORM-mapped objects
-        :param service: The service based on which commands shall be created.
-        :param collector_name: The name of the collector as specified in table collector_name
-        :param options: Additional commandline arguments
-        :return: List of Collector instances that shall be processed.
-        """
-        collectors = []
-        address = service.address
-        if address:
-            arguments = []
-            if input_file:
-                arguments += ["-f", ExecutionInfoType.input_file.argument]
-            if output_path:
-                arguments += ['-d', ExecutionInfoType.output_path.argument]
-            arguments += options
-            os_command = [self._path_eyewitness,
-                          protocol,
-                          '--no-prompt',
-                          '--no-dns',
-                          '--threads', '1']
-            if url_str:
-                os_command += ['--single', url_str]
-            elif not input_file:
-                os_command += ['--single', address, '--only-ports', str(service.port)]
-            os_command += arguments
-            collector = self._get_or_create_command(session,
-                                                    os_command,
-                                                    collector_name,
-                                                    service=service,
-                                                    output_path=output_path,
-                                                    input_file=input_file)
-            collectors.append(collector)
-        return collectors
-
-    def verify_results(self, session: Session,
-                       command: Command,
-                       source: Source,
-                       report_item: ReportItem,
-                       process: PopenCommand = None, **kwargs) -> None:
-        """This method analyses the results of the command execution.
-
-        After the execution, this method checks the OS command's results to determine the command's execution status as
-        well as existing vulnerabilities (e.g. weak login credentials, NULL sessions, hidden Web folders). The
-        stores the output in table command. In addition, the collector might add derived information to other tables as
-        well.
-
-        :param session: Sqlalchemy session that manages persistence operations for ORM-mapped objects
-        :param command: The command instance that contains the results of the command execution
-        :param source: The source object of the current collector
-        :param report_item: Item that can be used for reporting potential findings in the UI
-        :param process: The PopenCommand object that executed the given result. This object holds stderr, stdout, return
-        code etc.
-        """
-        command.hide = True
-        for line in command.stdout_output:
-            if line == "Message: timeouts":
-                self._set_execution_failed(session, command)
-        if ExecutionInfoType.output_path.name in command.execution_info and \
-                command.execution_info[ExecutionInfoType.output_path.name]:
-            path = command.execution_info[ExecutionInfoType.output_path.name] \
-                if command.execution_info[ExecutionInfoType.output_path.name][-1] != '/' else \
-                command.execution_info[ExecutionInfoType.output_path.name][:-1]
-            for filename in glob.iglob('{}/**/*.{}'.format(path, self._file_extension), recursive=True):
-                BaseUtils.add_file(session=session,
-                                   workspace=command.service.workspace,
-                                   command=command,
-                                   file_path=filename,
-                                   file_type=FileType.screenshot)
-
-
 class BaseDotDotPwn(BaseCollector):
     """
     This class implements basic functionality for collectors that use dotdotpwn.
@@ -2884,6 +2774,7 @@ class BaseNmap(BaseCollector):
                 nse_arguments = []
             os_command = [self._path_nmap,
                           "-Pn",
+                          "-T2",
                           scan_type,
                           "-n",
                           "--version-all",

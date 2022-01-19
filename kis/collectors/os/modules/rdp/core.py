@@ -27,7 +27,6 @@ from typing import List
 from database.model import Service
 from collectors.os.modules.core import BaseCollector
 from collectors.os.modules.core import BaseHydra
-from collectors.os.modules.core import BaseEyeWitness
 from collectors.os.modules.core import BaseNmap
 from collectors.os.modules.core import ServiceDescriptorBase
 from collectors.os.modules.core import BaseExtraServiceInfoExtraction
@@ -63,17 +62,6 @@ class BaseRdpCollector(BaseCollector):
 class BaseRdpHydra(BaseHydra):
     """
     This class implements basic functionality for RDP collectors that use Hydra.
-    """
-    def __init__(self, priority, timeout, **kwargs):
-        super().__init__(priority=priority,
-                         timeout=timeout,
-                         service_descriptors=RdpServiceDescriptor(),
-                         **kwargs)
-
-
-class BaseRdpEyewitness(BaseEyeWitness):
-    """
-    This class implements basic functionality for RDP collectors that use Eyewitness.
     """
     def __init__(self, priority, timeout, **kwargs):
         super().__init__(priority=priority,

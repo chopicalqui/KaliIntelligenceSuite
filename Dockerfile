@@ -35,7 +35,6 @@ RUN apt-get update && \
                        dnsrecon \
                        dotdotpwn \
                        enum4linux \
-                       eyewitness \
                        finger \
                        ftp \
                        gobuster \

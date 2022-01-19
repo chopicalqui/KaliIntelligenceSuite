@@ -45,11 +45,10 @@ class ReportClass(BaseReport):
                          description="The table provides an overview of all collected files (e.g., certificates or raw "
                                      "outputs of certain collectors). Note that file types (see column 'File Type') "
                                      "text, json, and xml are usually the raw outputs of the executed operating "
-                                     "systems commands. File type screenshot represents screenshots of web application "
-                                     "that were created by the tool eyewitness. Finally, file type certificate are "
-                                     "the raw certificates files (e.g., PEM format) that were collected by tools like"
-                                     "Nmap, Sslyze, OpenSSL, or Sslscan. The command kisreport allows exporting these "
-                                     "files via the positional argument file.",
+                                     "systems commands. Finally, file type certificate are the raw certificates files "
+                                     "(e.g., PEM format) that were collected by tools like Nmap, Sslyze, OpenSSL, or "
+                                     "Sslscan. The command kisreport allows exporting these files via the positional "
+                                     "argument file.",
                          **kwargs)
         if "type" in args:
             if "all" in args.type:
