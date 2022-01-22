@@ -1,4 +1,4 @@
-FROM kalilinux/kali as base
+FROM kalilinux/kali-last-release as base
 
 ENV LD_LIBRARY_PATH=/usr/local/lib \
     PYTHONFAULTHANDLER=1 \
@@ -92,7 +92,7 @@ RUN wget https://github.com/michenriksen/aquatone/releases/download/v1.7.0/aquat
     unzip /tmp/aquatone.zip
 
 # Prepare Crobat
-RUN go get github.com/cgboal/sonarsearch/cmd/crobat
+RUN go install github.com/cgboal/sonarsearch/cmd/crobat@latest
 
 # Prepare Kiterunner
 RUN wget https://github.com/assetnote/kiterunner/releases/download/v1.0.2/kiterunner_1.0.2_linux_amd64.tar.gz -O /tmp/kiterunner.tar.gz && \
@@ -151,10 +151,25 @@ RUN ln -sT /opt/kaliintelsuite/kis/kiscollect.py /usr/bin/kiscollect && \
 # Deploy SNMP default password wordlist
 COPY --from=builder /tmp/snmp-default.txt /usr/share/legion/wordlists/
 
-# Deploy KIS
-COPY ./kis /opt/kaliintelsuite/kis/
+# This is the build stage label for unittests
+FROM final as test
+
+# Deploy KIS including unittests
+COPY ./ /opt/kaliintelsuite/
+
+ENV PYTHONPATH=/opt/kaliintelsuite/:/opt/kaliintelsuite/kis/
+
+RUN ["bash"]
+# RUN ["pytest", "--log-file", "/kis/unittests.log"]
+
+
+# This is the build stage label for production
+FROM final as production
 
 # Modify .bashrc to prevent copy&paste issues
 COPY .bashrc /root/.bashrc
+
+# Deploy KIS
+COPY ./kis /opt/kaliintelsuite/kis/
 
 WORKDIR /opt/kaliintelsuite/kis

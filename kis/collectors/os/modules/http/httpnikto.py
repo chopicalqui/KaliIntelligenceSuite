@@ -108,7 +108,9 @@ class CollectorClass(BaseHttpCollector, ServiceCollector, HostNameServiceCollect
         :return: List of Collector instances that shall be processed.
         """
         result = []
-        if service.host_name.name or self._scan_tld:
+        # Nikto does not support IPv6. Therefore, we are checking for 'service.host_name.resolves_to_in_scope_ipv4_address()'
+        if (service.host_name.name or self._scan_tld) and self.match_nmap_service_name(service) and \
+                service.host_name.resolves_to_in_scope_ipv4_address():
             result = self.create_service_commands(session, service, collector_name)
         return result
 

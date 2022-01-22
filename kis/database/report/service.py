@@ -214,11 +214,12 @@ class ReportClass(BaseReport):
         for workspace in self._workspaces:
             for host in workspace.hosts:
                 if self._filter(host):
-                    ipv4_network = None
-                    companies = None
                     if host.ipv4_network:
                         ipv4_network = host.ipv4_network.network
                         companies = host.ipv4_network.companies_str
+                    else:
+                        ipv4_network = None
+                        companies = None
                     results = self._egrep_text(host)
                     if self._not_grep and not results:
                         rows.append([host.id,
@@ -311,14 +312,21 @@ class ReportClass(BaseReport):
                 if self._filter(host):
                     host_names = host.get_host_host_name_mappings_str(types=[DnsResourceRecordType.a,
                                                                              DnsResourceRecordType.aaaa])
-                    network_companies = host.ipv4_network.companies_str
+                    if host.ipv4_network:
+                        network = host.ipv4_network.network
+                        network_scope = host.ipv4_network.scope
+                        network_companies = host.ipv4_network.companies_str
+                    else:
+                        network = None
+                        network_scope = None
+                        network_companies = None
                     private_ip = host.ip_address.is_private
                     host_sources = host.sources_str
                     if host.services:
                         for service in host.services:
                             result.append([workspace.name,  # Workspace
-                                           host.ipv4_network.network,  # Network (NW)
-                                           host.ipv4_network.scope,  # Scope (NW)
+                                           network,  # Network (NW)
+                                           network_scope,  # Scope (NW)
                                            network_companies,  # Companies (NW)
                                            host.address,  # IP Address (IP)
                                            host.in_scope,  # In Scope (IP)
@@ -547,11 +555,18 @@ class ReportClass(BaseReport):
                               for mapping in host.get_host_host_name_mappings([DnsResourceRecordType.a,
                                                                                DnsResourceRecordType.aaaa])]
                 host_names_str = ", ".join([item.full_name for item in host_names])
-                network_str = host.ipv4_network.network if host.ipv4_network else None
-                network_id = host.ipv4_network.id if host.ipv4_network else None
-                network_companies = host.ipv4_network.companies_str if host.ipv4_network else None
-                network_sources = host.ipv4_network.sources_str if host.ipv4_network else None
-                network_scope = host.ipv4_network.scope_str if host.ipv4_network else None
+                if host.ipv4_network:
+                    network_id = host.ipv4_network.id
+                    network_str = host.ipv4_network.network
+                    network_scope = host.ipv4_network.scope_str
+                    network_sources = host.ipv4_network.sources_str
+                    network_companies = host.ipv4_network.companies_str
+                else:
+                    network_id = None
+                    network_str = None
+                    network_scope = None
+                    network_sources = None
+                    network_companies = None
                 host_is_private = host.ip_address.is_private
                 host_sources = host.sources_str
                 if service_host.state in self._service_state_filter:
@@ -667,11 +682,18 @@ class ReportClass(BaseReport):
                               for mapping in host.get_host_host_name_mappings([DnsResourceRecordType.a,
                                                                                DnsResourceRecordType.aaaa])]
                 host_names_str = ", ".join([item.full_name for item in host_names])
-                network_str = host.ipv4_network.network if host.ipv4_network else None
-                network_id = host.ipv4_network.id if host.ipv4_network else None
-                network_companies = host.ipv4_network.companies_str if host.ipv4_network else None
-                network_sources = host.ipv4_network.sources_str if host.ipv4_network else None
-                network_scope = host.ipv4_network.scope_str if host.ipv4_network else None
+                if host.ipv4_network:
+                    network_id = host.ipv4_network.id
+                    network_str = host.ipv4_network.network
+                    network_scope = host.ipv4_network.scope_str
+                    network_sources = host.ipv4_network.sources_str
+                    network_companies = host.ipv4_network.companies_str
+                else:
+                    network_id = None
+                    network_str = None
+                    network_scope = None
+                    network_sources = None
+                    network_companies = None
                 host_is_private = host.ip_address.is_private
                 host_sources = host.sources_str
                 result.append([host.workspace.name,  # Workspace
@@ -785,11 +807,18 @@ class ReportClass(BaseReport):
                 raise ValueError("alias_service_host should be None.")
             if self._filter(mapping.host):
                 host = mapping.host
-                network_str = host.ipv4_network.network if host.ipv4_network else None
-                network_id = host.ipv4_network.id if host.ipv4_network else None
-                network_companies = host.ipv4_network.companies_str if host.ipv4_network else None
-                network_sources = host.ipv4_network.sources_str if host.ipv4_network else None
-                network_scope = host.ipv4_network.scope_str if host.ipv4_network else None
+                if host.ipv4_network:
+                    network_id = host.ipv4_network.id
+                    network_str = host.ipv4_network.network
+                    network_scope = host.ipv4_network.scope_str
+                    network_sources = host.ipv4_network.sources_str
+                    network_companies = host.ipv4_network.companies_str
+                else:
+                    network_id = None
+                    network_str = None
+                    network_scope = None
+                    network_sources = None
+                    network_companies = None
                 host_is_private = host.ip_address.is_private
                 host_sources = host.sources_str
                 # Print corresponding host name service

@@ -1173,8 +1173,6 @@ class Setup:
         self._check_exists("kisreport", throw_exception=throw_exception)
         # check tool paths
         for tool, path in collector_config.config.items("file_paths"):
-            if self._db_config.is_docker() and tool == "vncviewer":
-                continue
             self._check_exists(collector_config.get_config_str("file_paths", tool),
                                tool,
                                throw_exception=throw_exception)

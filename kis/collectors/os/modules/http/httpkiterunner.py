@@ -128,7 +128,6 @@ class CollectorClass(BaseHttpCollector, ServiceCollector, HostNameServiceCollect
         collectors = []
         command = self._path_kiterunner
         if service.host.ipv4_address and self.match_nmap_service_name(service):
-            logger.info(service.host.ipv4_address)
             tmp = self._get_commands(session, service, collector_name, command)
             collectors.extend(tmp)
         return collectors

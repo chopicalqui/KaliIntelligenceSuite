@@ -43,7 +43,6 @@ from database.model import ServiceState
 from database.model import CollectorName
 from database.model import CredentialType
 from database.model import PathType
-from database.model import HostHostNameMapping
 from collectors.os.modules.core import BaseCollector
 from collectors.os.collector import VhostChoice
 from collectors.os.collector import CollectorProducer
@@ -881,6 +880,7 @@ class TestCreatingAllCommands(BaseKisTestCase):
 
     def __init__(self, test_name: str):
         super().__init__(test_name)
+        self._dirb_common_wordlist = "/usr/share/dirb/wordlists/common.txt"
         self._readme_path = os.path.join(os.path.dirname(__file__), "..", "..", "README.md")
         self._re_entry = re.compile("^\|\s*(?P<priority>[0-9]+)\s*\|\s*(?P<collector_name>[a-zA-Z0-9]+)\s*"
                                     "\|\s*(?P<level>[a-zA-Z0-9, ]+)\s*\|\s*(?P<type>[a-zA-Z0-9*]+)\s*\|"
@@ -902,19 +902,18 @@ class TestCreatingAllCommands(BaseKisTestCase):
                         timeout = match.group("timeout").strip()
                         timeout = int(timeout) if timeout.isnumeric() else 0
                         username = match.group("username").strip()
-                        if collector_name not in ["httpnikto"]:
-                            self._collector_info[collector_name] = {"priority": priority,
-                                                                    "levels": level,
-                                                                    "ipversions": ip_version,
-                                                                    "username": username,
-                                                                    "timeout": timeout,
-                                                                    "arguments": True}
-                            if collector_name in ["tcpmasscannetwork",
-                                                  "tcpnmapdomain",
-                                                  "tcpnmapnetwork",
-                                                  "udpnmapdomain",
-                                                  "udpnmapnetwork"]:
-                                self._collector_info[collector_name]["arguments"] = ["interesting"]
+                        self._collector_info[collector_name] = {"priority": priority,
+                                                                "levels": level,
+                                                                "ipversions": ip_version,
+                                                                "username": username,
+                                                                "timeout": timeout,
+                                                                "arguments": True}
+                        if collector_name in ["tcpmasscannetwork",
+                                              "tcpnmapdomain",
+                                              "tcpnmapnetwork",
+                                              "udpnmapdomain",
+                                              "udpnmapnetwork"]:
+                            self._collector_info[collector_name]["arguments"] = ["interesting"]
 
     def _add_service(self, session: Session, host: Host, host_name: HostName, port: int):
         service = self._domain_utils.add_service(session=session,
@@ -1086,7 +1085,7 @@ class TestCreatingAllCommands(BaseKisTestCase):
             arguments = {"workspace": workspace,
                          "output_dir": temp_dir,
                          "vhost": "all",
-                         "wordlist_files": ["/usr/share/wordlists/dirb/common.txt"],
+                         "wordlist_files": [self._dirb_common_wordlist],
                          "print_commands": True}
             specific_collector = None
             if specific_collector:
@@ -1114,7 +1113,7 @@ class TestCreatingAllCommands(BaseKisTestCase):
         #     arguments = {"workspace": workspace,
         #                  "output_dir": temp_dir,
         #                  "vhost": "all",
-        #                  "wordlist_files": ["/usr/share/wordlists/dirb/common.txt"],
+        #                  "wordlist_files": [self._dirb_common_wordlist],
         #                  "print_commands": True}
         #     specific_collector = None
         #     if specific_collector:
@@ -1259,7 +1258,7 @@ class TestCreatingAllCommands(BaseKisTestCase):
             arguments = {"workspace": workspace,
                          "output_dir": temp_dir,
                          "vhost": "all",
-                         "wordlist_files": ["/usr/share/wordlists/dirb/common.txt"],
+                         "wordlist_files": [self._dirb_common_wordlist],
                          "print_commands": True}
             # Create commands: manually run command and verify outputs
             # arguments["httpkiterunner"] = True

@@ -417,7 +417,6 @@ The column **User** specifies the user with which the respective operating syste
 | 91400    | smtpuserenum              | service         | Active   | IPv4       | -       | nobody |
 | 91600    | mysqlhydra                | service         | Active   | IPv4, IPv6 | -       | nobody |
 | 92200    | httpwapiti                | service, vhost  | Active   | IPv4, IPv6 | -       | nobody |
-| 100000   | vncviewer                 | service         | Active   | IPv4       | -       | nobody |
 
 
 

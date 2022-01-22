@@ -119,7 +119,7 @@ class CollectorClass(BaseTlsCollector, ServiceCollector, HostNameServiceCollecto
         if self.match_service_tls(service) and ((service.host and service.host.ipv4_address) or (
                 service.host_name and not service.host_name.resolves_to_in_scope_ipv6_address())):
             json_file = self.create_json_file_path(service=service)
-            os_command = [self._path_sslyze, '--regular']
+            os_command = [self._path_sslyze]
             if RdpServiceDescriptor().match_nmap_service_name(service):
                 os_command.append("--starttls=rdp")
             elif LdapServiceDescriptor().match_nmap_service_name(service):

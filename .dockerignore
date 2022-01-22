@@ -4,6 +4,5 @@
 **/*.swp
 **/kiscustom.py
 **/kistest.sh
-**/collectors/os/modules/vnc/vncviewer.py
 **/config
 **/__pycache__

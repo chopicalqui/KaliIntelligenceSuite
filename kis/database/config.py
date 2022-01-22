@@ -263,7 +263,6 @@ class Collector(BaseConfig):
         self._path_rpcinfo = self.get_config_str("file_paths", "rpcinfo")
         self._path_rpcclient = self.get_config_str("file_paths", "rpcclient")
         self._path_dig = self.get_config_str("file_paths", "dig")
-        self._path_vncviewer = self.get_config_str("file_paths", "vncviewer")
         self._path_sidguess = self.get_config_str("file_paths", "sidguess")
         self._path_ntpdate = self.get_config_str("file_paths", "ntpdate")
         self._path_ldapsearch = self.get_config_str("file_paths", "ldapsearch")

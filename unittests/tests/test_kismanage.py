@@ -38,6 +38,7 @@ from database.model import ScopeType
 from database.model import ProtocolType
 from database.utils import Setup
 from collectors.core import IpUtils
+from database.config import BaseConfig
 from kismanage import ManageDatabase
 from unittests.tests.core import BaseKisTestCase
 from unittests.tests.core import KisCommandEnum
@@ -61,20 +62,22 @@ class TestSubcommandDatabase(BaseTestKisCommand):
         self.execute(subcommand="database", arguments="--drop --init")
         self.execute(subcommand="workspace", arguments="-a {}".format(self._workspace))
         # Backup and restore database
-        with tempfile.TemporaryDirectory() as temp_dir:
-            file_name = os.path.join(temp_dir, "backup.sql")
-            self.execute(subcommand="database", arguments="--backup {}".format(file_name))
-            self.execute(subcommand="database", arguments="--restore {}".format(file_name))
-        # Test restore
-        with self._engine.session_scope() as session:
-            result = session.query(Workspace).filter_by(name=self._workspace).one()
-            self.assertEqual(self._workspace, result.name)
+        if not BaseConfig.is_docker():
+            with tempfile.TemporaryDirectory() as temp_dir:
+                file_name = os.path.join(temp_dir, "backup.sql")
+                self.execute(subcommand="database", arguments="--backup {}".format(file_name))
+                self.execute(subcommand="database", arguments="--restore {}".format(file_name))
+            # Test restore
+            with self._engine.session_scope() as session:
+                result = session.query(Workspace).filter_by(name=self._workspace).one()
+                self.assertEqual(self._workspace, result.name)
 
     def test_setup_dbg(self):
         """
         This unittest tests the --setup-dbg argument.
         """
-        self.execute(subcommand="database", arguments="--setup-dbg")
+        if not BaseConfig.is_docker():
+            self.execute(subcommand="database", arguments="--setup-dbg")
 
     def test_test(self):
         """
@@ -84,6 +87,12 @@ class TestSubcommandDatabase(BaseTestKisCommand):
               kali_packages=ManageDatabase.KALI_PACKAGES,
               git_repositories=ManageDatabase.GIT_REPOSITORIES,
               debug=True).test(throw_exception=True)
+
+    def test_version(self):
+        """
+        This unittest tests the --version argument.
+        """
+        self.execute(subcommand="database", arguments="--version")
 
 
 class TestSubcommandWorkspace(BaseTestKisCommand):
@@ -110,6 +119,17 @@ class TestSubcommandWorkspace(BaseTestKisCommand):
         with self._engine.session_scope() as session:
             result = session.query(Workspace).filter_by(name=self._workspace).one_or_none()
             self.assertIsNone(result)
+
+    def test_list_workspaces(self):
+        """
+        run kismanage -l
+        """
+        # Setup database
+        self.execute(subcommand="database", arguments="--drop --init")
+        # Test workspace creation
+        self.execute(subcommand="workspace", arguments="-a {}".format(self._workspace))
+        # Setup database and workspace
+        self.execute(arguments="-l")
 
 
 class TestSubcommandNetwork(BaseTestKisCommand):
