@@ -24,7 +24,7 @@ jobs:
 
       - name: Build and push
         run: |
-          docker-compose build
+          docker-compose build kaliintelsuite
           docker-compose push
 
       - name: Image digest

@@ -35,6 +35,45 @@ services:
       target: production
     tty: True
 
+  dbtest:
+    image: postgres:latest
+    container_name: kaliinteldbtest
+    volumes:
+      - db_test_data:/var/lib/postgresql/data
+    networks:
+      - kis_testing
+    environment:
+      POSTGRES_DB: kis_testing
+      PGDATA: /var/lib/postgresql/data/pgdata
+      POSTGRES_USER: kis
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    secrets:
+      - db_password
+
+  kaliintelsuitetest:
+    container_name: kaliintelsuitetest
+    image: chopicalqui/kali-intelligence-suite:test
+    depends_on:
+      - dbtest
+    volumes:
+      - kis_config:/opt/kaliintelsuite/kis/configs/
+      - kis_test_data:/kis
+    networks:
+      - kis_testing
+    environment:
+      KIS_DB_USER: kis
+      KIS_DB_PASSWORD_FILE: /run/secrets/db_password
+      KIS_DB_HOST: dbtest
+      KIS_DB_PORT: 5432
+      KIS_DB_NAME: kis_testing
+      KIS_LOG_PATH: /kis
+    secrets:
+      - db_password
+    build:
+      context: .
+      target: test
+    tty: True
+
 secrets:
    db_password:
      file: /opt/kaliintelsuite/postgres.txt
@@ -43,3 +82,8 @@ volumes:
     db_data:
     kis_config:
     kis_data:
+    kis_test_data:
+    db_test_data:
+
+networks:
+    kis_testing:
