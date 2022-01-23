@@ -992,7 +992,7 @@ $ docker exec -it kaliintelsuite kismanage workspace --add $workspace
         DeclarativeBase.metadata.bind = engine.engine
         # Check KIS' database status and version
         if args.module != "database":
-            engine.perform_preflight_check()
+            engine.perform_preflight_check(appy_patches=True, ask_user=True)
         ManageDatabase(engine=engine, arguments=args, parser=parser).run()
     except DatabaseVersionMismatchError as ex:
         print(ex, file=sys.stderr)

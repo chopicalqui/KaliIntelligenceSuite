@@ -283,7 +283,7 @@ Finally, you might want to re-run the entire process to collect further informat
 
         args = parser.parse_args()
         # Check KIS' database status and version
-        engine.perform_preflight_check()
+        engine.perform_preflight_check(appy_patches=True, ask_user=True)
         if os.geteuid() != 0 and not args.print_commands:
             config = Collector()
             print("{} must be executed with root privileges. afterwards, it is possible to execute "

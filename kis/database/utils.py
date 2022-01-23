@@ -221,25 +221,114 @@ class Engine:
                                                                         CommandStatus.collecting])).subquery()
             session.query(Command).filter(Command.id.in_(commands_email)).delete(synchronize_session='fetch')
 
-    def perform_preflight_check(self, test_version: str = None):
+    def _patch_database(self, version: Version):
         """
-        This method shall be called during startup to check KIS' data model.
-        :param test_version: This parameter is only used by unittests.
+        This method reads the patch file of the given version and applies it to the database.
         """
-        current_kis_version = Version(test_version if test_version else str(__version__))
+        patch_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "patches", "{}.sql".format(version))
+        if not os.path.isfile(patch_file):
+            raise FileExistsError("database patch file for database model version {} not found. Refer to the "
+                                  "following web page for additional information:"
+                                  "https://github.com/chopicalqui/KaliIntelligenceSuite/wiki/Updating-the-KIS-database".format(version))
+        print("applying patch: {}".format(patch_file))
+        with open(patch_file, "r") as file:
+            content = file.read()
+        self._engine.execute(sqlalchemy.text(content).execution_options(autocommit=True))
+
+    def patch_database(self, ask_user: bool = True, test_deployed_version: bool = None) -> bool:
+        """
+        This method takes the given version and applies all necessary database model patches to upgrade to the given
+        version
+        :param ask_user: If True, then the user is asked whether he wants to upgrade.
+        :param test_deployed_version: This parameter is used by unittest to specify an arbitrary database version.
+        :return: True if patch was successfully applied.
+        """
+        result = False
+        current_kis_version = self.get_current_kis_database_model_version()
+        database_version = self.get_deployed_database_model_version()\
+            if not test_deployed_version else Version(test_deployed_version)
+        if database_version < current_kis_version:
+            if ask_user:
+                user_input = None
+                while user_input not in ["yes", "no"]:
+                    user_input = input("the currently deployed database model is outdated and must be updated to the "
+                                       "latest available version. do you want to update to the current database model "
+                                       "now? (yes/no): ")
+                    if user_input not in ["yes", "no"]:
+                        print("invalid input: only input 'yes' or 'no' accepted.", file=sys.stderr)
+                        user_input = None
+            else:
+                user_input = "yes"
+            if user_input == "yes":
+                if str(current_kis_version) == "v0.3.0":
+                    try:
+                        self._patch_database(current_kis_version)
+                        result = True
+                        print("patch successfully applied.")
+                        print()
+                    except:
+                        print("applying the patch failed.", file=sys.stderr)
+                        print(file=sys.stderr)
+                        result = False
+            else:
+                print("database patch has not been applied.", file=sys.stderr)
+                print(file=sys.stderr)
+        return result
+
+    def get_deployed_database_model_version(self) -> Version:
+        """
+        This method returns the database model version that is currently applied in Postgres.
+        :return: None if the database has not been initialized or a Version object containing the currently applied
+        version.
+        """
+        # Check if KIS database was initialized.
         result = self._engine.execute("SELECT * FROM information_schema.tables WHERE table_name = 'workspace';")
         if result.rowcount != 1:
-            raise DatabaseUninitializationError()
+            return None
         # If the version table is missing, then we are definitely dealing with an outdated version
         result = self._engine.execute("SELECT * FROM information_schema.tables WHERE table_name = 'version';")
         if result.rowcount != 1:
-            raise DatabaseVersionMismatchError(reason=DatabaseVersionMismatchEnum.model_outdated)
-        with self.session_scope() as session:
-            database_version = session.query(Version).one()
-            if database_version < current_kis_version:
+            return Version("0.1.2")
+        else:
+            with self.session_scope() as session:
+                database_version = session.query(Version).one()
+                result = Version(str(database_version).lstrip("v"))
+        return result
+
+    def get_current_kis_database_model_version(self, test_version: str = None) -> Version:
+        """
+        This method returns the database model version that is supported by the current KIS source code.
+        :param test_version: This parameter is only used by unittests.
+        :return: The database version that is supported by the current KIS source code.
+        """
+        return Version(test_version if test_version else str(__version__))
+
+    def perform_preflight_check(self,
+                                test_version: str = None,
+                                test_deployed_version: str = None,
+                                appy_patches: bool = False,
+                                ask_user: bool = False):
+        """
+        This method shall be called during startup to check KIS' data model.
+        :param test_version: This parameter is only used by unittests and specifies the current KIS version.
+        :param apply_patches: If true, then KIS tries to update the currently deployed database model to the latest
+        version
+        :param ask_user: If true, then the user is asked whether he wants to upgrade.
+        """
+        current_kis_version = self.get_current_kis_database_model_version(test_version)
+        database_version = self.get_deployed_database_model_version() \
+            if not test_deployed_version else Version(test_deployed_version)
+        # Check if KIS database was initialized.
+        if not database_version:
+            raise DatabaseUninitializationError()
+        if database_version < current_kis_version:
+            if appy_patches:
+                if not self.patch_database(ask_user, test_deployed_version=test_deployed_version):
+                    raise DatabaseVersionMismatchError(reason=DatabaseVersionMismatchEnum.model_outdated)
+            else:
                 raise DatabaseVersionMismatchError(reason=DatabaseVersionMismatchEnum.model_outdated)
-            elif database_version > current_kis_version:
-                raise DatabaseVersionMismatchError(reason=DatabaseVersionMismatchEnum.model_newer)
+        elif database_version > current_kis_version:
+            raise DatabaseVersionMismatchError(reason=DatabaseVersionMismatchEnum.model_newer)
 
     def print_version_information(self):
         """
@@ -252,11 +341,11 @@ class Engine:
                     print("database has not been initialized.")
                 else:
                     database_version = session.query(Version).one()
-                    print("Deployed database version: {:>10}".format(str(database_version)))
+                    print("deployed database version: {:>10}".format(str(database_version)))
             except Exception as e:
                 if 'relation "version" does not exist' in str(e):
                     database_version = Version("0.3.0")
-                    print("Deployed database version: {:>10}".format("< " + str(database_version)))
+                    print("deployed database version: {:>10}".format("< " + str(database_version)))
                 else:
                     raise e
 

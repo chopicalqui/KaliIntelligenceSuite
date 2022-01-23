@@ -48,7 +48,7 @@ if __name__ == "__main__":
         engine = Engine(production=not args.testing)
         DeclarativeBase.metadata.bind = engine.engine
         # Check KIS' database status and version
-        engine.perform_preflight_check()
+        engine.perform_preflight_check(appy_patches=True, ask_user=True)
         if args.list:
             engine.print_workspaces()
         else:

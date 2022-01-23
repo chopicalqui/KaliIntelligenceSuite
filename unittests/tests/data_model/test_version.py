@@ -129,3 +129,13 @@ class TestPreFlightCheck(BaseDataModelTestCase):
                                    "For more information, refer to the following Wiki page (see Option 2): " \
                                    "https://github.com/chopicalqui/KaliIntelligenceSuite/wiki/Updating-the-KIS-database"):
             self._engine.perform_preflight_check("9999999.0")
+
+    def test_uninitialized_exception(self):
+        """If the database is not initialized, then the preflight check throws an self._engine.perform_preflight_check("""
+        self._engine.drop()
+        with self.assertRaises(DatabaseUninitializationError):
+            self._engine.perform_preflight_check()
+
+    def test_database_patch(self):
+        self.init_db()
+        self._engine.perform_preflight_check(test_deployed_version="0.1.2", appy_patches=True, ask_user=False)

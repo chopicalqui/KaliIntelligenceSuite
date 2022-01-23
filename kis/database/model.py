@@ -116,12 +116,12 @@ class DatabaseVersionMismatchError(Exception):
     def __init__(self, reason: DatabaseVersionMismatchEnum):
         if reason == DatabaseVersionMismatchEnum.model_outdated:
             message = "the database model version in the postgresql database is outdated and is not supported by " \
-                      "KIS anymore. Before you can continue, you have to update KIS' postgresql database model. " \
-                      "For more information, refer to the following Wiki page (see Option 2): " \
+                      "KIS anymore. before you can continue, you have to update KIS' postgresql database model. " \
+                      "for more information, refer to the following wiki page (see option 2): " \
                       "https://github.com/chopicalqui/KaliIntelligenceSuite/wiki/Updating-the-KIS-database"
         else:
             message = "the database model version in the postgresql database is newer than the one of KIS's " \
-                      "currents version."
+                      "currents version. update the KIS Docker container to the latest available version."
         super().__init__(message)
         self.reason = reason
 
