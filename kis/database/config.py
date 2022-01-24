@@ -101,7 +101,7 @@ class BaseConfig:
             self._config.write(file)\
 
     @staticmethod
-    def is_docker():
+    def is_docker() -> bool:
         return os.path.exists("/.dockerenv")
 
 

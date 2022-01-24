@@ -18,7 +18,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
-__version__ = "0.3.0"
+__db_version__ = "0.3.0"
+__kis_version__ = "0.3.0"
 
 import sys
 import grp
@@ -301,7 +302,13 @@ class Engine:
         :param test_version: This parameter is only used by unittests.
         :return: The database version that is supported by the current KIS source code.
         """
-        return Version(test_version if test_version else str(__version__))
+        return Version(test_version if test_version else str(__db_version__))
+
+    def get_current_kis_version(self) -> Version:
+        """
+        This method returns the current KIS version.
+        """
+        return Version(__kis_version__)
 
     def perform_preflight_check(self,
                                 test_version: str = None,
@@ -388,7 +395,7 @@ class Engine:
         with self.session_scope() as session:
             versions = session.query(Version).all()
             if len(versions) == 0:
-                session.add(Version(str(__version__)))
+                session.add(Version(str(__db_version__)))
 
     def _create_views(self) -> None:
         """This method creates all views."""
@@ -1129,10 +1136,12 @@ class Setup:
     This class implements the initial setup for KIS
     """
     def __init__(self,
+                 engine: Engine,
                  kis_scripts: List[str],
                  kali_packages: List[str],
                  git_repositories: List[str],
                  debug: bool = False):
+        self._engine = engine
         self._debug = debug
         self._db_config = DatabaseConfig()
         self._databases = [self._db_config.config.get("production", "database"),
@@ -1226,7 +1235,6 @@ class Setup:
         :param throw_exception: If True, then an exception is thrown instead of a message is printed.
         :return:
         """
-
         message = text if text else path
         full_path = str(path)
         status_text = "installed"
@@ -1253,6 +1261,10 @@ class Setup:
             self._print(os_info_str, "unsupported", FontColor.RED, throw_exception=throw_exception)
         else:
             self._print(os_info_str, "supported", FontColor.GREEN, throw_exception=throw_exception)
+        print()
+        print("docker:                    {:>10}".format(api_config.is_docker()))
+        self._engine.print_version_information()
+        print("deployed KIS version:      {:>10}".format(str(self._engine.get_current_kis_version())))
         self._print("", throw_exception=throw_exception)
         self._print("check tools (see section 'file_paths' in: {})".format(collector_config.full_path),
                     throw_exception=throw_exception)

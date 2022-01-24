@@ -83,7 +83,8 @@ class TestSubcommandDatabase(BaseTestKisCommand):
         """
         This unittest tests the --test argument.
         """
-        Setup(kis_scripts=ManageDatabase.KIS_SCRIPTS,
+        Setup(engine=self._engine,
+              kis_scripts=ManageDatabase.KIS_SCRIPTS,
               kali_packages=ManageDatabase.KALI_PACKAGES,
               git_repositories=ManageDatabase.GIT_REPOSITORIES,
               debug=True).test(throw_exception=True)

@@ -26,13 +26,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 __version__ = 0.1
 
-import argparse
-import traceback
-import ipaddress
 import sys
 import os
 import json
 import logging
+import argparse
+import traceback
+import ipaddress
 from database.utils import Engine
 from database.utils import Setup
 from database.utils import DeclarativeBase
@@ -147,12 +147,14 @@ class ManageDatabase:
             engine.restore_backup(args.restore)
         elif not BaseConfig.is_docker() and (self._arguments.setup or self._arguments.setup_dbg):
             debug = args.setup_dbg
-            Setup(kis_scripts=ManageDatabase.KIS_SCRIPTS,
+            Setup(engine=engine,
+                  kis_scripts=ManageDatabase.KIS_SCRIPTS,
                   kali_packages=ManageDatabase.KALI_PACKAGES,
                   git_repositories=ManageDatabase.GIT_REPOSITORIES,
                   debug=debug).execute()
         elif self._arguments.test:
-            Setup(kis_scripts=ManageDatabase.KIS_SCRIPTS,
+            Setup(engine=engine,
+                  kis_scripts=ManageDatabase.KIS_SCRIPTS,
                   kali_packages=ManageDatabase.KALI_PACKAGES,
                   git_repositories=ManageDatabase.GIT_REPOSITORIES,
                   debug=True).test()
