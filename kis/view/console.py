@@ -393,7 +393,7 @@ this command does the following depending on the given subcommand:
             arguments = self._process_input(KisConsoleConsoleCommand.collector, input)
             if len(arguments) == 0:
                 with self._engine.session_scope() as session:
-                    workspace_id = session.query(Workspace.id).filter_by(name=self._workspace)
+                    workspace_id = session.query(Workspace.id).filter_by(name=self._workspace).scalar_subquery()
                     query = session.query(CollectorName.name.label("collector"),
                                           CollectorName.type.label("type"),
                                           func.coalesce(Command.status, CommandStatus.pending.name).label("status"),

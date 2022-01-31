@@ -23,6 +23,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 __version__ = 0.1
 
 from database.model import Command
+from database.model import Workspace
+from database.model import ScopeType
+from database.model import CollectorType
+from database.model import CommandStatus
+from unittests.tests.core import BaseKisTestCase
 from unittests.tests.core import BaseDataModelTestCase
 
 
@@ -228,3 +233,74 @@ class TestCommand(BaseDataModelTestCase):
                                         collector_name=collector_name,
                                         company=company)
             self.assertEqual(company.workspace.id, result.workspace_id)
+
+
+class TestIncompleteCommandDeletion(BaseKisTestCase):
+    """
+    Test Engine.delete_incomplete_commands
+    """
+
+    def __init__(self, test_name: str):
+        super().__init__(test_name)
+
+    def test_command_deletion(self):
+        self.init_db()
+        # Setup the database
+        with self._engine.session_scope() as session:
+            for name in self._workspaces:
+                command = self.create_command(session=session,
+                                              workspace_str=name,
+                                              command=["nikto", "https://192.168.1.1"],
+                                              collector_name_str="nikto",
+                                              collector_name_type=CollectorType.host_service,
+                                              ipv4_address="192.168.1.1",
+                                              service_port=80,
+                                              scope=ScopeType.all)
+                command.status = CommandStatus.completed
+                command = self.create_command(session=session,
+                                              workspace_str=name,
+                                              command=["nikto", "https://192.168.1.3"],
+                                              collector_name_str="nikto",
+                                              collector_name_type=CollectorType.host_service,
+                                              ipv4_address="192.168.1.2",
+                                              service_port=80,
+                                              scope=ScopeType.all)
+                command.status = CommandStatus.collecting
+                command = self.create_command(session=session,
+                                              workspace_str=name,
+                                              command=["nikto", "https://192.168.1.4"],
+                                              collector_name_str="nikto",
+                                              collector_name_type=CollectorType.host_service,
+                                              ipv4_address="192.168.1.4",
+                                              service_port=80,
+                                              scope=ScopeType.all)
+                command.status = CommandStatus.pending
+                command = self.create_command(session=session,
+                                              workspace_str=name,
+                                              command=["nikto", "https://www.test.local"],
+                                              collector_name_str="nikto",
+                                              collector_name_type=CollectorType.host_service,
+                                              host_name_str="www.test.local",
+                                              service_port=80,
+                                              scope=ScopeType.all)
+                command.status = CommandStatus.pending
+                command = self.create_command(session=session,
+                                              workspace_str=name,
+                                              command=["nikto", "https://www1.test.local"],
+                                              collector_name_str="nikto",
+                                              collector_name_type=CollectorType.host_service,
+                                              host_name_str="www1.test.local",
+                                              service_port=80,
+                                              scope=ScopeType.all)
+                command.status = CommandStatus.pending
+        # Delete incomplete commands
+        self._engine.delete_incomplete_commands(self._workspaces[0])
+        # Check database
+        with self._engine.session_scope() as session:
+            workspace = session.query(Workspace.id).filter_by(name=self._workspaces[0]).one()
+            command = session.query(Command).filter_by(workspace_id=workspace.id,
+                                                       status=CommandStatus.completed).one()
+            self.assertListEqual(["nikto", "https://192.168.1.1"], command.os_command)
+            workspace = session.query(Workspace.id).filter_by(name=self._workspaces[1]).one()
+            commands = session.query(Command).filter_by(workspace_id=workspace.id).count()
+            self.assertEqual(5, commands)

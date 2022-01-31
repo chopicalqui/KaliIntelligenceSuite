@@ -1637,8 +1637,16 @@ class HostHostNameMapping(DeclarativeBase):
     _type = Column("type", Integer, nullable=False)
     creation_date = Column(DateTime, nullable=False, default=datetime.utcnow())
     last_modified = Column(DateTime, nullable=True, onupdate=datetime.utcnow())
-    host_name = relationship(HostName, backref=backref('host_host_name_mappings', cascade="delete, delete-orphan"))
-    host = relationship(Host, backref=backref('host_host_name_mappings', cascade="delete, delete-orphan"))
+    host_name = relationship(HostName,
+                             backref=backref('host_host_name_mappings',
+                                             cascade="delete, delete-orphan",
+                                             overlaps="host_names,hosts"),
+                             overlaps="host_names,hosts")
+    host = relationship(Host,
+                        backref=backref('host_host_name_mappings',
+                                        cascade="delete, delete-orphan",
+                                        overlaps="host_names,hosts"),
+                        overlaps="host_names,hosts")
     __table_args__ = (UniqueConstraint('host_id', 'host_name_id', name='_host_host_name_mapping_unique'),)
 
     @property
@@ -3516,8 +3524,12 @@ class CommandFileMapping(DeclarativeBase):
     file_id = Column(Integer, ForeignKey('file.id', ondelete='cascade'), nullable=False)
     creation_date = Column(DateTime, nullable=False, default=datetime.utcnow())
     last_modified = Column(DateTime, nullable=True, onupdate=datetime.utcnow())
-    command = relationship("Command", backref=backref('file_mappings', cascade='delete, delete-orphan'))
-    file = relationship("File", backref=backref('command_mappings', cascade='delete, delete-orphan'))
+    command = relationship("Command", backref=backref('file_mappings',
+                                                      cascade='delete, delete-orphan',
+                                                      overlaps="commands,files"), overlaps="commands,files")
+    file = relationship("File", backref=backref('command_mappings',
+                                                cascade='delete, delete-orphan',
+                                                overlaps="commands,files"), overlaps="commands,files")
     __table_args__ = (UniqueConstraint('file_id', 'command_id', name='_command_file_unique'),)
 
 
@@ -3884,7 +3896,9 @@ class CipherSuite(DeclarativeBase):
     byte_1 = Column(Integer, nullable=False, unique=False)
     byte_2 = Column(Integer, nullable=False, unique=False)
     security = Column(Enum(CipherSuiteSecurity), nullable=False, unique=False)
-    tls_info = relationship('TlsInfo', secondary='tls_info_cipher_suite_mapping')
+    tls_info = relationship('TlsInfo',
+                            secondary='tls_info_cipher_suite_mapping',
+                            back_populates='cipher_suites')
 
     @property
     def sources_str(self) -> str:
@@ -3919,8 +3933,16 @@ class TlsInfoCipherSuiteMapping(DeclarativeBase):
     prefered = Column(Boolean, nullable=True)
     creation_date = Column(DateTime, nullable=False, default=datetime.utcnow())
     last_modified = Column(DateTime, nullable=True, onupdate=datetime.utcnow())
-    cipher_suite = relationship("CipherSuite", backref=backref('tls_info_mappings', cascade='all, delete-orphan'))
-    tls_info = relationship("TlsInfo", backref=backref('cipher_suite_mappings', cascade='all, delete-orphan'))
+    cipher_suite = relationship(CipherSuite,
+                                backref=backref('tls_info_mappings',
+                                                cascade='all, delete-orphan',
+                                                overlaps="tls_info"),
+                                overlaps="tls_info")
+    tls_info = relationship("TlsInfo",
+                            backref=backref('cipher_suite_mappings',
+                                            cascade='all, delete-orphan',
+                                            overlaps="tls_info"),
+                            overlaps="tls_info")
     __table_args__ = (UniqueConstraint('tls_info_id',
                                        'cipher_suite_id',
                                        'kex_algorithm_details', name='_tls_info_cipher_suite_mapping_unique'),)
@@ -4015,9 +4037,11 @@ class TlsInfo(DeclarativeBase):
     _compressors = Column("compressors", MutableList.as_mutable(ARRAY(Text)), nullable=True, unique=False, default=[])
     preference = Column(Enum(TlsPreference), nullable=True, unique=False)
     heartbleed = Column(Boolean, nullable=True, unique=False)
-    cipher_suites = relationship(CipherSuite,
+    cipher_suites = relationship("CipherSuite",
                                  secondary='tls_info_cipher_suite_mapping',
-                                 order_by="asc(TlsInfoCipherSuiteMapping.order)")
+                                 order_by="asc(TlsInfoCipherSuiteMapping.order)",
+                                 back_populates="tls_info",
+                                 overlaps="cipher_suite_mappings,tls_info,cipher_suite,tls_info_mappings",)
     service = relationship("Service", backref=backref("tls_info", cascade='delete, delete-orphan'))
     __table_args__ = (UniqueConstraint('service_id', 'version', name='_tls_info_unique'),)
 

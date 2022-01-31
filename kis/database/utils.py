@@ -27,6 +27,7 @@ import passgen
 import shutil
 import tempfile
 import sqlalchemy
+from sqlalchemy import and_
 from sqlalchemy import create_engine
 from database import config
 from database.config import Database as DatabaseConfig
@@ -194,33 +195,11 @@ class Engine:
         """This method resets all status that have not successfully completed to status pending"""
         with self.session_scope() as session:
             # todo: update for new collector
-            commands_host = session.query(Command.id)\
-                .join((Host, Command.host))\
-                .join((Workspace, Host.workspace))\
-                .filter(Workspace.name == workspace, Command.status.in_([CommandStatus.pending,
-                                                                        CommandStatus.collecting])).subquery()
-            session.query(Command).filter(Command.id.in_(commands_host)).delete(synchronize_session='fetch')
-            commands_host_name = session.query(Command.id)\
-                .join((HostName, Command.host_name))\
-                .join((DomainName, HostName.domain_name))\
-                .join((Workspace, DomainName.workspace))\
-                .filter(Workspace.name == workspace, Command.status.in_([CommandStatus.pending,
-                                                                        CommandStatus.collecting])).subquery()
-            session.query(Command).filter(Command.id.in_(commands_host_name)).delete(synchronize_session='fetch')
-            commands_ipv4_network = session.query(Command.id)\
-                .join((Network, Command.ipv4_network))\
-                .join((Workspace, Network.workspace))\
-                .filter(Workspace.name == workspace, Command.status.in_([CommandStatus.pending,
-                                                                        CommandStatus.collecting])).subquery()
-            session.query(Command).filter(Command.id.in_(commands_ipv4_network)).delete(synchronize_session='fetch')
-            commands_email = session.query(Command.id)\
-                .join((Email, Command.email))\
-                .join((HostName, Email.host_name))\
-                .join((DomainName, HostName.domain_name))\
-                .join((Workspace, DomainName.workspace))\
-                .filter(Workspace.name == workspace, Command.status.in_([CommandStatus.pending,
-                                                                        CommandStatus.collecting])).subquery()
-            session.query(Command).filter(Command.id.in_(commands_email)).delete(synchronize_session='fetch')
+            command_ids = session.query(Command.id) \
+                .join(Workspace, and_(Command.workspace_id == Workspace.id,
+                                      Workspace.name == workspace)) \
+                .filter(Command.status.in_([CommandStatus.pending, CommandStatus.collecting])).scalar_subquery()
+            session.query(Command).filter(Command.id.in_(command_ids)).delete(synchronize_session='fetch')
 
     def _patch_database(self, version: Version):
         """

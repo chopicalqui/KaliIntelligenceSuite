@@ -353,8 +353,8 @@ class ReportClass(BaseReport):
                                            service.id])  # DB ID (SRV)
                     else:
                         result.append([workspace.name,  # Workspace
-                                       host.network.network,  # Network (NW)
-                                       host.network.scope,  # Scope (NW)
+                                       network,  # Network (NW)
+                                       network_scope,  # Scope (NW)
                                        network_companies,  # Companies (NW)
                                        host.address,  # IP Address (IP)
                                        host.in_scope,  # In Scope (IP)
