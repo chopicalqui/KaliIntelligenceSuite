@@ -167,7 +167,7 @@ class BaseReport:
     def fill_excel_sheet(self,
                          worksheet: Worksheet,
                          csv_list: list,
-                         name: str=None,
+                         name: str = None,
                          title: str = None,
                          description: str = None) -> None:
         """

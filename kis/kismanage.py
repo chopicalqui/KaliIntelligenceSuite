@@ -504,34 +504,38 @@ if __name__ == "__main__":
 
 - I. initialize the database for the first time
 
-$ docker exec -it kaliintelsuite kismanage database --init
+  $ docker exec -it kaliintelsuite kismanage database --init
 
 - IIa. create backup of the entire KIS database and store it in file $backup
 
-$ sudo docker exec -t kaliinteldb pg_dumpall -c -U kis > $backup
+  $ docker exec -t kaliinteldb pg_dumpall -c -U kis > $backup
 
-- IIb. restore the previously created KIS database from file $backup. this command only works with local PostgreSQL
-database.
+- IIb. restore the previously created KIS database from file $backup.
 
-$ docker exec -it kaliintelsuite kismanage database --drop
-$ cat $backup | sudo docker exec -i kaliinteldb psql -U kis -d kis
+  $ docker exec -it kaliintelsuite kismanage database --drop
+  $ cat $backup | docker exec -i kaliinteldb psql -U kis -d kis
       
-- III. drop existing database and restore KIS database backup, which is stored in file $backup. this command does not
-work in Docker environment.
+- III. empty a KIS database
 
-$ kismanage database --drop --restore $backup
+  $ docker exec -it kaliintelsuite kismanage database --drop --init
 
-- IV. re-initialize KIS database
+- IV. list existing workspaces
 
-$ docker exec -it kaliintelsuite kismanage database --drop --init
+  $ docker exec -it kaliintelsuite kismanage -l
 
-- V. list of existing workspaces
+- V. add new workspace $ws
 
-$ docker exec -it kaliintelsuite kismanage -l
+  $ docker exec -it kaliintelsuite kismanage workspace --add $ws
 
-- IV. add new workspace $workspace
+- VI. copy nmap scan results to Docker container and import nmap scan results into workspace $ws
 
-$ docker exec -it kaliintelsuite kismanage workspace --add $workspace
+  $ mkdir /var/lib/docker/volumes/kaliintelsuite_kis_data/_data/scan1
+  $ cp nmap-tcp.xml /var/lib/docker/volumes/kaliintelsuite_kis_data/_data/scan1
+
+  if you are working on windows, then you have to replace the above path by:
+  \\\\wsl$\\docker-desktop-data\\version-pack-data\\community\\docker\\volumes\\kaliintelsuite_kis_data\\_data\\scan1
+
+  $ docker exec -it kaliintelsuite kismanage scan -w $ws --nmap /kis/scan1/nmap-tcp.xml
 '''
     parser = KisImportArgumentParser(description=__doc__, formatter_class=SortingHelpFormatter, epilog=epilog)
     parser.add_argument("--debug",

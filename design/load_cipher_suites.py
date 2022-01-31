@@ -42,6 +42,9 @@ class CipherSuiteDownload:
             with open(self.config_file_path, "w") as file:
                 file.write(json.dumps(json_object, indent=4))
 
+    def __repr__(self):
+        return self.config_file_path
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     try:

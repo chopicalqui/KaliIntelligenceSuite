@@ -314,7 +314,7 @@ class ReportClass(BaseReport):
                                                                              DnsResourceRecordType.aaaa])
                     if host.ipv4_network:
                         network = host.ipv4_network.network
-                        network_scope = host.ipv4_network.scope
+                        network_scope = host.ipv4_network.scope_str
                         network_companies = host.ipv4_network.companies_str
                     else:
                         network = None
