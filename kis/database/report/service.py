@@ -54,7 +54,7 @@ class ReportClass(BaseReport):
                          name="service info",
                          title="Overview Identified Services",
                          description="This table provides a consolidated view about all IP addresses (see column "
-                                     "'IP Address (IP)'), their virtual hosts (see column 'Host Name (HN)') as well as "
+                                     "'IP Address (Host)'), their virtual hosts (see column 'Host Name (HN)') as well as "
                                      "their identified TCP/UDP services (see columns 'UDP/TCP' and 'Port'). "
                                      ""
                                      "If you are just interested in service information on the IP address level, then "
@@ -284,8 +284,8 @@ class ReportClass(BaseReport):
                    "Network (NW)",
                    "Scope (NW)",
                    "Companies (NW)",
-                   "IP Address (IP)",
-                   "In Scope (IP)",
+                   "IP Address (Host)",
+                   "In Scope (Host)",
                    "Private IP",
                    "Hostnames",
                    "Service Summary",
@@ -301,11 +301,11 @@ class ReportClass(BaseReport):
                    "Nmap Product",
                    "Version",
                    "Product Summary",
-                   "Sources (IP)",
+                   "Sources (Host)",
                    "Sources (SRV)",
                    "No. Commands (SRV)",
                    "No. Vulnerabilities (SRV)",
-                   "DB ID (IP)",
+                   "DB ID (Host)",
                    "DB ID (SRV)"]]
         for workspace in self._workspaces:
             for host in workspace.hosts:
@@ -328,8 +328,8 @@ class ReportClass(BaseReport):
                                            network,  # Network (NW)
                                            network_scope,  # Scope (NW)
                                            network_companies,  # Companies (NW)
-                                           host.address,  # IP Address (IP)
-                                           host.in_scope,  # In Scope (IP)
+                                           host.address,  # IP Address (Host)
+                                           host.in_scope,  # In Scope (Host)
                                            private_ip,  # Private IP
                                            host_names,  # Hostnames
                                            service.summary,  # Service Summary
@@ -345,7 +345,7 @@ class ReportClass(BaseReport):
                                            service.nmap_product,  # Nmap Product
                                            service.nmap_version,  # Version
                                            service.nmap_product_version,  # Product Summary
-                                           host_sources,  # Sources (IP)
+                                           host_sources,  # Sources (Host)
                                            service.sources_str,  # Sources (SRV)
                                            len(service.get_completed_commands()),  # No. Commands (SRV)
                                            len(service.vulnerabilities),  # No. Vulnerabilities (SRV)
@@ -356,8 +356,8 @@ class ReportClass(BaseReport):
                                        network,  # Network (NW)
                                        network_scope,  # Scope (NW)
                                        network_companies,  # Companies (NW)
-                                       host.address,  # IP Address (IP)
-                                       host.in_scope,  # In Scope (IP)
+                                       host.address,  # IP Address (Host)
+                                       host.in_scope,  # In Scope (Host)
                                        private_ip,  # Private IP
                                        host_names,  # Hostnames
                                        None,  # Service Summary
@@ -373,7 +373,7 @@ class ReportClass(BaseReport):
                                        None,  # Nmap Product
                                        None,  # Version
                                        None,  # Product Summary
-                                       host_sources,  # Sources (IP)
+                                       host_sources,  # Sources (Host)
                                        None,  # Sources (SRV)
                                        None,  # No. Commands (SRV)
                                        None,  # No. Vulnerabilities (SRV)
@@ -497,10 +497,10 @@ class ReportClass(BaseReport):
                    "Network (NW)",
                    "Scope (NW)",
                    "Company (NW)",
-                   "IP Address (IP)",
-                   "Version (IP)",
+                   "IP Address (Host)",
+                   "Version (Host)",
                    "Private IP",
-                   "In Scope (IP)",
+                   "In Scope (Host)",
                    "OS Family",
                    "OS Details",
                    "Host Names/IP Addresses",
@@ -524,11 +524,11 @@ class ReportClass(BaseReport):
                    "Is HTTP",
                    "URL",
                    "DB ID (NW)",
-                   "DB ID (IP)",
+                   "DB ID (Host)",
                    "DB ID (HN)",
                    "DB ID (SRV)",
                    "Source (NW)",
-                   "Source (IP)",
+                   "Source (Host)",
                    "Source (HN)",
                    "Source (SRV)",
                    "No. Commands",
@@ -579,10 +579,10 @@ class ReportClass(BaseReport):
                                    network_str,  # Network (NW)
                                    network_scope,  # Scope (NW)
                                    network_companies,  # Company (NW)
-                                   host.address,  # IP Address (IP)
-                                   host.version_str,  # Version (IP)
-                                   host_is_private,  # Private IP
-                                   host.in_scope,  # In Scope (IP)
+                                   host.address,  # IP Address (Host)
+                                   host.version_str,  # Version (Host)
+                                   host_is_private,  # Private Host
+                                   host.in_scope,  # In Scope (Host)
                                    host.os_family,  # OS Family
                                    host.os_details,  # OS Details
                                    host_names_str,  # Host Names/IP Addresses
@@ -606,11 +606,11 @@ class ReportClass(BaseReport):
                                    is_http,  # Is HTTP
                                    url_str[0] if url_str else None,  # URL
                                    network_id,  # DB ID (NW)
-                                   host.id,  # DB ID (IP)
+                                   host.id,  # DB ID (Host)
                                    None,  # DB ID (HN)
                                    service_host.id,  # DB ID (SRV)
                                    network_sources,  # Source (NW)
-                                   host_sources,  # Source (IP)
+                                   host_sources,  # Source (Host)
                                    None,  # Source (HN)
                                    service_host.sources_str,  # Source (SRV)
                                    len(service_host.get_completed_commands()),  # No. Commands
@@ -633,10 +633,10 @@ class ReportClass(BaseReport):
                                    network_str,  # Network (NW)
                                    network_scope,  # Scope (NW)
                                    network_companies,  # Company (NW)
-                                   host.address,  # IP Address (IP)
-                                   host.version_str,  # Version (IP)
+                                   host.address,  # IP Address (Host)
+                                   host.version_str,  # Version (Host)
                                    host_is_private,  # Private IP
-                                   host.in_scope,  # In Scope (IP)
+                                   host.in_scope,  # In Scope (Host)
                                    host.os_family,  # OS Family
                                    host.os_details,  # OS Details
                                    hosts_str,  # Host Names/IP Addresses
@@ -660,11 +660,11 @@ class ReportClass(BaseReport):
                                    is_http,  # Is HTTP
                                    url_str[0] if url_str else None,  # URL
                                    network_id,  # DB ID (NW)
-                                   host.id,  # DB ID (IP)
+                                   host.id,  # DB ID (Host)
                                    host_name.id,  # DB ID (HN)
                                    service_host_name.id,  # DB ID (SRV)
                                    network_sources,  # Source (NW)
-                                   host_sources,  # Source (IP)
+                                   host_sources,  # Source (Host)
                                    host_name_sources,  # Source (HN)
                                    service_host_name.sources_str,  # Source (SRV)
                                    len(service_host_name.get_completed_commands()),  # No. Commands
@@ -701,10 +701,10 @@ class ReportClass(BaseReport):
                                network_str,  # Network (NW)
                                network_scope,  # Scope (NW)
                                network_companies,  # Company (NW)
-                               host.address,  # IP Address (IP)
-                               host.version_str,  # Version (IP)
+                               host.address,  # IP Address (Host)
+                               host.version_str,  # Version (Host)
                                host_is_private,  # Private IP
-                               host.in_scope,  # In Scope (IP)
+                               host.in_scope,  # In Scope (Host)
                                host.os_family,  # OS Family
                                host.os_details,  # OS Details
                                host_names_str,  # Host Names/IP Addresses
@@ -728,11 +728,11 @@ class ReportClass(BaseReport):
                                None,  # Is HTTP
                                None,  # URL
                                network_id,  # DB ID (NW)
-                               host.id,  # DB ID (IP)
+                               host.id,  # DB ID (Host)
                                None,  # DB ID (HN)
                                None,  # DB ID (SRV)
                                network_sources,  # Source (NW)
-                               host_sources,  # Source (IP)
+                               host_sources,  # Source (Host)
                                None,  # Source (HN)
                                None,  # Source (SRV)
                                0,  # No. Commands
@@ -751,10 +751,10 @@ class ReportClass(BaseReport):
                                    network_str,  # Network (NW)
                                    network_scope,  # Scope (NW)
                                    network_companies,  # Company (NW)
-                                   host.address,  # IP Address (IP)
-                                   host.version_str,  # Version (IP)
+                                   host.address,  # IP Address (Host)
+                                   host.version_str,  # Version (Host)
                                    host_is_private,  # Private IP
-                                   host.in_scope,  # In Scope (IP)
+                                   host.in_scope,  # In Scope (Host)
                                    host.os_family,  # OS Family
                                    host.os_details,  # OS Details
                                    hosts_str,  # Host Names/IP Addresses
@@ -778,11 +778,11 @@ class ReportClass(BaseReport):
                                    None,  # Is HTTP
                                    None,  # URL
                                    network_id,  # DB ID (NW)
-                                   host.id,  # DB ID (IP)
+                                   host.id,  # DB ID (Host)
                                    host_name.id,  # DB ID (HN)
                                    None,  # DB ID (SRV)
                                    network_sources,  # Source (NW)
-                                   host_sources,  # Source (IP)
+                                   host_sources,  # Source (Host)
                                    host_name_sources,  # Source (HN)
                                    None,  # Source (SRV)
                                    0,  # No. Commands
@@ -839,10 +839,10 @@ class ReportClass(BaseReport):
                                    network_str,  # Network (NW)
                                    network_scope,  # Scope (NW)
                                    network_companies,  # Company (NW)
-                                   host.address,  # IP Address (IP)
-                                   host.version_str,  # Version (IP)
+                                   host.address,  # IP Address (Host)
+                                   host.version_str,  # Version (Host)
                                    host_is_private,  # Private IP
-                                   host.in_scope,  # In Scope (IP)
+                                   host.in_scope,  # In Scope (Host)
                                    host.os_family,  # OS Family
                                    host.os_details,  # OS Details
                                    hosts_str,  # Host Names/IP Addresses
@@ -866,11 +866,11 @@ class ReportClass(BaseReport):
                                    is_http,  # Is HTTP
                                    url_str[0] if url_str else None,  # URL
                                    network_id,  # DB ID (NW)
-                                   host.id,  # DB ID (IP)
+                                   host.id,  # DB ID (Host)
                                    host_name.id,  # DB ID (HN)
                                    service_host_name.id,  # DB ID (SRV)
                                    network_sources,  # Source (NW)
-                                   host_sources,  # Source (IP)
+                                   host_sources,  # Source (Host)
                                    host_name_sources,  # Source (HN)
                                    service_host_name.sources_str,  # Source (SRV)
                                    len(service_host_name.get_completed_commands()),  # No. Commands
@@ -892,7 +892,7 @@ class ReportClass(BaseReport):
         """
         descriptor = HttpServiceDescriptor()
         result = [["Type",
-                   "IP Address (IP)",
+                   "IP Address (Host)",
                    "Host Name (HN)",
                    "Service",
                    "Service\nName",
@@ -902,7 +902,7 @@ class ReportClass(BaseReport):
                    "Banner Information"]]
         if self._args.language == ReportLanguage.de:
             result = [["Typ",
-                       "IP-Addresse (IP)",
+                       "IP-Addresse (Host)",
                        "Hostname (HN)",
                        "Service",
                        "Service\nName",
