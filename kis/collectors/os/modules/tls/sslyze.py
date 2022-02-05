@@ -27,6 +27,7 @@ import re
 import logging
 import xml
 from typing import List
+from collectors.core import JsonUtils
 from collectors.os.modules.core import ServiceCollector
 from collectors.os.modules.core import HostNameServiceCollector
 from collectors.os.modules.tls.core import BaseTlsCollector
@@ -47,6 +48,7 @@ from database.model import Source
 from database.model import CertType
 from database.model import TlsPreference
 from database.model import TlsInfo
+from database.model import TlsVersion
 from database.model import TlsInfoCipherSuiteMapping
 from database.model import ExecutionInfoType
 from view.core import ReportItem
@@ -63,6 +65,7 @@ class CollectorClass(BaseTlsCollector, ServiceCollector, HostNameServiceCollecto
         super().__init__(priority=41315,
                          timeout=0,
                          **kwargs)
+        self._json_utils = JsonUtils()
 
     @staticmethod
     def get_argparse_arguments():
@@ -142,6 +145,52 @@ class CollectorClass(BaseTlsCollector, ServiceCollector, HostNameServiceCollecto
             collectors.append(collector)
         return collectors
 
+    def _parse_cipher_suites(self,
+                             session: Session,
+                             command: Command,
+                             report_item: ReportItem,
+                             source: Source,
+                             tls_version: TlsVersion,
+                             tls_result: dict):
+        if tls_result:
+            # Only if TLS version is supported by server, then we process the TLS version
+            if tls_result["is_tls_version_supported"]:
+                tls_info = self.add_tls_info(session=session,
+                                             service=command.service,
+                                             version=tls_version,
+                                             report_item=report_item)
+                accepted_cipher_suites = tls_result["accepted_cipher_suites"]
+                order = len(accepted_cipher_suites)
+                for cipher_suite_json in accepted_cipher_suites:
+                    kex_info = None
+                    kex_bits = None
+                    if "ephemeral_key" in cipher_suite_json and \
+                            cipher_suite_json["ephemeral_key"] and \
+                            "curve_name" in cipher_suite_json["ephemeral_key"]:
+                        kex_name = cipher_suite_json["ephemeral_key"]["curve_name"]
+                        kex_bits = cipher_suite_json["ephemeral_key"]["size"]
+                        kex_info = TlsInfoCipherSuiteMapping. \
+                            get_kex_algorithm(kex_name, source)
+                    if "cipher_suite" in cipher_suite_json and \
+                            "name" in cipher_suite_json["cipher_suite"]:
+                        tls_cipher = cipher_suite_json["cipher_suite"]["name"]
+                        mapping = self._domain_utils.add_tls_info_cipher_suite_mapping(
+                            session=session,
+                            tls_info=tls_info,
+                            order=order,
+                            kex_algorithm_details=kex_info,
+                            kex_bits=kex_bits,
+                            iana_name=tls_cipher,
+                            source=source,
+                            report_item=report_item)
+                        if not mapping:
+                            logger.error(
+                                "cipher suite '{}' does not exist. ignoring cipher suite".format(
+                                    tls_cipher))
+                        order -= 1
+        else:
+            raise ValueError("no TLS information found")
+
     def verify_results(self, session: Session,
                        command: Command,
                        source: Source,
@@ -168,129 +217,83 @@ class CollectorClass(BaseTlsCollector, ServiceCollector, HostNameServiceCollecto
             if command.json_output:
                 for json_object in command.json_output:
                     if "server_scan_results" in json_object:
-                        for results in json_object["server_scan_results"]:
-                            if "scan_commands_results" in results:
-                                scan_commands_results = results["scan_commands_results"]
-                                for section in scan_commands_results.keys():
-                                    if section == "certificate_info":
-                                        if "certificate_deployments" in scan_commands_results[section]:
-                                            for deployment in scan_commands_results[section]["certificate_deployments"]:
-                                                if "received_certificate_chain" in deployment and \
-                                                   isinstance(deployment["received_certificate_chain"], list):
-                                                    chain = deployment["received_certificate_chain"]
-                                                    i = 1
-                                                    for item in chain:
-                                                        if "as_pem" in item:
-                                                            self.add_certificate(session=session,
-                                                                                 command=command,
-                                                                                 content=item["as_pem"],
-                                                                                 type=CertType.identity if i == 1 else
-                                                                                 CertType.intermediate if i < len(chain)
-                                                                                 else CertType.root,
-                                                                                 source=source,
-                                                                                 report_item=report_item)
-                                                            i += 1
-                                                        else:
-                                                            raise NotImplementedError(
-                                                                "unexpected JSON format (missing attribute 'as_pem')")
-                                                else:
-                                                    raise NotImplementedError(
-                                                        "unexpected JSON format (missing attribute "
-                                                        "'received_certificate_chain')")
+                        # Obtain all relevant information from JSON object
+                        server_scan_results = json_object["server_scan_results"]
+                        for server_scan_result in server_scan_results:
+                            certificate_deployments = self._json_utils.get_attribute_value(json_object=server_scan_result,
+                                                                                           path="scan_result/certificate_info/result/certificate_deployments",
+                                                                                           default_value=[])
+                            ssl_2_0_cipher_suites = self._json_utils.get_attribute_value(json_object=server_scan_result,
+                                                                                         path="scan_result/ssl_2_0_cipher_suites/result")
+                            ssl_3_0_cipher_suites = self._json_utils.get_attribute_value(json_object=server_scan_result,
+                                                                                         path="scan_result/ssl_3_0_cipher_suites/result")
+                            tls_1_0_cipher_suites = self._json_utils.get_attribute_value(json_object=server_scan_result,
+                                                                                         path="scan_result/tls_1_0_cipher_suites/result")
+                            tls_1_1_cipher_suites = self._json_utils.get_attribute_value(json_object=server_scan_result,
+                                                                                         path="scan_result/tls_1_1_cipher_suites/result")
+                            tls_1_2_cipher_suites = self._json_utils.get_attribute_value(json_object=server_scan_result,
+                                                                                         path="scan_result/tls_1_2_cipher_suites/result")
+                            tls_1_3_cipher_suites = self._json_utils.get_attribute_value(json_object=server_scan_result,
+                                                                                         path="scan_result/tls_1_3_cipher_suites/result")
+                            # Parse the certificate information
+                            for certificate_deployment in certificate_deployments:
+                                if "received_certificate_chain" in certificate_deployment and \
+                                        isinstance(certificate_deployment["received_certificate_chain"], list):
+                                    chain = certificate_deployment["received_certificate_chain"]
+                                    i = 1
+                                    for item in chain:
+                                        if "as_pem" in item:
+                                            self.add_certificate(session=session,
+                                                                 command=command,
+                                                                 content=item["as_pem"],
+                                                                 type=CertType.identity if i == 1 else
+                                                                 CertType.intermediate if i < len(chain)
+                                                                 else CertType.root,
+                                                                 source=source,
+                                                                 report_item=report_item)
+                                            i += 1
                                         else:
                                             raise NotImplementedError(
-                                                "unexpected JSON format (missing attribute "
-                                                "'received_certificate_chain')")
-                                    elif section in ["ssl_2_0_cipher_suites",
-                                                     "ssl_3_0_cipher_suites",
-                                                     "tls_1_0_cipher_suites",
-                                                     "tls_1_1_cipher_suites",
-                                                     "tls_1_2_cipher_suites",
-                                                     "tls_1_3_cipher_suites"]:
-                                        if "accepted_cipher_suites" in scan_commands_results[section]:
-                                            preferred_cipher = None
-                                            preferred_kex = None
-                                            preference = None
-                                            tls_version_used = scan_commands_results[section]["tls_version_used"]
-                                            accepted_cipher_suites = scan_commands_results[section]["accepted_cipher_suites"]
-                                            tls_version = TlsInfo.get_tls_version(tls_version_used)
-                                            if "cipher_suite_preferred_by_server" in scan_commands_results[section] and \
-                                                    scan_commands_results[section]["cipher_suite_preferred_by_server"]:
-                                                cipher_suite_preferred_by_server = scan_commands_results[section]["cipher_suite_preferred_by_server"]
-                                                if "cipher_suite" in cipher_suite_preferred_by_server and \
-                                                        cipher_suite_preferred_by_server["cipher_suite"] and \
-                                                        "name" in cipher_suite_preferred_by_server["cipher_suite"]:
-                                                    preferred_cipher = cipher_suite_preferred_by_server["cipher_suite"]["name"]
-                                                    preference = TlsPreference.server
-                                                if "ephemeral_key" in cipher_suite_preferred_by_server and \
-                                                        cipher_suite_preferred_by_server["ephemeral_key"] and \
-                                                        "curve_name" in cipher_suite_preferred_by_server["ephemeral_key"]:
-                                                    preferred_kex = cipher_suite_preferred_by_server["ephemeral_key"]["curve_name"]
-                                            # todo
-                                            elif "cipher_suite_preferred_by_client" in scan_commands_results[section] and \
-                                                    scan_commands_results[section]["cipher_suite_preferred_by_client"]:
-                                                cipher_suite_preferred_by_client = scan_commands_results[section]["cipher_suite_preferred_by_client"]
-                                                if "cipher_suite" in cipher_suite_preferred_by_client and \
-                                                        cipher_suite_preferred_by_client["cipher_suite"] and \
-                                                        "name" in cipher_suite_preferred_by_client["cipher_suite"]:
-                                                    preferred_cipher = cipher_suite_preferred_by_client["cipher_suite"]["name"]
-                                                    preference = TlsPreference.client
-                                                if "ephemeral_key" in cipher_suite_preferred_by_client and \
-                                                        cipher_suite_preferred_by_client["ephemeral_key"] and \
-                                                        "curve_name" in cipher_suite_preferred_by_client["ephemeral_key"]:
-                                                    preferred_kex = cipher_suite_preferred_by_client["ephemeral_key"]["curve_name"]
-                                            if accepted_cipher_suites:
-                                                tls_info = self.add_tls_info(session=session,
-                                                                             service=command.service,
-                                                                             version=tls_version,
-                                                                             preference=preference,
-                                                                             report_item=report_item)
-                                                if tls_info:
-                                                    order = len(accepted_cipher_suites)
-                                                    for cipher_suite_json in accepted_cipher_suites:
-                                                        kex_info = None
-                                                        kex_name = None
-                                                        kex_bits = None
-                                                        if "ephemeral_key" in cipher_suite_json and \
-                                                                cipher_suite_json["ephemeral_key"] and \
-                                                                "curve_name" in cipher_suite_json["ephemeral_key"]:
-                                                            kex_name = cipher_suite_json["ephemeral_key"]["curve_name"]
-                                                            kex_bits = cipher_suite_json["ephemeral_key"]["size"]
-                                                            kex_info = TlsInfoCipherSuiteMapping.\
-                                                                get_kex_algorithm(kex_name, source)
-                                                        if "cipher_suite" in cipher_suite_json and \
-                                                            "name" in cipher_suite_json["cipher_suite"]:
-                                                            tls_cipher = cipher_suite_json["cipher_suite"]["name"]
-                                                            mapping = self._domain_utils.add_tls_info_cipher_suite_mapping(
-                                                                session=session,
-                                                                tls_info=tls_info,
-                                                                order=order,
-                                                                kex_algorithm_details=kex_info,
-                                                                kex_bits=kex_bits,
-                                                                iana_name=tls_cipher,
-                                                                source=source,
-                                                                prefered=(preferred_cipher == tls_cipher and
-                                                                          preferred_kex == kex_name),
-                                                                report_item=report_item)
-                                                            if not mapping:
-                                                                logger.error(
-                                                                    "cipher suite '{}' does not exist. ignoring cipher suite".format(
-                                                                        tls_cipher))
-                                                            order -= 1
-                                                        else:
-                                                            raise NotImplementedError(
-                                                                "unexpected JSON format (missing attribute "
-                                                                "'cipher_suite' and 'name')")
-                                                else:
-                                                    raise ValueError("no TLS information found")
-                                        else:
-                                            raise NotImplementedError(
-                                                "unexpected JSON format (missing attribute "
-                                                "'tls_version_used' or 'accepted_cipher_suites')")
-                            else:
-                                raise NotImplementedError(
-                                    "unexpected JSON format (missing attribute 'scan_commands_results')")
-                    else:
-                        raise NotImplementedError("unexpected JSON format (missing attribute 'server_scan_results')")
+                                                "unexpected JSON format (missing attribute 'as_pem')")
+                                else:
+                                    raise NotImplementedError("unexpected JSON format (missing attribute "
+                                                              "'received_certificate_chain')")
+                            # Process all TLS versions
+                            self._parse_cipher_suites(session=session,
+                                                      command=command,
+                                                      report_item=report_item,
+                                                      source=source,
+                                                      tls_version=TlsVersion.ssl2,
+                                                      tls_result=ssl_2_0_cipher_suites)
+                            self._parse_cipher_suites(session=session,
+                                                      command=command,
+                                                      report_item=report_item,
+                                                      source=source,
+                                                      tls_version=TlsVersion.ssl3,
+                                                      tls_result=ssl_3_0_cipher_suites)
+                            self._parse_cipher_suites(session=session,
+                                                      command=command,
+                                                      report_item=report_item,
+                                                      source=source,
+                                                      tls_version=TlsVersion.tls10,
+                                                      tls_result=tls_1_0_cipher_suites)
+                            self._parse_cipher_suites(session=session,
+                                                      command=command,
+                                                      report_item=report_item,
+                                                      source=source,
+                                                      tls_version=TlsVersion.tls11,
+                                                      tls_result=tls_1_1_cipher_suites)
+                            self._parse_cipher_suites(session=session,
+                                                      command=command,
+                                                      report_item=report_item,
+                                                      source=source,
+                                                      tls_version=TlsVersion.tls12,
+                                                      tls_result=tls_1_2_cipher_suites)
+                            self._parse_cipher_suites(session=session,
+                                                      command=command,
+                                                      report_item=report_item,
+                                                      source=source,
+                                                      tls_version=TlsVersion.tls13,
+                                                      tls_result=tls_1_3_cipher_suites)
         except xml.etree.ElementTree.ParseError as e:
             logger.exception(e)
