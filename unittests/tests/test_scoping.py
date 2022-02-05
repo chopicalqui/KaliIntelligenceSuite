@@ -1015,6 +1015,32 @@ class NetworkScopeTypeVhostTestCases(BaseScopeTypeVhostTestCases):
             self.assertEqual(ScopeType.all, result.domain_name.scope)
             self.assertTrue(result.domain_name.in_scope)
 
+    def test_insert_in_scope_hosts(self):
+        """
+        Adding an in-scope host to a vhost network should set the scope to false.
+        """
+        # set up database
+        self.init_db()
+        with self._engine.session_scope() as session:
+            workspace = IpUtils.add_workspace(session=session, name=self._workspace)
+            self._ip_utils.add_network(session=session,
+                                       workspace=workspace,
+                                       network="192.168.0.0/24",
+                                       scope=ScopeType.vhost)
+            self._ip_utils.add_host(session=session,
+                                    workspace=workspace,
+                                    address="192.168.0.1",
+                                    in_scope=True)
+            session.add(Host(workspace=workspace, address="192.168.0.2", is_up=True))
+        with self._engine.session_scope() as session:
+            host = session.query(Host).filter_by(address="192.168.0.1").one()
+            self.assertEqual("192.168.0.0/24", host.ipv4_network.network)
+            self.assertEqual(ScopeType.vhost, host.ipv4_network.scope)
+            self.assertFalse(host.in_scope)
+            host = session.query(Host).filter_by(address="192.168.0.2").one()
+            self.assertEqual("192.168.0.0/24", host.ipv4_network.network)
+            self.assertEqual(ScopeType.vhost, host.ipv4_network.scope)
+            self.assertFalse(host.in_scope)
 
 
 class HostScopeTypeNoneTestCases(BaseKisTestCase):

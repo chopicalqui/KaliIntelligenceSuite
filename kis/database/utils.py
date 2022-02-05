@@ -702,15 +702,13 @@ class Engine:
                 IF network_scope IS NOT NULL THEN
                     IF network_scope = 'all' OR 
                        (network_scope = 'vhost' AND
-                        EXISTS(SELECT * FROM host h
-                                   INNER JOIN host_host_name_mapping m ON m.host_id = h.id AND
-                                                                          h.id = NEW.id AND
-                                                                          COALESCE(m.type, 4) < 3
-                                   INNER JOIN host_name hn ON m.host_name_id = hn.id AND
-                                                              hn.in_scope IS NOT NULL AND
-                                                              hn.in_scope)) THEN
+                        EXISTS(SELECT * FROM host_host_name_mapping m
+                               INNER JOIN host_name hn ON m.host_name_id = hn.id AND
+                                                          COALESCE(hn.in_scope, FALSE) AND
+                                                          COALESCE(m.type, 4) < 3 AND
+                                                          m.host_id = NEW.id)) THEN
                         NEW.in_scope = True;
-                    ELSIF network_scope = 'exclude' THEN
+                    ELSIF network_scope <> 'strict' THEN
                         NEW.in_scope = False;
                     END IF;
                 ELSE
