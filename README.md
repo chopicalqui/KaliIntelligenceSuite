@@ -48,7 +48,7 @@ Information about manual installations can be obtained from the wiki page
 
 ## KIS' Data and Collection Model
 
-The following figure illustrates KIS' data and collection model. Thereby, each node represents a table in the rational 
+The following figure illustrates KIS' data and collection model. Thereby, each node represents a table in the rational
 database and each solid line between the nodes documents the corresponding relationship. The dashed directed graphs 
 document based on which already collected intelligence (source node) KIS is able to collect further information 
 (destination node). The labels of the directed graphs document the techniques used by KIS to perform the collection.
@@ -66,7 +66,7 @@ Therefore, information about scoping can be obtained from the wiki page
 
 ## List of KIS Collectors
 
-For a complete list of available collector, refer to the wiki page
+For a complete list of available collectors, refer to the wiki page
 [KIS Collectors](https://github.com/chopicalqui/KaliIntelligenceSuite/wiki/KIS-Collectors).
 
 
