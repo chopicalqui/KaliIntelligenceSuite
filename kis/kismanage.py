@@ -502,40 +502,9 @@ class ManageDatabase:
 if __name__ == "__main__":
     epilog='''---- USE CASES ----
 
-- I. initialize the database for the first time
+use cases can be obtained from the following wiki page:
 
-  $ docker exec -it kaliintelsuite kismanage database --init
-
-- IIa. create backup of the entire KIS database and store it in file $backup
-
-  $ docker exec -t kaliinteldb pg_dumpall -c -U kis > $backup
-
-- IIb. restore the previously created KIS database from file $backup.
-
-  $ docker exec -it kaliintelsuite kismanage database --drop
-  $ cat $backup | docker exec -i kaliinteldb psql -U kis -d kis
-      
-- III. empty a KIS database
-
-  $ docker exec -it kaliintelsuite kismanage database --drop --init
-
-- IV. list existing workspaces
-
-  $ docker exec -it kaliintelsuite kismanage -l
-
-- V. add new workspace $ws
-
-  $ docker exec -it kaliintelsuite kismanage workspace --add $ws
-
-- VI. copy nmap scan results to Docker container and import nmap scan results into workspace $ws
-
-  $ mkdir /var/lib/docker/volumes/kaliintelsuite_kis_data/_data/scan1
-  $ cp nmap-tcp.xml /var/lib/docker/volumes/kaliintelsuite_kis_data/_data/scan1
-
-  if you are working on windows, then you have to replace the above path by:
-  \\\\wsl$\\docker-desktop-data\\version-pack-data\\community\\docker\\volumes\\kaliintelsuite_kis_data\\_data\\scan1
-
-  $ docker exec -it kaliintelsuite kismanage scan -w $ws --nmap /kis/scan1/nmap-tcp.xml
+https://github.com/chopicalqui/KaliIntelligenceSuite/wiki/KIS-Use-Cases#kismanage
 '''
     parser = KisImportArgumentParser(description=__doc__, formatter_class=SortingHelpFormatter, epilog=epilog)
     parser.add_argument("--debug",

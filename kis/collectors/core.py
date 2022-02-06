@@ -2053,7 +2053,7 @@ class JsonUtils(BaseUtils):
         super().__init__(**args)
 
     @staticmethod
-    def get_attribute_value(json_object: Dict, path: str, default_value = None):
+    def get_attribute_value(json_object: Dict, path: str, default_value=None):
         """
         This method returns the content of the attribute specified by the path.
         :param json_object: The JSON object that is searched
@@ -2072,7 +2072,7 @@ class JsonUtils(BaseUtils):
         return current_position if current_position else default_value
 
     @staticmethod
-    def get_attribute_values(json_object: Dict, path: str, default_value = None) -> list:
+    def get_attribute_values(json_object: Dict, path: str, default_value=None) -> list:
         """
         This method returns the content of the attribute specified by the path. This method is used, when the path
         variable contains a * in the list to traverse a list.

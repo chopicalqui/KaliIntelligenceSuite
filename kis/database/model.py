@@ -117,7 +117,7 @@ class DatabaseVersionMismatchError(Exception):
         if reason == DatabaseVersionMismatchEnum.model_outdated:
             message = "the database model version in the postgresql database is outdated and is not supported by " \
                       "KIS anymore. before you can continue, you have to update KIS' postgresql database model. " \
-                      "for more information, refer to the following wiki page (see option 2): " \
+                      "for more information, refer to the following wiki page: " \
                       "https://github.com/chopicalqui/KaliIntelligenceSuite/wiki/Updating-the-KIS-database"
         else:
             message = "the database model version in the postgresql database is newer than the one of KIS's " \

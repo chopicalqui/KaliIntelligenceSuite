@@ -84,18 +84,29 @@ This script allows:
   - defining the scope
 
 Run the following command to obtain more information and examples:
+
 ```bash
 docker exec -it kaliintelsuite kismanage -h
 ```
+
+In addition, refer to the wiki page
+[KIS Use Cases](https://github.com/chopicalqui/KaliIntelligenceSuite/wiki/KIS-Use-Cases#kismanage) for some practical
+examples on how to use `kismanage`.
+
 
 ### kiscollect
 
 This script implements a commandline interface to collect the intelligence.
 
 Run the following command to obtain more information and examples:
+
 ```bash
 docker exec -it kaliintelsuite kiscollect -h
 ```
+
+In addition, refer to the wiki page
+[KIS Use Cases](https://github.com/chopicalqui/KaliIntelligenceSuite/wiki/KIS-Use-Cases#kismanage) for some practical
+examples on how to use `kiscollect`.
 
 ### kisreport
 
@@ -107,9 +118,14 @@ This script allows the analysis of the collected data via various filtering opti
   - Raw: Export of additionally collected files like JSON objects from APIs like Shodan.io, or certificate files.
 
 Run the following command to obtain more information and examples:
+
 ```bash
 docker exec -it kaliintelsuite kisreport -h
 ```
+
+In addition, refer to the wiki page
+[KIS Use Cases](https://github.com/chopicalqui/KaliIntelligenceSuite/wiki/KIS-Use-Cases#kisreport) for some practical
+examples on how to use `kisreport`.
 
 ## Author
 

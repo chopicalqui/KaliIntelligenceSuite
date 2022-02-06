@@ -319,11 +319,11 @@ class ReportGenerator:
         return result
 
     @staticmethod
-    def get_report_argument_parser() -> argparse.ArgumentParser:
+    def get_report_argument_parser(epilog: str = None) -> argparse.ArgumentParser:
         """
         This method creates and initializes kisreport's argparser.
         """
-        parser = argparse.ArgumentParser(description=__doc__, formatter_class=SortingHelpFormatter)
+        parser = argparse.ArgumentParser(description=__doc__, formatter_class=SortingHelpFormatter, epilog=epilog)
         parser.add_argument("--nocolor", action="store_true", help="disable colored output")
         parser.add_argument("-l", "--list", action='store_true', help="list existing workspaces")
         parser.add_argument('--testing',

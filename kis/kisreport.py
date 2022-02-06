@@ -36,7 +36,13 @@ from database.utils import DeclarativeBase
 
 if __name__ == "__main__":
     # Create and parse arguments
-    parser = ReportGenerator.get_report_argument_parser()
+    epilog = '''---- USE CASES ----
+
+use cases can be obtained from the following wiki page:
+
+https://github.com/chopicalqui/KaliIntelligenceSuite/wiki/KIS-Use-Cases#kisreport
+'''
+    parser = ReportGenerator.get_report_argument_parser(epilog=epilog)
     sub_parser = ReportGenerator.add_sub_argument_parsers(parser)
     report_classes = ReportGenerator.add_argparser_arguments(sub_parser)
     args = parser.parse_args()

@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 __version__ = 0.1
 
+import os
 import tempfile
 import json
 from database.model import CollectorType
@@ -142,7 +143,7 @@ class SslyzeCollectorTestCase(BaseNmapCollectorTestCase):
                                               collector_name_type=CollectorType.host_service,
                                               service_port=443,
                                               scope=ScopeType.all)
-                with open("sslyze.json", "r") as file:
+                with open(os.path.join(os.path.dirname(__file__), "sslyze.json"), "r") as file:
                     json_text = file.read()
                     json_object = json.loads(json_text)
                 command.json_output.append(json_object)
