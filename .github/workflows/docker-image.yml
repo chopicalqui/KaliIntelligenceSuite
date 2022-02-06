@@ -25,7 +25,7 @@ jobs:
       - name: Build and push
         run: |
           docker-compose build kaliintelsuite
-          docker-compose push
+          docker-compose push kaliintelsuite
 
       - name: Image digest
         run: echo ${{ steps.docker_build.outputs.digest }}
