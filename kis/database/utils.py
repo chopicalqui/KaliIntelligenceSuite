@@ -993,7 +993,7 @@ class Engine:
                 ELSIF (TG_OP = 'DELETE') THEN
                     RAISE NOTICE 'DELETE';
                     IF (OLD.host_id IS NOT NULL) THEN
-                        RAISE NOTICE 'DELETE host name service';
+                        -- RAISE NOTICE 'DELETE host name service';
                         -- Check if a host's service was deleted. If so, then delete the corresponding host name service
                         DELETE FROM service
                         WHERE id IN (SELECT s.id FROM service s
@@ -1002,7 +1002,7 @@ class Engine:
                                      INNER JOIN host h ON hhnm.host_id = h.id
                                      WHERE s.protocol = OLD.protocol AND s.port = OLD.port AND h.id = OLD.host_id);
                     ELSIF (OLD.host_name_id IS NOT NULL) THEN
-                        RAISE NOTICE 'DELETE host name service';
+                        -- RAISE NOTICE 'DELETE host name service';
                         -- Check if a host's service was deleted. If so, then delete the corresponding host name service
                         DELETE FROM service
                         WHERE id IN (SELECT s.id FROM service s

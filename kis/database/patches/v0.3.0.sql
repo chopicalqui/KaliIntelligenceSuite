@@ -414,6 +414,53 @@ CREATE OR REPLACE FUNCTION public.add_services_to_host_name() RETURNS trigger
 
 ALTER FUNCTION public.add_services_to_host_name() OWNER TO kis;
 
+
+--
+-- Name: pre_update_hosts_after_host_changes(); Type: FUNCTION; Schema: public; Owner: kis
+--
+
+CREATE OR REPLACE FUNCTION public.pre_update_hosts_after_host_changes() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+        DECLARE
+            network_scope scopetype;
+        BEGIN
+            -- RAISE NOTICE 'BEGIN PRE HOST: TG_OP = %, address = %, new scope = %, old scope = %, network_id = %', TG_OP, NEW.address, NEW.in_scope, OLD.in_scope, NEW.network_id;
+            IF (TG_OP = 'INSERT' OR TG_OP = 'UPDATE') THEN
+                -- Usually network assignments are performed when a new network is inserted or updated. If all
+                -- networks, however, are already inserted, then this case ensures that it is inserted to the smallest
+                -- network.
+                SELECT id, scope INTO NEW.network_id, network_scope FROM network
+                    WHERE address >>= NEW.address AND
+                          workspace_id = NEW.workspace_id
+                    ORDER BY masklen(address) DESC
+                    LIMIT 1;
+
+                IF network_scope IS NOT NULL THEN
+                    IF network_scope = 'all' OR
+                       (network_scope = 'vhost' AND
+                        EXISTS(SELECT * FROM host_host_name_mapping m
+                               INNER JOIN host_name hn ON m.host_name_id = hn.id AND
+                                                          COALESCE(hn.in_scope, FALSE) AND
+                                                          COALESCE(m.type, 4) < 3 AND
+                                                          m.host_id = NEW.id)) THEN
+                        NEW.in_scope = True;
+                    ELSIF network_scope <> 'strict' THEN
+                        NEW.in_scope = False;
+                    END IF;
+                ELSE
+                    NEW.in_scope = False;
+                END IF;
+            END IF;
+            -- RAISE NOTICE 'END PRE HOST: TG_OP = %, address = %, new scope = %, old scope = %, network_id = %', TG_OP, NEW.address, NEW.in_scope, OLD.in_scope, NEW.network_id;
+            RETURN NEW;
+        END;
+        $$;
+
+
+ALTER FUNCTION public.pre_update_hosts_after_host_changes() OWNER TO kis;
+
+
 --
 -- Name: service service_insert; Type: TRIGGER; Schema: public; Owner: kis
 --
