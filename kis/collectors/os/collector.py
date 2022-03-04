@@ -187,6 +187,8 @@ class CollectorProducer(Thread):
         self._current_collector = None
         self._current_collector_index = 0
         self._current_collector_lock = Lock()
+        if included_items and excluded_items:
+            raise ValueError("included and excluded items are mutual exclusive.")
         self._included_items = included_items
         self._excluded_items = excluded_items
         self._restart_statuses = restart_statuses
@@ -509,6 +511,8 @@ class CollectorProducer(Thread):
             elif key == "filter" and value:
                 self._included_items = [item[1:] for item in value if item[0] == '+'] if value else []
                 self._excluded_items = [item for item in value if item[0] != '+'] if value else []
+                if self._included_items and self._excluded_items:
+                    raise ValueError("including and excluding items is mutually exclusive. correct argument --filter")
             elif key == "restart" and value:
                 self._restart_statuses = [CommandStatus[item] for item in value]
             elif key == "analyze" and value:

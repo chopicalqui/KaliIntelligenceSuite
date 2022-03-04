@@ -466,3 +466,24 @@ class TestCollectorInitialization(BaseKisTestCase):
             self.assertListEqual([wordlist_file], producer._selected_collectors[0].instance._wordlist_files)
             self.assertTrue(producer._selected_collectors[0].instance._print_commands)
             self.assertEqual("nobody", producer._selected_collectors[0].instance.exec_user.pw_name)
+
+    def test_filter_argument(self):
+        """
+        It should not be possible to include and exclude items in the filter argument at the same time.
+        """
+        self.init_db()
+        workspace = "unittest"
+        # Initialize collector producer
+        commands_queue = queue.Queue()
+        producer = CollectorProducer(self._engine, commands_queue)
+        parser = CollectorProducer.get_argument_parser(description="")
+        collector_group = CollectorProducer.add_collector_argument_group(parser)
+        producer.add_argparser_arguments(collector_group)
+        # create database
+        with self._engine.session_scope() as session:
+            self.create_workspace(session=session, workspace=workspace)
+        args = parser.parse_args(["-w", workspace,
+                                  "--filter", "192.168.1.1", "+192.168.1.2"])
+        arguments = vars(args)
+        with self.assertRaises(ValueError):
+            producer.init(arguments)
