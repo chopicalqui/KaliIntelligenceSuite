@@ -93,15 +93,20 @@ class ReportItem:
         :param criticality: The criticality of the report item
         """
         name = collector_name.name if isinstance(collector_name, CollectorName) else collector_name
-        self._ip = ip
-        self._protocol = protocol if not protocol or isinstance(protocol, str) else protocol.name
-        self._protocol = self._protocol.lower() if self._protocol else self._protocol
-        self._port = port
-        self._collector_name = name if name else ""
+        self.ip = ip
+        self.protocol = protocol if not protocol or isinstance(protocol, str) else protocol.name
+        self.protocol = self.protocol.lower() if self.protocol else self.protocol
+        self.port = port
+        self.collector_name = name if name else ""
         self.criticality = criticality
         self.report_type = report_type
         self.details = details
         self._listeners = listeners if listeners else []
+
+    def __eq__(self, other):
+        return self.ip == other.ip and self.protocol == other.protocol and self.port == other.port and \
+               self.collector_name == other.collector_name and self.criticality == other.criticality and \
+               self.report_type == other.report_type
 
     @property
     def listeners(self) -> list:
@@ -118,14 +123,14 @@ class ReportItem:
             raise ValueError("report item type cannot be none")
         max_collector_name_length = 20
         max_host_length = 40
-        host_info = self._ip if len(self._ip) < max_host_length else "{}".format(self._ip[:max_host_length])
-        collector_name = self._collector_name if len(self._collector_name) <= max_collector_name_length else \
-            "{}".format(self._collector_name[:max_collector_name_length])
+        host_info = self.ip if len(self.ip) < max_host_length else "{}".format(self.ip[:max_host_length])
+        collector_name = self.collector_name if len(self.collector_name) <= max_collector_name_length else \
+            "{}".format(self.collector_name[:max_collector_name_length])
         report_type = self.report_type if len(self.report_type) <= max_collector_name_length else \
             "{}".format(self.report_type[:max_collector_name_length])
         report_type = report_type.upper()
-        protocol = self._protocol if self._protocol else "-"
-        port = str(self._port) if self._port else "-"
+        protocol = self.protocol if self.protocol else "-"
+        port = str(self.port) if self.port else "-"
         host_service_info = "{:40}  {:>3}/{:<5} [{:20}] [{:10}] - ".format(host_info,
                                                                            protocol,
                                                                            port,

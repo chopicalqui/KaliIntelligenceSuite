@@ -106,7 +106,8 @@ class KisCollectConsole(BaseKisKollectConsole):
         :param report_item: The report item that shall be reported
         :return:
         """
-        self._report_items.append(report_item)
+        if report_item not in self._report_items:
+            self._report_items.append(report_item)
 
     def _kill_process(self, thread_id: int) -> None:
         """
