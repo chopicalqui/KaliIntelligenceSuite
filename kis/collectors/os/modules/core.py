@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 __version__ = 0.1
 
+import ipaddress
 import os
 import re
 import random
@@ -453,13 +454,25 @@ class BaseCollector(config.Collector):
         self._analyze = analyze
         self._ignore = ignore
         self._whitelist_filter = []
+        self._whitelist_network_filter = []
+        self._whitelist_host_filter = []
         self._blacklist_filter = []
+        self._blacklist_network_filter = []
+        self._blacklist_host_filter = []
         filter = filter if filter else []
         for item in filter:
             if item.startswith("+"):
                 self._whitelist_filter.append(item.lstrip("+"))
+                if IpUtils.is_valid_cidr_range(item, verbose=False):
+                    self._whitelist_network_filter.append(ipaddress.ip_network(item, strict=True))
+                elif IpUtils.is_valid_address(item, verbose=False):
+                    self._blacklist_host_filter.append(ipaddress.ip_address(item, strict=True))
             else:
                 self._blacklist_filter.append(item)
+                if IpUtils.is_valid_cidr_range(item, verbose=False):
+                    self._blacklist_network_filter.append(ipaddress.ip_network(item, strict=True))
+                elif IpUtils.is_valid_address(item, verbose=False):
+                    self._blacklist_host_filter.append(ipaddress.ip_address(item, strict=True))
         if vhost:
             if isinstance(vhost, VhostChoice):
                 self._vhost = vhost

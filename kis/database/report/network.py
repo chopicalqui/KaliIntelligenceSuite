@@ -23,12 +23,56 @@ __version__ = 0.1
 import argparse
 from typing import List
 from database.model import Network
-from database.model import ServiceState
+from database.model import ScopeType
+from database.model import ProtocolType
 from database.model import ReportScopeType
 from database.model import ReportVisibility
 from database.model import TextReportDetails
 from database.model import DnsResourceRecordType
 from database.report.core import BaseReport
+from database.report.core import ServiceStatistics
+from sqlalchemy.orm import aliased
+from sqlalchemy import and_
+
+
+class NetworkStatistics:
+    """
+    This class maintains all statistics for a network
+    """
+
+    def __init__(self, protocols: list):
+        self.service_stats = ServiceStatistics(protocols)
+        self.prefix_length = 0
+        self.no_hosts = 0
+        self.no_allocated_ips = 0
+        self.no_allocated_in_scope_ips = 0
+        self.no_resolved_host_names = 0
+        self.no_resolved_in_scope_host_names = 0
+        self.no_commands = 0
+
+    @property
+    def no_resolved_out_of_scope_host_names(self):
+        return self.no_resolved_host_names - self.no_resolved_in_scope_host_names
+
+    def compute(self, network: Network):
+        """
+        Compute statistics for the given network.
+        """
+        ip_network = network.ip_network
+        self.prefix_length = ip_network.prefixlen
+        self.no_hosts = ip_network.num_addresses - 2
+        self.no_commands = len(network.get_completed_commands())
+        for host in network.hosts:
+            self.service_stats.compute(host)
+            self.no_allocated_ips += 1
+            if host.in_scope:
+                self.no_allocated_in_scope_ips += 1
+            # Obtain statistics about host names that resolve to IPs within the network
+            host_host_mappings = host.get_host_host_name_mappings([DnsResourceRecordType.a, DnsResourceRecordType.aaaa])
+            for mapping in host_host_mappings:
+                self.no_resolved_host_names += 1
+                if mapping.host_name._in_scope:
+                    self.no_resolved_in_scope_host_names += 1
 
 
 class ReportClass(BaseReport):
@@ -90,6 +134,15 @@ class ReportClass(BaseReport):
         parser_network.add_argument('-I', '--include', metavar='COLLECTOR', type=str, nargs='+', default=[],
                                     help='list of collector names whose outputs should be returned in text mode (see '
                                          'argument --text). per default, all collector information is returned')
+        parser_network.add_argument('--nosum', action='store_true',
+                                    help="there are cases where an in-scope network contains several subnetworks."
+                                         "per default, the network report summarizes the statistics into the largest "
+                                         "in-scope network and does not show the corresponding subnetworks. if the "
+                                         "subnetworks shall be displayed as well, then use this argument")
+        parser_network.add_argument('-p', '--protocol', nargs='+',
+                                    choices=[item.name for item in ProtocolType],
+                                    default=[item.name for item in ProtocolType],
+                                    help="create the service statistics for the following ISO/OSI layer 4 protocols")
 
     def _filter(self, network: Network) -> bool:
         """
@@ -119,71 +172,85 @@ class ReportClass(BaseReport):
         """
         rows = [["Workspace",
                  "Network",
-                 "IP Version",
+                 "Version",
                  "Netmask",
+                 "Parent Networks With Same Scope",
+                 "Hosts",
                  "Companies",
                  "Scope",
                  "In Scope (Company)",
                  "Sources (NW)",
-                 "No. Allocated IPs",
-                 "No. Allocated In-Scope IPs",
-                 "No. Open Services",
-                 "No. Open In-Scope Services",
-                 "No. Closed Services",
-                 "No. Resolved Host Names",
-                 "No. Resolved In-Scope Host Names",
-                 "No. Commands",
+                 "Open Services",
+                 "Open In-Scope Services",
+                 "Open Web Services",
+                 "Open In-Scope Web Services",
+                 "Closed Services",
+                 "Closed In-Scope Services",
+                 "Closed Web Services",
+                 "Closed In-Scope Web Services",
+                 "Resolved Host Names",
+                 "Resolved In-Scope Host Names",
+                 "Resolved Out-of-Scope Host Names",
+                 "Allocated IPs",
+                 "Allocated In-Scope IPs",
+                 "Commands",
+                 "Time Added",
                  "DB ID"]]
         for workspace in self._workspaces:
             for network in workspace.ipv4_networks:
                 if self._filter(network):
-                    # Calculate statistics
+                    # Compute statistics
+                    stats = NetworkStatistics(self._protocols)
+                    stats.compute(network)
                     any_company_in_scope = any([item.in_scope for item in network.companies])
-                    no_allocated_ips = 0
-                    no_allocated_in_scope_ips = 0
-                    no_open_services = 0
-                    no_open_in_scope_services = 0
-                    no_closed_services = 0
-                    no_resolved_host_names = 0
-                    no_resolved_in_scope_host_names = 0
-                    # Obtain statistics about IP addresses within the network
-                    for host in network.hosts:
-                        no_allocated_ips += 1
-                        if host.in_scope:
-                            no_allocated_in_scope_ips += 1
-                        # Obtain statistics about services
-                        for service in host.services:
-                            if service.state == ServiceState.Open:
-                                no_open_services += 1
-                                if service.host.in_scope:
-                                    no_open_in_scope_services += 1
-                            else:
-                                no_closed_services += 1
-                        # Obtain statistics about host names that resolve to IPs within the network
-                        host_host_mappings = host.get_host_host_name_mappings([DnsResourceRecordType.a,
-                                                                               DnsResourceRecordType.aaaa])
-                        for mapping in host_host_mappings:
-                            no_resolved_host_names += 1
-                            if mapping.host_name._in_scope:
-                                no_resolved_in_scope_host_names += 1
-                    ip_network = network.ip_network
-                    rows.append([workspace.name,                    # Workspace
-                                 network.network,                   # Network (NW)
-                                 network.version_str,               # Version
-                                 ip_network.prefixlen,              # Netmask
-                                 network.companies_str,             # Companies
-                                 network.scope_str,                 # Scope (NW)
-                                 any_company_in_scope,              # In Scope (Company)
-                                 network.sources_str,               # Sources (NW)
-                                 no_allocated_ips,                  # No. Allocated IPs
-                                 no_allocated_in_scope_ips,         # No. Allocated In-Scope IPs
-                                 no_open_services,                  # No. Open Services
-                                 no_open_in_scope_services,         # No. Open In-Scope Services
-                                 no_closed_services,                # No. Closed Services
-                                 no_resolved_host_names,            # No. Resolved Host Names
-                                 no_resolved_in_scope_host_names,   # No. Resolved In-Scope Host Names
-                                 len(network.get_completed_commands()), # No.Commands
-                                 network.id])                       # DB ID
+                    # Determine number of parent networks with same scope as current network
+                    alias_current_network = aliased(Network)
+                    alias_parent_network = aliased(Network)
+                    parent_networks = self._session.query(alias_parent_network) \
+                        .join(alias_current_network, and_(alias_current_network.workspace_id == alias_parent_network.workspace_id,
+                                                          alias_current_network.id == network.id,
+                                                          alias_current_network.scope == alias_parent_network.scope,
+                                                          alias_current_network.network.op("<<")(alias_parent_network.network))).count()
+                    # Summarize all satistics of in-scope subnetworks into the parent network
+                    if not self._args.nosum and network.scope == ScopeType.all:
+                        alias_child_network = aliased(Network)
+                        child_networks = self._session.query(alias_child_network) \
+                            .join(alias_current_network,
+                                  and_(alias_current_network.workspace_id == alias_child_network.workspace_id,
+                                       alias_current_network.id == network.id,
+                                       alias_current_network.scope == alias_child_network.scope,
+                                       alias_current_network.network.op(">>")(alias_child_network.network))).all()
+                        for child_network in child_networks:
+                            stats.compute(child_network)
+                    if self._args.nosum or network.scope != ScopeType.all or (network.scope == ScopeType.all and parent_networks == 0):
+                        rows.append([workspace.name,                             # Workspace
+                                     network.network,                            # Network (NW)
+                                     network.version_str,                        # Version
+                                     stats.prefix_length,                        # Netmask
+                                     parent_networks,                            # Parent Networks With Same Scope
+                                     stats.no_hosts,                             # Hosts
+                                     network.companies_str,                      # Companies
+                                     network.scope_str,                          # Scope (NW)
+                                     any_company_in_scope,                       # In Scope (Company)
+                                     network.sources_str,                        # Sources (NW)
+                                     stats.service_stats.no_open_services,       # Open Services
+                                     stats.service_stats.no_open_in_scope_services,  # Open In-Scope Services
+                                     stats.service_stats.no_open_web_services,   # Open Web Services,
+                                     stats.service_stats.no_open_in_scope_web_services,  # Open In-Scope Web Services,
+                                     stats.service_stats.no_closed_services,     # Closed Services
+                                     stats.service_stats.no_closed_in_scope_services,  # Closed In-Scope Services
+                                     stats.service_stats.no_closed_web_services, # Closed Web Services
+                                     stats.service_stats.no_closed_in_scope_web_services,  # Closed In-Scope Web Services
+                                     stats.no_resolved_host_names,               # Resolved Host Names
+                                     stats.no_resolved_in_scope_host_names,      # Resolved In-Scope Host Names
+                                     stats.no_resolved_out_of_scope_host_names,  # Resolved Out-of-Scope Host Names
+                                     stats.no_allocated_ips,                     # Allocated IPs
+                                     stats.no_allocated_in_scope_ips,            # Allocated In-Scope IPs
+                                     stats.no_commands,                          # Commands
+                                     network.creation_date,                      # Time Added
+                                     network.id])                                # DB ID
+                    else:
+                        pass
         return rows
 
     def get_text(self) -> List[str]:

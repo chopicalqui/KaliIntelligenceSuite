@@ -23,12 +23,42 @@ __version__ = 0.1
 import argparse
 from typing import List
 from database.model import Host
-from database.model import ServiceState
+from database.model import ProtocolType
 from database.model import ReportScopeType
 from database.model import ReportVisibility
 from database.model import TextReportDetails
 from database.model import DnsResourceRecordType
 from database.report.core import BaseReport
+from database.report.core import ServiceStatistics
+
+
+class HostStatistics:
+    """
+    This class maintains all statistics for a host
+    """
+
+    def __init__(self, protocols: list):
+        self.service_stats = ServiceStatistics(protocols)
+        self.no_resolved_host_names = 0
+        self.no_resolved_in_scope_host_names = 0
+        self.no_commands = 0
+
+    @property
+    def no_resolved_out_of_scope_host_names(self):
+        return self.no_resolved_host_names - self.no_resolved_in_scope_host_names
+
+    def compute(self, host: Host):
+        """
+        Compute statistics for the given network.
+        """
+        # Obtain statistics about host names that resolve to IPs within the network
+        self.service_stats.compute(host)
+        self.no_commands += len(host.get_completed_commands())
+        host_host_mappings = host.get_host_host_name_mappings([DnsResourceRecordType.a, DnsResourceRecordType.aaaa])
+        for mapping in host_host_mappings:
+            self.no_resolved_host_names += 1
+            if mapping.host_name._in_scope:
+                self.no_resolved_in_scope_host_names += 1
 
 
 class ReportClass(BaseReport):
@@ -90,6 +120,10 @@ class ReportClass(BaseReport):
         parser.add_argument('-I', '--include', metavar='COLLECTOR', type=str, nargs='+', default=[],
                             help='list of collector names whose outputs should be returned in text mode (see '
                                  'argument --text). per default, all collector information is returned')
+        parser.add_argument('-p', '--protocol', nargs='+',
+                            choices=[item.name for item in ProtocolType],
+                            default=[item.name for item in ProtocolType],
+                            help="create the service statistics for the following ISO/OSI layer 4 protocols")
 
     def _filter(self, host: Host) -> bool:
         """
@@ -188,12 +222,19 @@ class ReportClass(BaseReport):
                  "In Scope (Company)",
                  "Sources (NW)",
                  "Sources (Host)",
-                 "No. Open Services",
-                 "No. Open In-Scope Services",
-                 "No. Closed Services",
-                 "No. Resolved Host Names",
-                 "No. Resolved In-Scope Host Names",
-                 "No. Commands",
+                 "Open Services",
+                 "Open In-Scope Services",
+                 "Open Web Services",
+                 "Open In-Scope Web Services",
+                 "Closed Services",
+                 "Closed In-Scope Services",
+                 "Closed Web Services",
+                 "Closed In-Scope Web Services",
+                 "Resolved Host Names",
+                 "Resolved In-Scope Host Names",
+                 "Resolved Out-of-Scope Host Names",
+                 "Commands",
+                 "Time Added",
                  "DB ID (NW)",
                  "DB ID (Host)"]]
         for workspace in self._workspaces:
@@ -217,47 +258,35 @@ class ReportClass(BaseReport):
                     network_sources_str = None
                     network_companies_str = None
                     any_company_in_scope = False
-                # Calculate statistics
-
-                no_open_services = 0
-                no_open_in_scope_services = 0
-                no_closed_services = 0
-                no_resolved_host_names = 0
-                no_resolved_in_scope_host_names = 0
                 if self._filter(host):
-                    # Obtain statistics about services
-                    for service in host.services:
-                        if service.state == ServiceState.Open:
-                            no_open_services += 1
-                            if service.host.in_scope:
-                                no_open_in_scope_services += 1
-                        else:
-                            no_closed_services += 1
-                    # Obtain statistics about host names that resolve to IPs within the network
-                    host_host_mappings = host.get_host_host_name_mappings([DnsResourceRecordType.a,
-                                                                           DnsResourceRecordType.aaaa])
-                    for mapping in host_host_mappings:
-                        no_resolved_host_names += 1
-                        if mapping.host_name._in_scope:
-                            no_resolved_in_scope_host_names += 1
-                    rows.append([workspace.name,                    # Workspace
-                                 network,                           # Network (NW)
-                                 network_version,                   # IP Version
-                                 network_prefixlen,                 # Netmask
-                                 host.address,                      # IP Address
-                                 host.ip_address.is_private,        # Private IP
-                                 network_companies_str,             # Companies
-                                 network_scope_str,                 # Scope (NW)
-                                 host.in_scope,                     # In Scope (Host)
-                                 any_company_in_scope,              # In Scope (Company)
-                                 network_sources_str,               # Sources (NW)
-                                 host.sources_str,                  # Sources (Host)
-                                 no_open_services,                  # No. Open Services
-                                 no_open_in_scope_services,         # No. Open In-Scope Services
-                                 no_closed_services,                # No. Closed Services
-                                 no_resolved_host_names,            # No. Resolved Host Names
-                                 no_resolved_in_scope_host_names,   # No. Resolved In-Scope Host Names
-                                 len(host.get_completed_commands()), # No. Commands
-                                 network_id,                        # DB ID (NW)
-                                 host.id])                          # DB ID (Host)
+                    # Calculate statistics
+                    stats = HostStatistics(self._protocols)
+                    stats.compute(host)
+                    rows.append([workspace.name,                                # Workspace
+                                 network,                                       # Network (NW)
+                                 network_version,                               # IP Version
+                                 network_prefixlen,                             # Netmask
+                                 host.address,                                  # IP Address (Host)
+                                 host.ip_address.is_private,                    # Private IP
+                                 network_companies_str,                         # Companies
+                                 network_scope_str,                             # Scope (NW)
+                                 host.in_scope,                                 # In Scope (Host)
+                                 any_company_in_scope,                          # In Scope (Company)
+                                 network_sources_str,                           # Sources (NW)
+                                 host.sources_str,                              # Sources (Host)
+                                 stats.service_stats.no_open_services,          # Open Services
+                                 stats.service_stats.no_open_in_scope_services,  # Open In-Scope Services
+                                 stats.service_stats.no_open_web_services,      # Open Web Services,
+                                 stats.service_stats.no_open_in_scope_web_services, # Open In-Scope Web Services,
+                                 stats.service_stats.no_closed_services,        # Closed Services
+                                 stats.service_stats.no_closed_in_scope_services,  # Closed In-Scope Services
+                                 stats.service_stats.no_closed_web_services,    # Closed Web Services
+                                 stats.service_stats.no_closed_in_scope_web_services, # Closed In-Scope Web Services
+                                 stats.no_resolved_host_names,                  # Resolved Host Names
+                                 stats.no_resolved_in_scope_host_names,         # Resolved In-Scope Host Names
+                                 stats.no_resolved_out_of_scope_host_names,     # Resolved Out-of-Scope Host Names
+                                 stats.no_commands,                             # Commands
+                                 host.creation_date,                            # Time Added
+                                 network_id,                                    # DB ID (NW)
+                                 host.id])                                      # DB ID (Host)
         return rows

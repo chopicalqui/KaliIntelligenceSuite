@@ -18,8 +18,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
-__db_version__ = "0.3.0"
-__kis_version__ = "0.3.0"
+__db_version__ = "0.4.0"
+__kis_version__ = "0.4.0"
 
 import sys
 import grp
@@ -201,19 +201,20 @@ class Engine:
                 .filter(Command.status.in_([CommandStatus.pending, CommandStatus.collecting])).scalar_subquery()
             session.query(Command).filter(Command.id.in_(command_ids)).delete(synchronize_session='fetch')
 
-    def _patch_database(self, version: Version):
+    def _patch_database(self, versions: list):
         """
         This method reads the patch file of the given version and applies it to the database.
         """
-        patch_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "patches", "{}.sql".format(version))
-        if not os.path.isfile(patch_file):
-            raise FileExistsError("database patch file for database model version {} not found. Refer to the "
-                                  "following web page for additional information:"
-                                  "https://github.com/chopicalqui/KaliIntelligenceSuite/wiki/Updating-the-KIS-database".format(version))
-        print("applying patch: {}".format(patch_file))
-        with open(patch_file, "r") as file:
-            content = file.read()
-        self._engine.execute(sqlalchemy.text(content).execution_options(autocommit=True))
+        for version in versions:
+            patch_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "patches", "{}.sql".format(version))
+            if not os.path.isfile(patch_file):
+                raise FileExistsError("database patch file for database model version {} not found. Refer to the "
+                                      "following web page for additional information:"
+                                      "https://github.com/chopicalqui/KaliIntelligenceSuite/wiki/Updating-the-KIS-database".format(version))
+            print("applying patch: {}".format(patch_file))
+            with open(patch_file, "r") as file:
+                content = file.read()
+            self._engine.execute(sqlalchemy.text(content).execution_options(autocommit=True))
 
     def patch_database(self, ask_user: bool = True, test_deployed_version: bool = None) -> bool:
         """
@@ -223,6 +224,8 @@ class Engine:
         :param test_deployed_version: This parameter is used by unittest to specify an arbitrary database version.
         :return: True if patch was successfully applied.
         """
+        versions = ["0.3.0", "0.4.0"]
+        versions = [Version(item) for item in versions]
         result = False
         current_kis_version = self.get_current_kis_database_model_version()
         database_version = self.get_deployed_database_model_version()\
@@ -240,9 +243,10 @@ class Engine:
             else:
                 user_input = "yes"
             if user_input == "yes":
-                if str(current_kis_version) == "v0.3.0":
+                try:
+                    index = versions.index(current_kis_version)
                     try:
-                        self._patch_database(current_kis_version)
+                        self._patch_database(versions[index:])
                         result = True
                         print("patch successfully applied.")
                         print()
@@ -250,6 +254,10 @@ class Engine:
                         print("applying the patch failed.", file=sys.stderr)
                         print(file=sys.stderr)
                         result = False
+                except ValueError:
+                    print("version '{}' not found in patch list".format(current_kis_version), file=sys.stderr)
+                    print(file=sys.stderr)
+                    result = False
             else:
                 print("database patch has not been applied.", file=sys.stderr)
                 print(file=sys.stderr)
@@ -460,7 +468,7 @@ class Engine:
                     UPDATE host_name
                         SET in_scope = True
                         WHERE domain_name_id = NEW.id;
-                ELSIF (COALESCE(NEW.scope, 'exclude') = 'exclude') THEN
+                ELSIF (COALESCE(NEW.scope, 'exclude') = 'exclude' OR COALESCE(NEW.scope, 'exclude') = 'ignore') THEN
                     UPDATE host_name
                         SET in_scope = False
                         WHERE domain_name_id = NEW.id;
@@ -492,7 +500,7 @@ class Engine:
                         INNER JOIN host h ON h.id = m.host_id AND
                                              COALESCE(h.in_scope, False)))) THEN
                  NEW.in_scope := True;
-            ELSIF (domain_scope = 'exclude') THEN
+            ELSIF (COALESCE(domain_scope, 'exclude') = 'exclude' OR COALESCE(domain_scope, 'exclude') = 'ignore') THEN
                 NEW.in_scope := False;
             END IF;
             RETURN NEW;
@@ -588,6 +596,7 @@ class Engine:
                               n.scope IS NOT NULL AND
                               n.scope <> 'strict' AND -- inserting strict and exclude as parent networks is valid
                               n.scope <> 'exclude' AND
+                              n.scope <> 'ignore' AND
                               n.scope <> NEW.scope
                         LIMIT 1;
                     IF network IS NOT NULL THEN

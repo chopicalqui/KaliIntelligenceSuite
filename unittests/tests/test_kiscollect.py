@@ -94,7 +94,7 @@ class TestCollectorProducerInitialization(BaseKisTestCase):
                                   "--debug",
                                   "--strict",
                                   "--analyze",
-                                  "--filter", "127.0.0.1", "+127.0.0.2",
+                                  "--filter", "127.0.0.1",
                                   "--threads", "10",
                                   "-D", "5",
                                   "-M", "10",
@@ -107,7 +107,6 @@ class TestCollectorProducerInitialization(BaseKisTestCase):
         self.assertEqual(10, producer._number_of_threads)
         self.assertEqual(workspace, producer._workspace)
         self.assertEqual(VhostChoice.domain, producer._vhost)
-        self.assertListEqual(["127.0.0.2"], producer._included_items)
         self.assertListEqual(["127.0.0.1"], producer._excluded_items)
         self.assertListEqual([CommandStatus.failed, CommandStatus.terminated], producer._restart_statuses)
         self.assertTrue(producer._strict_open)
@@ -429,7 +428,7 @@ class TestCollectorInitialization(BaseKisTestCase):
                                       "-C", combo_file,
                                       "--proxychains",
                                       "--analyze",
-                                      "--filter", "127.0.0.1", "+127.0.0.2",
+                                      "--filter", "+127.0.0.2",
                                       "--tld",
                                       "-L", wordlist_file,
                                       "-S"])
@@ -461,7 +460,6 @@ class TestCollectorInitialization(BaseKisTestCase):
             self.assertTrue(producer._selected_collectors[0].instance._proxychains)
             self.assertTrue(producer._selected_collectors[0].instance._analyze)
             self.assertListEqual(["127.0.0.2"], producer._selected_collectors[0].instance._whitelist_filter)
-            self.assertListEqual(["127.0.0.1"], producer._selected_collectors[0].instance._blacklist_filter)
             self.assertTrue(producer._selected_collectors[0].instance._scan_tld)
             self.assertListEqual([wordlist_file], producer._selected_collectors[0].instance._wordlist_files)
             self.assertTrue(producer._selected_collectors[0].instance._print_commands)

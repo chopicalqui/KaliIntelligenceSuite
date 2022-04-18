@@ -68,7 +68,7 @@ if __name__ == "__main__":
 
 use cases can be obtained from the following wiki page:
 
-https://github.com/chopicalqui/KaliIntelligenceSuite/wiki/KIS-Use-Cases#kiscollect
+https://github.com/chopicalqui/KaliIntelligenceSuite/wiki/kiscollect-Use-Cases
 '''
         parser = CollectorProducer.get_argument_parser(description=__doc__, epilog=epilog)
         collector_group = CollectorProducer.add_collector_argument_group(parser)

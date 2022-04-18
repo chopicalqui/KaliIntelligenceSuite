@@ -26,6 +26,7 @@ import argparse
 from typing import List
 from openpyxl import Workbook
 from database.model import HostName
+from database.model import ProtocolType
 from database.model import ServiceState
 from database.model import CollectorType
 from database.model import ReportScopeType
@@ -34,6 +35,53 @@ from database.model import TextReportDetails
 from database.model import DnsResourceRecordType
 from database.report.core import BaseReport
 from database.report.core import ReportLanguage
+from database.report.core import ServiceStatistics
+
+
+class HostNameStatistics:
+    """
+    This class maintains all statistics for a host name
+    """
+
+    def __init__(self, protocols: list):
+        self.service_stats = ServiceStatistics(protocols)
+        self._protocols = protocols
+        self.domain_sources = None
+        self.no_sub_domains = 0
+        self.no_in_scope_sub_domains = 0
+        self.no_resolved_ips = 0
+        self.no_resolved_in_scope_ips = 0
+        self.no_resolved_private_ips = 0
+        self.no_commands = 0
+
+    @property
+    def no_out_of_scope_sub_domains(self):
+        return self.no_sub_domains - self.no_in_scope_sub_domains
+
+    @property
+    def no_resolved_out_of_scope_ips(self):
+        return self.no_resolved_ips - self.no_resolved_in_scope_ips
+
+    def compute(self, host_name: HostName):
+        """
+        Compute statistics for the given host name
+        """
+        # Obtain statistics about subdomains
+        self.no_commands += len(host_name.get_completed_commands())
+        if host_name.name is None:
+            self.domain_sources = host_name.sources_str
+        if host_name._in_scope:
+            self.no_in_scope_sub_domains += 1
+        # Obtain statistics about hosts
+        for mapping in host_name.get_host_host_name_mappings([DnsResourceRecordType.a,
+                                                              DnsResourceRecordType.aaaa]):
+            self.no_resolved_ips += 1
+            if mapping.host.ip_address.is_private:
+                self.no_resolved_private_ips += 1
+            if mapping.host.in_scope:
+                self.no_resolved_in_scope_ips += 1
+            # Obtain statistics about networks
+            self.service_stats.compute(mapping.host)
 
 
 class ReportClass(BaseReport):
@@ -99,6 +147,10 @@ class ReportClass(BaseReport):
         parser_domain.add_argument('-I', '--include', metavar='COLLECTOR', type=str, nargs='+', default=[],
                                    help='list of collector names whose outputs should be returned in text mode (see '
                                         'argument --text). per default, all collector information is returned')
+        parser_domain.add_argument('-p', '--protocol', nargs='+',
+                                   choices=[item.name for item in ProtocolType],
+                                   default=[item.name for item in ProtocolType],
+                                   help="create the service statistics for the following ISO/OSI layer 4 protocols")
 
     def _filter(self, host_name: HostName) -> bool:
         """
@@ -192,13 +244,20 @@ class ReportClass(BaseReport):
                  "Subdomain Only (HN)",
                  "Environment (HN)",
                  "Sources (HN)",
-                 "No. Resolved IPs",
-                 "No. Resolved Private IPs",
-                 "No. Resolved In-Scope IPs",
-                 "No. Open Services",
-                 "No. Open In-Scope Services",
-                 "No. Closed Services",
-                 "No. Commands",
+                 "Open Services",
+                 "Open In-Scope Services",
+                 "Open Web Services",
+                 "Open In-Scope Web Services",
+                 "Closed Services",
+                 "Closed In-Scope Services",
+                 "Closed Web Services",
+                 "Closed In-Scope Web Services",
+                 "Resolved IPs",
+                 "Resolved In-Scope IPs",
+                 "Resolved Out-of-Scope IPs",
+                 "Resolved Private IPs",
+                 "Commands",
+                 "Time Added",
                  "DB ID (SLD)",
                  "DB ID (HN)"]]
         for workspace in self._workspaces:
@@ -207,14 +266,15 @@ class ReportClass(BaseReport):
                 any_company_in_scope = any([item.in_scope for item in domain.companies])
                 domain_scope = domain.scope_str
                 companies = domain.companies_str
-                no_resolved_ips = 0
-                no_resolved_private_ips = 0
-                no_resolved_in_scope_ips = 0
-                no_open_services = 0
-                no_open_in_scope_services = 0
-                no_closed_services = 0
                 # Obtain statistics about subdomains
                 for host_name in domain.host_names:
+                    stats = HostNameStatistics(self._protocols)
+                    no_resolved_ips = 0
+                    no_resolved_private_ips = 0
+                    no_resolved_in_scope_ips = 0
+                    no_open_services = 0
+                    no_open_in_scope_services = 0
+                    no_closed_services = 0
                     if self._filter(host_name):
                         sources = host_name.sources_str
                         environment = self._domain_config.get_environment(host_name)
@@ -234,26 +294,33 @@ class ReportClass(BaseReport):
                                         no_open_in_scope_services += 1
                                 else:
                                     no_closed_services += 1
-                        rows.append([workspace.name,            # Workspace
-                                     domain.name,               # Second-Level Domain (SLD)
-                                     host_name.full_name,       # Host Name (HN)
-                                     companies,                 # Companies (SLD)
-                                     domain_scope,              # Scope (SLD)
-                                     host_name._in_scope,       # In Scope (HN)
+                        rows.append([workspace.name,                                    # Workspace
+                                     domain.name,                                       # Second-Level Domain (SLD)
+                                     host_name.full_name,                               # Host Name (HN)
+                                     companies,                                         # Companies (SLD)
+                                     domain_scope,                                      # Scope (SLD)
+                                     host_name._in_scope,                               # In Scope (HN)
                                      host_name.in_scope(CollectorType.vhost_service),   # In Scope (Vhost)
-                                     any_company_in_scope,      # In Scope (Company)
-                                     host_name.name,            # Subdomain Only (HN)
-                                     environment,               # Environment (HN)
-                                     sources,                   # Sources (HN)
-                                     no_resolved_ips,           # No. Resolved IPs
-                                     no_resolved_private_ips,   # No. Resolved Private IPs
-                                     no_resolved_in_scope_ips,  # No. Resolved In-Scope IPs
-                                     no_open_services,          # No. Open Services
-                                     no_open_in_scope_services, # No. Open In-Scope Services
-                                     no_closed_services,        # No. Closed Services
-                                     len(host_name.get_completed_commands()),   # No. Commands
-                                     domain.id,                 # DB ID (SLD)
-                                     host_name.id])             # DB ID (HN)
+                                     any_company_in_scope,                              # In Scope (Company)
+                                     host_name.name,                                    # Subdomain Only (HN)
+                                     environment,                                       # Environment (HN)
+                                     sources,                                           # Sources (HN)
+                                     stats.service_stats.no_open_services,              # Open Services
+                                     stats.service_stats.no_open_in_scope_services,     # Open In-Scope Services
+                                     stats.service_stats.no_open_web_services,          # Open Web Services
+                                     stats.service_stats.no_open_in_scope_web_services,  # Open In-Scope Web Services
+                                     stats.service_stats.no_closed_services,            # Closed Services
+                                     stats.service_stats.no_closed_in_scope_services,   # Closed In-Scope Services
+                                     stats.service_stats.no_closed_web_services,        # Closed Web Services
+                                     stats.service_stats.no_closed_in_scope_web_services,  # Closed In-Scope Web Services
+                                     stats.no_resolved_ips,                             # Resolved IPs
+                                     stats.no_resolved_in_scope_ips,                    # Resolved In-Scope IPs
+                                     stats.no_resolved_out_of_scope_ips,                # Resolved Out-of-Scope IPs
+                                     stats.no_resolved_private_ips,                     # Resolved Private IPs
+                                     stats.no_commands,                                 # Commands
+                                     host_name.creation_date,                           # Time Added
+                                     domain.id,                                         # DB ID (SLD)
+                                     host_name.id])                                     # DB ID (HN)
         return rows
 
     def final_report(self, workbook: Workbook):

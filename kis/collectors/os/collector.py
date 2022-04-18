@@ -1123,13 +1123,15 @@ class CollectorConsumer(Thread):
                         os_command = command.os_command_substituted
                         os_command_str = command.os_command_string
                         self._current_username = username
+                        execute_command = self._producer_thread.current_collector.\
+                            instance.start_command_execution(session, command)
                         if self._producer_thread.print_commands:
-                            print(os_command_str)
-                        elif not self._producer_thread.current_collector.instance.start_command_execution(session,
-                                                                                                          command):
+                            if execute_command:
+                                print(os_command_str)
+                        elif not execute_command:
                             # Before we execute the command, we check whether it should be executed
                             os_command = None
-                            command.status = CommandStatus.terminated
+                            command.status = CommandStatus.skipped
                             command.stop_time = datetime.utcnow()
                             executed_command = False
                         else:

@@ -504,7 +504,7 @@ if __name__ == "__main__":
 
 use cases can be obtained from the following wiki page:
 
-https://github.com/chopicalqui/KaliIntelligenceSuite/wiki/KIS-Use-Cases#kismanage
+https://github.com/chopicalqui/KaliIntelligenceSuite/wiki/kismanage-Use-Cases
 '''
     parser = KisImportArgumentParser(description=__doc__, formatter_class=SortingHelpFormatter, epilog=epilog)
     parser.add_argument("--debug",

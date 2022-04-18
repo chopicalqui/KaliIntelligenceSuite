@@ -22,9 +22,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 __version__ = 0.1
 
-import tempfile
 import os
 import re
+import requests
+import tempfile
 from unittests.tests.core import BaseKisTestCase
 from database.model import Workspace
 from database.model import Host
@@ -881,39 +882,43 @@ class TestCreatingAllCommands(BaseKisTestCase):
     def __init__(self, test_name: str):
         super().__init__(test_name)
         self._dirb_common_wordlist = "/usr/share/dirb/wordlists/common.txt"
-        self._readme_path = os.path.join(os.path.dirname(__file__), "..", "..", "README.md")
         self._re_entry = re.compile("^\|\s*(?P<priority>[0-9]+)\s*\|\s*(?P<collector_name>[a-zA-Z0-9]+)\s*"
                                     "\|\s*(?P<level>[a-zA-Z0-9, ]+)\s*\|\s*(?P<type>[a-zA-Z0-9*]+)\s*\|"
                                     "\s*(?P<ip_version>[a-zA-Z0-9, -]+)\s*\|\s*(?P<timeout>.+)\s*\|"
                                     "\s*(?P<username>.+)\s*\|.*$")
         self._collector_info = {}
-        with open(self._readme_path, "r") as file:
-            for line in file.readlines():
-                line = line.strip()
-                match = self._re_entry.match(line)
-                if match:
+        # Obtain list of collectors
+        r = requests.get("https://raw.githubusercontent.com/wiki/chopicalqui/KaliIntelligenceSuite/KIS-Collectors.md")
+        r.raise_for_status()
+        self._readme_content = r.content.decode().split(os.linesep)
+        for line in self._readme_content:
+            line = line.strip()
+            match = self._re_entry.match(line)
+            if match:
+                priority = match.group("priority").strip()
+                if priority != "-":
+                    collector_name = match.group("collector_name").strip()
                     priority = match.group("priority").strip()
-                    if priority != "-":
-                        collector_name = match.group("collector_name").strip()
-                        priority = match.group("priority").strip()
-                        priority = int(priority) if priority.isnumeric() else None
-                        level = match.group("level").strip().split(", ")
-                        ip_version = match.group("ip_version").strip().split(", ")
-                        timeout = match.group("timeout").strip()
-                        timeout = int(timeout) if timeout.isnumeric() else 0
-                        username = match.group("username").strip()
-                        self._collector_info[collector_name] = {"priority": priority,
-                                                                "levels": level,
-                                                                "ipversions": ip_version,
-                                                                "username": username,
-                                                                "timeout": timeout,
-                                                                "arguments": True}
-                        if collector_name in ["tcpmasscannetwork",
-                                              "tcpnmapdomain",
-                                              "tcpnmapnetwork",
-                                              "udpnmapdomain",
-                                              "udpnmapnetwork"]:
-                            self._collector_info[collector_name]["arguments"] = ["interesting"]
+                    priority = int(priority) if priority.isnumeric() else None
+                    level = match.group("level").strip().split(", ")
+                    ip_version = match.group("ip_version").strip().split(", ")
+                    timeout = match.group("timeout").strip()
+                    timeout = int(timeout) if timeout.isnumeric() else 0
+                    username = match.group("username").strip()
+                    self._collector_info[collector_name] = {"priority": priority,
+                                                            "levels": level,
+                                                            "ipversions": ip_version,
+                                                            "username": username,
+                                                            "timeout": timeout,
+                                                            "arguments": True}
+                    if collector_name in ["tcpmasscannetwork",
+                                          "tcpnmapdomain",
+                                          "tcpnmapnetwork",
+                                          "udpnmapdomain",
+                                          "udpnmapnetwork"]:
+                        self._collector_info[collector_name]["arguments"] = ["interesting"]
+        if len(self._collector_info) == 0:
+            raise ValueError("could not parse collector list")
 
     def _add_service(self, session: Session, host: Host, host_name: HostName, port: int):
         service = self._domain_utils.add_service(session=session,

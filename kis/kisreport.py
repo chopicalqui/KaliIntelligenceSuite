@@ -40,7 +40,7 @@ if __name__ == "__main__":
 
 use cases can be obtained from the following wiki page:
 
-https://github.com/chopicalqui/KaliIntelligenceSuite/wiki/KIS-Use-Cases#kisreport
+https://github.com/chopicalqui/KaliIntelligenceSuite/wiki/kisreport-Use-Cases
 '''
     parser = ReportGenerator.get_report_argument_parser(epilog=epilog)
     sub_parser = ReportGenerator.add_sub_argument_parsers(parser)

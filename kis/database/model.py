@@ -298,6 +298,7 @@ class CommandStatus(enum.Enum):
     failed = 210
     not_found = 230
     completed = 1000
+    skipped = 120
 
 
 class CredentialType(enum.Enum):
@@ -466,6 +467,9 @@ class ScopeType(enum.Enum):
     exclude = enum.auto()
     # puts domain/network in scope if counterpart is in scope too
     vhost = enum.auto()
+    # like exclude but an additional label to state that this domain can be ignored (e.g., after a review).
+    ignore = enum.auto()
+# sudo -u postgres psql kis -c "alter type public.scopetype add value 'ignore';"
 
 
 class IpSupport(enum.Enum):
@@ -854,6 +858,10 @@ class Host(DeclarativeBase):
     def version_str(self) -> str:
         return "IPv{}".format(self.version)
 
+    @property
+    def ignore(self) -> bool:
+        return self.ipv4_network and self.ipv4_network.scope == ScopeType.ignore
+
     def supports_version(self, support: IpSupport) -> bool:
         version = self.version
         return version and (support == IpSupport.all or (
@@ -1003,7 +1011,7 @@ class Host(DeclarativeBase):
         """
         if active_collector is not None and scope:
             raise ValueError("in scope and active collector parameters are mutual exclusive")
-        rvalue = self.address not in excluded_items and \
+        rvalue = not self.ignore and self.address not in excluded_items and \
                  (self.ipv4_network is None or self.ipv4_network.network not in excluded_items) and \
                  (not include_host_names or not self.has_host_name(excluded_items)) and \
                  (not include_host_names or not self.has_domain_name(excluded_items)) and \
@@ -1177,6 +1185,10 @@ class Network(DeclarativeBase):
                 support == IpSupport.ipv4 and version == 4) or (support == IpSupport.ipv6 and version == 6))
 
     @property
+    def ignore(self) -> bool:
+        return self.scope == ScopeType.ignore
+
+    @property
     def ipv4_network(self) -> str:
         result = None
         network = self.ip_network
@@ -1239,7 +1251,7 @@ class Network(DeclarativeBase):
         """
         if active_collector is not None and scope:
             raise ValueError("scope and active collector parameters are mutual exclusive")
-        rvalue = self.network not in excluded_items and \
+        rvalue = not self.ignore and self.network not in excluded_items and \
                  (not included_items or self.network in included_items) and \
                  (scope is None or (scope == ReportScopeType.within and self.in_scope) or (
                          scope == ReportScopeType.outside and not self.in_scope)) and \
@@ -1383,6 +1395,10 @@ class HostName(DeclarativeBase):
                 result += resolved_to.resolved_host_name.canonical_name_records
         return result
 
+    @property
+    def ignore(self) -> bool:
+        return self.domain_name.scope == ScopeType.ignore
+
     def get_host_host_name_mappings(self, types: List[DnsResourceRecordType] = []) -> list:
         """
         Returns list of host names based on the given types. If types are empty, then all mappings are returned
@@ -1485,7 +1501,7 @@ class HostName(DeclarativeBase):
             raise ValueError("scope and active collector parameters are mutual exclusive")
         is_domain_name_none = self.domain_name is None
         is_in_scope = self.in_scope(collector_type) or self.in_scope_ipv6(collector_type)
-        rvalue = self.full_name not in excluded_items and \
+        rvalue = not self.ignore and self.full_name not in excluded_items and \
                  (is_domain_name_none or self.domain_name.name not in excluded_items) and \
                  (not include_ip_address or not self.has_ip_address(excluded_items)) and \
                  (not included_items or (self.full_name in included_items or
@@ -1804,6 +1820,10 @@ class DomainName(DeclarativeBase):
             result = ", ".join(["{} (in scope: {})".format(item.name, item.in_scope) for item in self.companies])
         return result
 
+    @property
+    def ignore(self) -> bool:
+        return self.scope == ScopeType.ignore
+
     def has_hosts(self):
         """Returns true if the domain name is assigned to at least one host"""
         rvalue = False
@@ -1840,7 +1860,7 @@ class DomainName(DeclarativeBase):
         """
         if active_collector is not None and scope:
             raise ValueError("scope and active collector parameters are mutual exclusive")
-        rvalue = self.name not in excluded_items and \
+        rvalue = not self.ignore and self.name not in excluded_items and \
                  (not include_ip_address or not self.has_ip_address(excluded_items)) and \
                  (not included_items or (self.name in included_items or
                                          (include_ip_address and self.has_ip_address(included_items)))) and \
@@ -1941,6 +1961,10 @@ class Email(DeclarativeBase):
         return self.host_name.full_name if self.host_name and self.host_name.full_name else None
 
     @property
+    def ignore(self):
+        return self.host_name.ignore if self.host_name else False
+
+    @property
     def in_scope(self) -> bool:
         return self.host_name is not None and \
                self.host_name.domain_name is not None and \
@@ -1976,7 +2000,7 @@ class Email(DeclarativeBase):
             raise ValueError("scope and active collector parameters are mutual exclusive")
         is_host_name_none = self.host_name is None
         is_domain_name_none = self.host_name is not None and self.host_name.domain_name is None
-        rvalue = self.email_address not in excluded_items and \
+        rvalue = not self.ignore and self.email_address not in excluded_items and \
                  (is_host_name_none or self.host_name.full_name not in excluded_items) and \
                  (is_host_name_none or is_domain_name_none or self.host_name.domain_name.name not in excluded_items) and \
                  (not included_items or (self.email_address in included_items or \

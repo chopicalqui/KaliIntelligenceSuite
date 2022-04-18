@@ -46,7 +46,7 @@ class CollectorClass(BaseKisImportHost, HostCollector):
     """This class implements a collector module that is automatically incorporated into the application."""
 
     def __init__(self, **kwargs):
-        super().__init__(priority=520,
+        super().__init__(priority=521,
                          timeout=0,
                          argument_name="--shodan-host",
                          ip_support=IpSupport.all,

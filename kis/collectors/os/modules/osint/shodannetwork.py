@@ -30,6 +30,8 @@ from collectors.os.core import PopenCommand
 from collectors.core import JsonUtils
 from database.model import Command
 from database.model import Source
+from database.model import Network
+from database.model import ScopeType
 from database.model import IpSupport
 from view.core import ReportItem
 from sqlalchemy.orm.session import Session
@@ -41,7 +43,7 @@ class CollectorClass(BaseKisImportNetwork):
     """This class implements a collector module that is automatically incorporated into the application."""
 
     def __init__(self, **kwargs):
-        super().__init__(priority=521,
+        super().__init__(priority=520,
                          timeout=0,
                          argument_name="--shodan-network",
                          ip_support=IpSupport.all,
@@ -61,6 +63,36 @@ class CollectorClass(BaseKisImportNetwork):
         :return: Return true if API credentials are set, else false
         """
         return self._api_config.config.get("shodan", "api_key")
+
+    def start_command_execution(self, session: Session, command: Command) -> bool:
+        """
+        This method allows the consumer threat to check whether the command should be executed. If this method returns
+        false, then the command execution is not started. This is useful when another command of the same collector
+        already identified the interesting information.
+
+        :param session: Sqlalchemy session that manages persistence operations for ORM-mapped objects
+        :param command: The command instance to be executed
+        :return: True, if the command should be executed, False if not.
+        """
+        # We only execute, if there is no larger in-scope network.
+        if self._whitelist_network_filter:
+            filter = [str(item) for item in self._whitelist_network_filter]
+            count = session.query(Network) \
+                .filter(Network.scope == ScopeType.all) \
+                .filter(Network.network.in_(filter)) \
+                .filter(Network.network.op(">>")(command.ipv4_network.network)).count()
+        elif self._blacklist_network_filter:
+            count = 0
+            network = command.ipv4_network.ip_network
+            for item in self._blacklist_network_filter:
+                if network.version == item.version and command.ipv4_network.ip_network.subnet_of(item):
+                    count = 1
+                    break
+        else:
+            count = session.query(Network) \
+                .filter(Network.scope == ScopeType.all) \
+                .filter(Network.network.op(">>")(command.ipv4_network.network)).count()
+        return count == 0
 
     def verify_results(self,
                        session: Session,

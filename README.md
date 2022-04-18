@@ -90,7 +90,7 @@ docker exec -it kaliintelsuite kismanage -h
 ```
 
 In addition, refer to the wiki page
-[KIS Use Cases](https://github.com/chopicalqui/KaliIntelligenceSuite/wiki/KIS-Use-Cases#kismanage) for some practical
+[KIS Use Cases](https://github.com/chopicalqui/KaliIntelligenceSuite/wiki/kismanage-Use-Cases) for some practical
 examples on how to use `kismanage`.
 
 
@@ -105,7 +105,7 @@ docker exec -it kaliintelsuite kiscollect -h
 ```
 
 In addition, refer to the wiki page
-[KIS Use Cases](https://github.com/chopicalqui/KaliIntelligenceSuite/wiki/KIS-Use-Cases#kismanage) for some practical
+[KIS Use Cases](https://github.com/chopicalqui/KaliIntelligenceSuite/wiki/kiscollect-Use-Cases) for some practical
 examples on how to use `kiscollect`.
 
 ### kisreport
@@ -124,7 +124,7 @@ docker exec -it kaliintelsuite kisreport -h
 ```
 
 In addition, refer to the wiki page
-[KIS Use Cases](https://github.com/chopicalqui/KaliIntelligenceSuite/wiki/KIS-Use-Cases#kisreport) for some practical
+[KIS Use Cases](https://github.com/chopicalqui/KaliIntelligenceSuite/wiki/kisreport-Use-Cases) for some practical
 examples on how to use `kisreport`.
 
 ## Author

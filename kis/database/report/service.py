@@ -303,6 +303,7 @@ class ReportClass(BaseReport):
                    "Product Summary",
                    "Sources (Host)",
                    "Sources (SRV)",
+                   "Time Added",
                    "No. Commands (SRV)",
                    "No. Vulnerabilities (SRV)",
                    "DB ID (Host)",
@@ -347,6 +348,7 @@ class ReportClass(BaseReport):
                                            service.nmap_product_version,  # Product Summary
                                            host_sources,  # Sources (Host)
                                            service.sources_str,  # Sources (SRV)
+                                           service.creation_date,  # Time Added
                                            len(service.get_completed_commands()),  # No. Commands (SRV)
                                            len(service.vulnerabilities),  # No. Vulnerabilities (SRV)
                                            host.id,  # DB ID (HN)
@@ -375,6 +377,7 @@ class ReportClass(BaseReport):
                                        None,  # Product Summary
                                        host_sources,  # Sources (Host)
                                        None,  # Sources (SRV)
+                                       None,  # Time Added
                                        None,  # No. Commands (SRV)
                                        None,  # No. Vulnerabilities (SRV)
                                        host.id,  # DB ID (HN)
@@ -408,6 +411,7 @@ class ReportClass(BaseReport):
                    "Product Summary",
                    "Sources (HN)",
                    "Sources (SRV)",
+                   "Time Added",
                    "No. Commands (SRV)",
                    "No. Vulnerabilities (SRV)",
                    "DB ID (SLD)",
@@ -451,6 +455,7 @@ class ReportClass(BaseReport):
                                                service.nmap_product_version,  # Product Summary
                                                host_name_sources,  # Sources (HN)
                                                service.sources_str,  # Sources (SRV)
+                                               service.creation_date,  # Time Added
                                                len(service.get_completed_commands()),  # No. Commands (SRV)
                                                len(service.vulnerabilities),  # No. Vulnerabilities (SRV)
                                                domain.id,  # DB ID (SLD)
@@ -483,6 +488,7 @@ class ReportClass(BaseReport):
                                            None,  # Product Summary
                                            host_name_sources,  # Sources (HN)
                                            None,  # Sources (SRV)
+                                           None,  # Time Added
                                            None,  # No. Commands (SRV)
                                            None,  # No. Vulnerabilities (SRV)
                                            domain.id,  # DB ID (SLD)
@@ -531,6 +537,7 @@ class ReportClass(BaseReport):
                    "Source (Host)",
                    "Source (HN)",
                    "Source (SRV)",
+                   "Time Added",
                    "No. Commands",
                    "No. Vulnerabilities"]]
         workspaces = [item.name for item in self._workspaces]
@@ -571,8 +578,7 @@ class ReportClass(BaseReport):
                 host_sources = host.sources_str
                 if service_host.state in self._service_state_filter:
                     is_http = descriptor.match_nmap_service_name(service_host)
-                    url_str = [path.get_urlparse().geturl() for path in service_host.paths if path.name == "/"] \
-                        if is_http else []
+                    url_str = service_host.get_urlparse().geturl() if is_http else None
                     # Print host service information
                     result.append([host.workspace.name,  # Workspace
                                    "host",  # Type
@@ -604,7 +610,7 @@ class ReportClass(BaseReport):
                                    service_host.nmap_product_version,  # Banner Information
                                    service_host.tls,  # TLS
                                    is_http,  # Is HTTP
-                                   url_str[0] if url_str else None,  # URL
+                                   url_str,  # URL
                                    network_id,  # DB ID (NW)
                                    host.id,  # DB ID (Host)
                                    None,  # DB ID (HN)
@@ -613,6 +619,7 @@ class ReportClass(BaseReport):
                                    host_sources,  # Source (Host)
                                    None,  # Source (HN)
                                    service_host.sources_str,  # Source (SRV)
+                                   service_host.creation_date,  # Time Added
                                    len(service_host.get_completed_commands()),  # No. Commands
                                    len(service_host.vulnerabilities)])  # No. Vulnerabilities
                 # Print corresponding host name service
@@ -626,8 +633,7 @@ class ReportClass(BaseReport):
                     hosts_str = ", ".join([item.address for item in hosts])
                     host_name_sources = host_name.sources_str
                     is_http = descriptor.match_nmap_service_name(service_host_name)
-                    url_str = [path.get_urlparse().geturl() for path in service_host_name.paths if path.name == "/"] \
-                        if is_http else []
+                    url_str = service_host_name.get_urlparse().geturl() if is_http else None
                     result.append([host_name.domain_name.workspace.name,  # Workspace
                                    "vhost",  # Type
                                    network_str,  # Network (NW)
@@ -658,7 +664,7 @@ class ReportClass(BaseReport):
                                    service_host_name.nmap_product_version,  # Banner Information
                                    service_host_name.tls,  # TLS
                                    is_http,  # Is HTTP
-                                   url_str[0] if url_str else None,  # URL
+                                   url_str,  # URL
                                    network_id,  # DB ID (NW)
                                    host.id,  # DB ID (Host)
                                    host_name.id,  # DB ID (HN)
@@ -667,6 +673,7 @@ class ReportClass(BaseReport):
                                    host_sources,  # Source (Host)
                                    host_name_sources,  # Source (HN)
                                    service_host_name.sources_str,  # Source (SRV)
+                                   service_host.creation_date,  # Time Added
                                    len(service_host_name.get_completed_commands()),  # No. Commands
                                    len(service_host_name.vulnerabilities)])  # No. Vulnerabilities
         # Print hosts that do not have a service
@@ -735,6 +742,7 @@ class ReportClass(BaseReport):
                                host_sources,  # Source (Host)
                                None,  # Source (HN)
                                None,  # Source (SRV)
+                               None,  # Time Added
                                0,  # No. Commands
                                0])  # No. Vulnerabilities
                 # Obtain information for corresponding host names
@@ -785,9 +793,10 @@ class ReportClass(BaseReport):
                                    host_sources,  # Source (Host)
                                    host_name_sources,  # Source (HN)
                                    None,  # Source (SRV)
+                                   None,  # Time Added
                                    0,  # No. Commands
                                    0])  # No. Vulnerabilities
-        # This case should happen: Host name services that are not associated with a host service.
+        # This case should not happen: Host name services that are not associated with a host service.
         alias_service_host = aliased(Service)
         alias_service_host_name = aliased(Service)
         query_results = self._session.query(alias_service_host_name, alias_service_host, HostHostNameMapping) \
@@ -832,8 +841,7 @@ class ReportClass(BaseReport):
                     hosts_str = ", ".join([item.address for item in hosts])
                     host_name_sources = host_name.sources_str
                     is_http = descriptor.match_nmap_service_name(service_host_name)
-                    url_str = [path.get_urlparse().geturl() for path in service_host_name.paths if path.name == "/"] \
-                        if is_http else []
+                    url_str = service_host_name.get_urlparse().geturl() if is_http else None
                     result.append([host_name.domain_name.workspace.name,  # Workspace
                                    "vhost*",  # Type
                                    network_str,  # Network (NW)
@@ -864,7 +872,7 @@ class ReportClass(BaseReport):
                                    service_host_name.nmap_product_version,  # Banner Information
                                    service_host_name.tls,  # TLS
                                    is_http,  # Is HTTP
-                                   url_str[0] if url_str else None,  # URL
+                                   url_str,  # URL
                                    network_id,  # DB ID (NW)
                                    host.id,  # DB ID (Host)
                                    host_name.id,  # DB ID (HN)
@@ -873,6 +881,7 @@ class ReportClass(BaseReport):
                                    host_sources,  # Source (Host)
                                    host_name_sources,  # Source (HN)
                                    service_host_name.sources_str,  # Source (SRV)
+                                   service_host_name.creation_date,  # Time Added
                                    len(service_host_name.get_completed_commands()),  # No. Commands
                                    len(service_host_name.vulnerabilities)])  # No. Vulnerabilities
         return result

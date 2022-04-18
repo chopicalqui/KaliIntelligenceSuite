@@ -379,7 +379,7 @@ class BaseKisImportNetwork(BaseKisImport, Ipv4NetworkCollector):
         operating system command and attaches it to the respective newly created Collector class.
 
         :param session: Sqlalchemy session that manages persistence operations for ORM-mapped objects
-        :param ipv4_network: The IPv4 network based on which commands shall be created.
+        :param network: The IPv4 network based on which commands shall be created.
         :param collector_name: The name of the collector as specified in table collector_name
         :return: List of Collector instances that shall be processed.
         """

@@ -25,12 +25,61 @@ __version__ = 0.1
 import argparse
 from typing import List
 from database.model import DomainName
-from database.model import ServiceState
+from database.model import ProtocolType
 from database.model import ReportScopeType
 from database.model import ReportVisibility
 from database.model import TextReportDetails
 from database.model import DnsResourceRecordType
 from database.report.core import BaseReport
+from database.report.core import ServiceStatistics
+
+
+class DomainNameStatistics:
+    """
+    This class maintains all statistics for a second-level domain
+    """
+
+    def __init__(self, protocols: list):
+        self.service_stats = ServiceStatistics(protocols)
+        self._protocols = protocols
+        self.domain_sources = None
+        self.no_sub_domains = 0
+        self.no_in_scope_sub_domains = 0
+        self.no_resolved_ips = 0
+        self.no_resolved_in_scope_ips = 0
+        self.no_resolved_private_ips = 0
+        self.no_commands = 0
+
+    @property
+    def no_out_of_scope_sub_domains(self):
+        return self.no_sub_domains - self.no_in_scope_sub_domains
+
+    @property
+    def no_resolved_out_of_scope_ips(self):
+        return self.no_resolved_ips - self.no_resolved_in_scope_ips
+
+    def compute(self, domain: DomainName):
+        """
+        Compute statistics for the given domain name.
+        """
+        # Obtain statistics about subdomains
+        for host_name in domain.host_names:
+            self.no_sub_domains += 1
+            self.no_commands += len(host_name.get_completed_commands())
+            if host_name.name is None:
+                self.domain_sources = host_name.sources_str
+            if host_name._in_scope:
+                self.no_in_scope_sub_domains += 1
+            # Obtain statistics about hosts
+            for mapping in host_name.get_host_host_name_mappings([DnsResourceRecordType.a,
+                                                                  DnsResourceRecordType.aaaa]):
+                self.no_resolved_ips += 1
+                if mapping.host.ip_address.is_private:
+                    self.no_resolved_private_ips += 1
+                if mapping.host.in_scope:
+                    self.no_resolved_in_scope_ips += 1
+                # Obtain statistics about networks
+                self.service_stats.compute(mapping.host)
 
 
 class ReportClass(BaseReport):
@@ -90,6 +139,10 @@ class ReportClass(BaseReport):
         parser_domain.add_argument('-I', '--include', metavar='COLLECTOR', type=str, nargs='+', default=[],
                                    help='list of collector names whose outputs should be returned in text mode (see '
                                         'argument --text). per default, all collector information is returned')
+        parser_domain.add_argument('-p', '--protocol', nargs='+',
+                                   choices=[item.name for item in ProtocolType],
+                                   default=[item.name for item in ProtocolType],
+                                   help="create the service statistics for the following ISO/OSI layer 4 protocols")
 
     def _filter(self, domain_name: DomainName) -> bool:
         """
@@ -174,71 +227,55 @@ class ReportClass(BaseReport):
                  "Scope",
                  "In Scope (Company)",
                  "Sources",
-                 "No. Subdomains",
-                 "No. In-Scope Subdomains",
-                 "No. Resolved IPs",
-                 "No. Resolved Private IPs",
-                 "No. Resolved In-Scope IPs",
-                 "No. Open Services",
-                 "No. Open In-Scope Services",
-                 "No. Closed Services",
-                 "No. Commands",
+                 "Open Services",
+                 "Open In-Scope Services",
+                 "Open Web Services",
+                 "Open In-Scope Web Services",
+                 "Closed Services",
+                 "Closed In-Scope Services",
+                 "Closed Web Services",
+                 "Closed In-Scope Web Services",
+                 "Subdomains",
+                 "In-Scope Subdomains",
+                 "Out-of-Scope Subdomains",
+                 "Resolved IPs",
+                 "Resolved In-Scope IPs",
+                 "Resolved Out-of-Scope IPs",
+                 "Resolved Private IPs",
+                 "Commands",
+                 "Time Added",
                  "DB ID"]]
         for workspace in self._workspaces:
             for domain in workspace.domain_names:
                 if self._filter(domain):
                     # Calculate statistics
+                    stats = DomainNameStatistics(self._protocols)
+                    stats.compute(domain)
                     any_company_in_scope = any([item.in_scope for item in domain.companies])
                     domain_scope = domain.scope_str
                     companies = domain.companies_str
-                    domain_sources = None
-                    no_sub_domains = 0
-                    no_in_scope_sub_domains = 0
-                    no_resolved_ips = 0
-                    no_resolved_private_ips = 0
-                    no_resolved_in_scope_ips = 0
-                    no_open_services = 0
-                    no_open_in_scope_services = 0
-                    no_closed_services = 0
-                    no_commands = 0
-                    # Obtain statistics about subdomains
-                    for host_name in domain.host_names:
-                        no_sub_domains += 1
-                        no_commands += len(host_name.get_completed_commands())
-                        if host_name.name is None:
-                            domain_sources = host_name.sources_str
-                        if host_name._in_scope:
-                            no_in_scope_sub_domains += 1
-                        # Obtain statistics about hosts
-                        for mapping in host_name.get_host_host_name_mappings([DnsResourceRecordType.a,
-                                                                              DnsResourceRecordType.aaaa]):
-                            no_resolved_ips += 1
-                            if mapping.host.ip_address.is_private:
-                                no_resolved_private_ips += 1
-                            if mapping.host.in_scope:
-                                no_resolved_in_scope_ips += 1
-                            # Obtain statistics about networks
-                            for service in mapping.host.services:
-                                if service.state == ServiceState.Open:
-                                    no_open_services += 1
-                                    if service.host.in_scope:
-                                        no_open_in_scope_services += 1
-                                else:
-                                    no_closed_services += 1
-                    rows.append([workspace.name,            # Workspace
-                                 domain.name,               # Second-Level Domain
-                                 companies,                 # Companies
-                                 domain_scope,              # Scope
-                                 any_company_in_scope,      # In Scope (Company)
-                                 domain_sources,            # Sources
-                                 no_sub_domains,            # No. Subdomains
-                                 no_in_scope_sub_domains,   # No. In-Scope Subdomains
-                                 no_resolved_ips,           # No. Resolved IPs
-                                 no_resolved_private_ips,   # No. Resolved Private IPs
-                                 no_resolved_in_scope_ips,  # No. Resolved In-Scope IPs
-                                 no_open_services,          # No. Open Services
-                                 no_open_in_scope_services, # No. Open In-Scope Services
-                                 no_closed_services,        # No. Closed Services
-                                 no_commands,               # No. Commands
-                                 domain.id])                # DB ID (SLD)
+                    rows.append([workspace.name,                         # Workspace
+                                 domain.name,                            # Second-Level Domain
+                                 companies,                              # Companies
+                                 domain_scope,                           # Scope
+                                 any_company_in_scope,                   # In Scope (Company)
+                                 stats.domain_sources,                   # Sources
+                                 stats.service_stats.no_open_services,   # Open Services
+                                 stats.service_stats.no_open_in_scope_services,  # Open In-Scope Services
+                                 stats.service_stats.no_open_web_services,  # Open Web Services
+                                 stats.service_stats.no_open_in_scope_web_services,  # Open In-Scope Web Services
+                                 stats.service_stats.no_closed_services,  # Closed Services
+                                 stats.service_stats.no_closed_in_scope_services,  # Closed In-Scope Services
+                                 stats.service_stats.no_closed_web_services,  # Closed Web Services
+                                 stats.service_stats.no_closed_in_scope_web_services,  # Closed In-Scope Web Services
+                                 stats.no_sub_domains,                   # Subdomains
+                                 stats.no_in_scope_sub_domains,          # In-Scope Subdomains
+                                 stats.no_out_of_scope_sub_domains,      # Out-of-Scope Subdomains
+                                 stats.no_resolved_ips,                  # Resolved IPs
+                                 stats.no_resolved_in_scope_ips,         # Resolved In-Scope IPs
+                                 stats.no_resolved_out_of_scope_ips,     # Resolved Out-of-Scope IPs
+                                 stats.no_resolved_private_ips,          # Resolved Private IPs
+                                 stats.no_commands,                      # Commands
+                                 domain.creation_date,                   # Time Added
+                                 domain.id])                             # DB ID (SLD)
         return rows

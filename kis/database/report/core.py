@@ -35,12 +35,16 @@ from openpyxl.worksheet.table import Table, TableStyleInfo
 from openpyxl.worksheet.worksheet import Worksheet
 from openpyxl.utils.exceptions import IllegalCharacterError
 from typing import List
+from database.model import Host
 from database.model import FontColor
-from database.model import VhostChoice
 from database.model import Workspace
+from database.model import VhostChoice
+from database.model import ServiceState
+from database.model import ProtocolType
 from database.model import CollectorName
 from database.model import ReportScopeType
 from database.model import ReportVisibility
+from collectors.os.modules.http.core import HttpServiceDescriptor
 from sqlalchemy.orm.session import Session
 
 
@@ -103,6 +107,8 @@ class BaseReport:
         self._scope = ReportScopeType[args.scope] if "scope" in args and getattr(args, "scope") else None
         self._visibility = ReportVisibility[args.visibility] \
             if "visibility" in args and getattr(args, "visibility") else None
+        protocols = args.protocol if "protocol" in args and getattr(args, "protocol") else []
+        self._protocols = [ProtocolType[item] for item in protocols]
         self._session = session
         self._workspaces = workspaces
         self._kwargs = kwargs
@@ -364,6 +370,15 @@ class ReportGenerator:
                                   choices=[item.name for item in VhostChoice],
                                   default=VhostChoice.all.name,
                                   help="specifies the information that shall be displayed in the sheet 'service info'.")
+        parser_excel.add_argument('--nosum', action='store_true',
+                                  help="there are cases where an in-scope network contains several subnetworks."
+                                       "per default, the network report summarizes the statistics into the largest "
+                                       "in-scope network and does not show the corresponding subnetworks. if the "
+                                       "subnetworks shall be displayed as well, then use this argument")
+        parser_excel.add_argument('-p', '--protocol',
+                                  choices=[item.name for item in ProtocolType],
+                                  default=[item.name for item in ProtocolType],
+                                  help="create the service statistics for the following ISO/OSI layer 4 protocols")
         # setup final parser
         parser_final = sub_parser.add_parser('final',
                                              help='allows writing final report tables into microsoft excel file')
@@ -456,3 +471,47 @@ class ReportGenerator:
                                                                        workspaces=workspaces,
                                                                        args=args)
             report.export()
+
+
+class ServiceStatistics:
+    """
+    This class maintains all statistics for a network
+    """
+
+    def __init__(self, protocols: list):
+        self.descriptor = HttpServiceDescriptor()
+        self._protocols = protocols
+        self.no_open_services = 0
+        self.no_open_web_services = 0
+        self.no_open_in_scope_services = 0
+        self.no_open_in_scope_web_services = 0
+        self.no_closed_services = 0
+        self.no_closed_web_services = 0
+        self.no_closed_in_scope_services = 0
+        self.no_closed_in_scope_web_services = 0
+
+    def compute(self, host: Host):
+        """
+        Compute statistics for the given network.
+        """
+        # Obtain statistics about services
+        for service in host.services:
+            if service.protocol in self._protocols:
+                in_scope = service.host.in_scope
+                is_http = self.descriptor.match_nmap_service_name(service)
+                if service.state == ServiceState.Open:
+                    self.no_open_services += 1
+                    if in_scope:
+                        self.no_open_in_scope_services += 1
+                    if is_http:
+                        self.no_open_web_services += 1
+                        if in_scope:
+                            self.no_open_in_scope_web_services += 1
+                else:
+                    self.no_closed_services += 1
+                    if in_scope:
+                        self.no_closed_in_scope_services += 1
+                    if is_http:
+                        self.no_closed_web_services += 1
+                        if in_scope:
+                            self.no_closed_in_scope_web_services += 1

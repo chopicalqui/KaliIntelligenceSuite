@@ -2336,7 +2336,7 @@ class IpUtils(BaseUtils):
         super().__init__(**args)
 
     @staticmethod
-    def is_valid_address(address: str) -> bool:
+    def is_valid_address(address: str, verbose: bool = True) -> bool:
         """
         Returns true if the given string has the format of a valid IPv4/IPv6 address
         :param address:
@@ -2346,12 +2346,13 @@ class IpUtils(BaseUtils):
         try:
             ipaddress.ip_address(address)
         except ValueError as ex:
-            logger.exception(ex)
+            if verbose:
+                logger.exception(ex)
             result = False
         return result
 
     @staticmethod
-    def is_valid_cidr_range(ipv4_range: str):
+    def is_valid_cidr_range(ipv4_range: str, verbose: bool = True):
         """
         Returns true if the given string has the format of a valid IPv4/IPv6 CIDR range
         :param ipv4_range:
@@ -2361,7 +2362,8 @@ class IpUtils(BaseUtils):
         try:
             ipaddress.ip_network(ipv4_range, strict=True)
         except ValueError as ex:
-            logger.exception(ex)
+            if verbose:
+                logger.exception(ex)
             result = False
         return result
 

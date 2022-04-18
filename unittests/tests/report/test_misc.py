@@ -120,23 +120,21 @@ class TestReportCreation(BaseReportTestCase):
         report_classes = ReportGenerator.add_argparser_arguments()
         workspaces = " ".join(self._workspaces)
         for module_name in report_classes.keys():
-            if module_name in ["excel", "final", "file"]:
-                continue
-            elif module_name not in ["excel",
-                                     "final",
-                                     "file",
-                                     "additionalinfo",
-                                     "breach",
-                                     "cert",
-                                     "cname",
-                                     "command",
-                                     "company",
-                                     "credential",
-                                     "email",
-                                     "file",
-                                     "path",
-                                     "tls",
-                                     "vulnerability"]:
+            if module_name not in ["excel",
+                                   "final",
+                                   "file",
+                                   "additionalinfo",
+                                   "breach",
+                                   "cert",
+                                   "cname",
+                                   "command",
+                                   "company",
+                                   "credential",
+                                   "email",
+                                   "file",
+                                   "path",
+                                   "tls",
+                                   "vulnerability"]:
                 print(module_name)
                 self.execute(subcommand=module_name, arguments="-w {} --grep test".format(workspaces))
                 self.execute(subcommand=module_name, arguments="-w {} --igrep test".format(workspaces))
@@ -163,6 +161,7 @@ class TestReportCreation(BaseReportTestCase):
             if module_name in ["excel", "final"]:
                 continue
             else:
+                print(module_name)
                 self.execute(subcommand=module_name, arguments="-w {} --csv".format(workspaces))
 
     def _check_csv_report_columns(self, report, module_name):

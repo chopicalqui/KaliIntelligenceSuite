@@ -24,14 +24,17 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 __version__ = 0.1
 
+import os
 import logging
+import collectors
 from typing import List
+from collectors.os.modules.core import BaseCollector
 from collectors.os.modules.core import DomainCollector
 from collectors.os.modules.dns.core import BaseDnsHost
-from collectors.os.modules.core import BaseCollector
+from database.model import Command
 from database.model import HostName
+from database.model import CommandStatus
 from database.model import CollectorName
-from database.model import DnsResourceRecordType
 from sqlalchemy.orm.session import Session
 
 logger = logging.getLogger('dnshostpublic')
@@ -50,6 +53,25 @@ class CollectorClass(BaseDnsHost, DomainCollector):
     @staticmethod
     def get_argparse_arguments():
         return {"help": __doc__, "action": "store_true"}
+
+    def start_command_execution(self, session: Session, command: Command) -> bool:
+        """
+        This method allows the consumer threat to check whether the command should be executed. If this method returns
+        false, then the command execution is not started. This is useful when another command of the same collector
+        already identified the interesting information.
+
+        :param session: Sqlalchemy session that manages persistence operations for ORM-mapped objects
+        :param command: The command instance to be executed
+        :return: True, if the command should be executed, False if not.
+        """
+        collector_name = os.path.splitext(os.path.basename(collectors.os.modules.dns.dnshost.__file__))[0]
+        count = session.query(CollectorName) \
+            .join(Command) \
+            .join(HostName) \
+            .filter(HostName.id == command.host_name_id) \
+            .filter(Command.status == CommandStatus.completed) \
+            .filter(CollectorName.name == collector_name).count()
+        return count == 0
 
     def create_domain_commands(self,
                                session: Session,
