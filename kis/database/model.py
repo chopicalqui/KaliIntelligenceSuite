@@ -2871,7 +2871,7 @@ class Command(DeclarativeBase):
     @property
     def target_name(self) -> str:
         """
-        returns the workspace
+        returns the name of the item on which the command was executed.
         :return:
         """
         # todo update new collector

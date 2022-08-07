@@ -218,9 +218,8 @@ class ReportClass(BaseReport):
                  "Port",
                  "Service Name",
                  "Status"]]
-        commands = self._session.query(Command)
-        for command in commands:
-            if command.workspace in self._workspaces:
+        for workspace in self._workspaces:
+            for command in self._session.query(Command).filter_by(workspace_id=workspace.id).all():
                 if self._filter(command):
                     self._append_csv_row(rows, command, FileType.text)
                     self._append_csv_row(rows, command, FileType.xml)

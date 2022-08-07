@@ -114,10 +114,9 @@ class ReportClass(BaseReport):
                  "Stdout Size",
                  "Stderr Size",
                  "OS Command"]]
-        commands = self._session.query(Command)
-        for command in commands:
-            service = command.service
-            if command.workspace in self._workspaces:
+        for workspace in self._workspaces:
+            for command in self._session.query(Command).filter_by(workspace_id=workspace.id).all():
+                service = command.service
                 if self._filter(command):
                     execution_time = (command.stop_time - command.start_time).seconds \
                         if command.stop_time and command.start_time else None

@@ -137,6 +137,19 @@ class ManageDatabase:
             elif self._arguments.delete:
                 self._domain_utils.delete_workspace(session, self._arguments.WORKSPACE)
 
+    def _manage_url(self, session: Session, workspace: Workspace, source: Source):
+        if self._arguments.module == "url":
+            if self._arguments.add:
+                for item in self._get_items("URL"):
+                    item = item.strip().lower()
+                    url = self._domain_utils.add_url(session=session,
+                                                     workspace=workspace,
+                                                     url=item,
+                                                     source=source,
+                                                     add_all=True)
+                    if not url:
+                        raise ValueError("adding URL '{}' failed".format(item))
+
     def _manage_database(self):
         if os.geteuid() != 0:
             print("database commands must be executed as root", file=sys.stderr)
@@ -178,12 +191,14 @@ class ManageDatabase:
                     ("Domain" in self._arguments and getattr(self._arguments, "Domain")) or
                     ("Network" in self._arguments and getattr(self._arguments, "Network"))):
                 for item in items:
+                    item = item.strip()
                     with open(item, "r") as file:
                         results.extend([line.strip() for line in file.readlines()])
             elif ("Add" in self._arguments and getattr(self._arguments, "Add")) or \
                     ("Scope" in self._arguments and getattr(self._arguments, "Scope")) or \
                     ("Delete" in self._arguments and getattr(self._arguments, "Delete")):
                 for item in items:
+                    item = item.strip()
                     with open(item, "r") as file:
                         results.extend([line.strip() for line in file.readlines()])
             else:
@@ -194,6 +209,7 @@ class ManageDatabase:
         if self._arguments.module == "network":
             scope = ScopeType[self._arguments.Scope] if self._arguments.Scope else self._arguments.scope
             for network in self._get_items("NETWORK"):
+                network = network.strip()
                 if self._arguments.add or self._arguments.Add:
                     ipv4_network = self._ip_utils.add_network(session=session,
                                                               workspace=workspace,
@@ -232,6 +248,7 @@ class ManageDatabase:
         if self._arguments.module == "host":
             in_scope = ReportScopeType[self._arguments.scope] == ReportScopeType.within
             for host in self._get_items("IP"):
+                host = host.strip()
                 if self._arguments.add or self._arguments.Add:
                     host_object = self._ip_utils.add_host(session=session,
                                                           workspace=workspace,
@@ -255,6 +272,7 @@ class ManageDatabase:
         if self._arguments.module == "service":
             type = ProtocolType[self._arguments.protocol]
             for host in self._arguments.host:
+                host = host.strip()
                 host_object = self._ip_utils.get_host(session=session,
                                                       workspace=workspace,
                                                       address=host)
@@ -280,6 +298,7 @@ class ManageDatabase:
         if self._arguments.module == "domain":
             scope = ScopeType[self._arguments.Scope] if self._arguments.Scope else self._arguments.scope
             for domain in self._get_items("DOMAIN"):
+                domain = domain.strip()
                 if self._arguments.add or self._arguments.Add:
                     domain_object = self._domain_utils.add_sld(session=session,
                                                                workspace=workspace,
@@ -307,6 +326,7 @@ class ManageDatabase:
             in_scope = scope == ReportScopeType.within
             exception_thrown = None
             for host_name_str in self._get_items("HOSTNAME"):
+                host_name_str = host_name_str.strip()
                 if self._arguments.add or self._arguments.Add:
                     try:
                         host_name = self._domain_utils.add_host_name(session=session,
@@ -325,6 +345,7 @@ class ManageDatabase:
                             raise ex
                 elif self._arguments.sharphound:
                     for host_name_str in self._get_items("HOSTNAME"):
+                        host_name_str = host_name_str.strip()
                         with open(host_name_str, "rb") as file:
                             json_object = json.loads(file.read())
                             if "computers" in json_object and isinstance(json_object["computers"], list):
@@ -373,6 +394,7 @@ class ManageDatabase:
     def _manage_email(self, session: Session, workspace: Workspace, source: Source):
         if self._arguments.module == "email":
             for email in self._get_items("EMAIL"):
+                email = email.strip()
                 if self._arguments.add or self._arguments.Add:
                     email_object = self._domain_utils.add_email(session=session,
                                                                 workspace=workspace,
@@ -388,6 +410,7 @@ class ManageDatabase:
             in_scope = ReportScopeType[self._arguments.scope] == ReportScopeType.within \
                 if self._arguments.scope else None
             for company in self._get_items("COMPANY"):
+                company = company.strip()
                 if self._arguments.add:
                     company_object = self._domain_utils.add_company(session=session,
                                                                     workspace=workspace,
@@ -408,6 +431,7 @@ class ManageDatabase:
                         company_object.in_scope = in_scope
                 if "network" in self._arguments and self._arguments.network:
                     for network in self._arguments.network:
+                        network = network.strip()
                         network_object = self._ip_utils.get_network(session=session,
                                                                     workspace=workspace,
                                                                     network=network)
@@ -417,6 +441,7 @@ class ManageDatabase:
                             company_object.networks.append(network_object)
                 if "Network" in self._arguments and self._arguments.Network:
                     for network in self._get_items("Network"):
+                        network = network.strip()
                         network_object = self._ip_utils.get_network(session=session,
                                                                     workspace=workspace,
                                                                     network=network)
@@ -426,6 +451,7 @@ class ManageDatabase:
                             company_object.networks.append(network_object)
                 if "domain" in self._arguments and self._arguments.domain:
                     for domain in self._arguments.domain:
+                        domain = domain.strip()
                         domain_object = self._domain_utils.get_host_name(session=session,
                                                                          workspace=workspace,
                                                                          host_name=domain)
@@ -435,6 +461,7 @@ class ManageDatabase:
                             company_object.domain_names.append(domain_object.domain_name)
                 if "Domain" in self._arguments and self._arguments.Domain:
                     for domain in self._get_items("Domain"):
+                        domain = domain.strip()
                         domain_object = self._domain_utils.get_host_name(session=session,
                                                                          workspace=workspace,
                                                                          host_name=domain)
@@ -496,6 +523,7 @@ class ManageDatabase:
                     self._manage_email(session=session, workspace=workspace, source=source)
                     self._manage_company(session=session, workspace=workspace, source=source)
                     self._manage_scan(session=session, workspace=workspace)
+                    self._manage_url(session=session, workspace=workspace, source=source)
                     self._manage_kiscollect(session=session, workspace=workspace)
 
 
@@ -527,6 +555,7 @@ https://github.com/chopicalqui/KaliIntelligenceSuite/wiki/kismanage-Use-Cases
                                                               'domains')
     parser_email = sub_parser.add_parser('email', help='allows managing emails')
     parser_company = sub_parser.add_parser('company', help='allows managing companies')
+    parser_url = sub_parser.add_parser('url', help='allows managing URLs')
     # setup workspace parser
     parser_workspace.add_argument('WORKSPACE', type=str)
     parser_workspace_group = parser_workspace.add_mutually_exclusive_group(required=True)
@@ -833,6 +862,16 @@ https://github.com/chopicalqui/KaliIntelligenceSuite/wiki/kismanage-Use-Cases
                                    action="store_true",
                                    help="parse the given Masscan output file FILE (XML format) and add the containing "
                                         "information to workspace WORKSPACE")
+    # setup URL parser
+    parser_url.add_argument("-w", "--workspace",
+                            metavar="WORKSPACE",
+                            help="use the given workspace",
+                            required=True,
+                            type=str)
+    parser_url.add_argument('URL', type=str, nargs="+")
+    parser_url.add_argument('-a', '--add',
+                            action="store_true",
+                            help="create the given URL in the KIS database")
     # setup kiscollect parser
     parser_kiscollect.add_argument("-w", "--workspace",
                                    metavar="WORKSPACE",

@@ -36,6 +36,7 @@ from openpyxl.worksheet.worksheet import Worksheet
 from openpyxl.utils.exceptions import IllegalCharacterError
 from typing import List
 from database.model import Host
+from database.model import Command
 from database.model import FontColor
 from database.model import Workspace
 from database.model import VhostChoice
@@ -84,6 +85,7 @@ class ExcelReport(enum.Enum):
     command = enum.auto()
     tls = enum.auto()
     cert = enum.auto()
+    leaves = enum.auto()
 
 
 class BaseReport:
@@ -364,7 +366,7 @@ class ReportGenerator:
                                        'all information is returned')
         parser_excel.add_argument('--reports', choices=[item.name for item in ExcelReport],
                                   nargs="+",
-                                  default=[item.name for item in ExcelReport],
+                                  default=[item.name for item in ExcelReport if item != ExcelReport.leaves],
                                   help='import only the following reports into Microsoft Excel')
         parser_excel.add_argument("-r", "--report-level",
                                   choices=[item.name for item in VhostChoice],
