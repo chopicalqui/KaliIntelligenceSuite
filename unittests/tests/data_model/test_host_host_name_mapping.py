@@ -22,49 +22,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 __version__ = 0.1
 
-from database.model import Workspace
 from database.model import Host
 from database.model import Service
-from database.model import ServiceMethod
 from database.model import ServiceState
 from database.model import ProtocolType
-from database.model import Credentials
-from database.model import CredentialType
-from database.model import Email
-from database.model import Network
-from database.model import Source
-from database.model import Company
 from database.model import HostName
-from database.model import DomainName
-from database.model import Path
-from database.model import PathType
-from database.model import AdditionalInfo
-from database.model import Command
-from database.model import CipherSuiteSecurity
-from database.model import ScopeType
-from database.model import CollectorName
-from database.model import CollectorType
-from database.model import FileType
-from database.model import File
 from database.model import HostHostNameMapping
-from database.model import HostNameHostNameMapping
-from database.model import CipherSuite
-from database.model import KeyExchangeAlgorithm
-from database.model import HashAlgorithm
-from database.model import TlsInfo
-from database.model import TlsVersion
-from database.model import TlsPreference
-from database.model import TlsInfoCipherSuiteMapping
-from database.model import CertInfo
-from database.model import AsymmetricAlgorithm
-from database.model import CertType
 from database.model import DnsResourceRecordType
-from database.model import VHostNameMapping
-from datetime import datetime
-from unittests.tests.core import BaseKisTestCase
 from unittests.tests.core import BaseDataModelTestCase
 from unittests.tests.data_model.core import BaseTestServiceSyncTriggersTestCase
-from unittests.tests.collectors.kali.modules.core import BaseKaliCollectorTestCase
 
 
 class TestHostHostNameMapping(BaseDataModelTestCase):

@@ -223,7 +223,8 @@ class ReportClass(BaseReport):
         """
         rows = [["Workspace",
                  "Second-Level Domain",
-                 "Companies",
+                 "Companies All",
+                 "Companies Verified",
                  "Scope",
                  "In Scope (Company)",
                  "Sources",
@@ -253,10 +254,10 @@ class ReportClass(BaseReport):
                     stats.compute(domain)
                     any_company_in_scope = any([item.in_scope for item in domain.companies])
                     domain_scope = domain.scope_str
-                    companies = domain.companies_str
                     rows.append([workspace.name,                         # Workspace
                                  domain.name,                            # Second-Level Domain
-                                 companies,                              # Companies
+                                 domain.companies_str,                   # Companies All
+                                 domain.companies_verified_str,          # Companies Verified
                                  domain_scope,                           # Scope
                                  any_company_in_scope,                   # In Scope (Company)
                                  stats.domain_sources,                   # Sources

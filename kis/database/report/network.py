@@ -176,7 +176,8 @@ class ReportClass(BaseReport):
                  "Netmask",
                  "Parent Networks With Same Scope",
                  "Hosts",
-                 "Companies",
+                 "Companies All",
+                 "Companies Verified",
                  "Scope",
                  "In Scope (Company)",
                  "Sources (NW)",
@@ -229,7 +230,8 @@ class ReportClass(BaseReport):
                                      stats.prefix_length,                        # Netmask
                                      parent_networks,                            # Parent Networks With Same Scope
                                      stats.no_hosts,                             # Hosts
-                                     network.companies_str,                      # Companies
+                                     network.companies_str,                      # Companies All
+                                     network.companies_verified_str,             # Companies Verified
                                      network.scope_str,                          # Scope (NW)
                                      any_company_in_scope,                       # In Scope (Company)
                                      network.sources_str,                        # Sources (NW)

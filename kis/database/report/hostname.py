@@ -236,7 +236,8 @@ class ReportClass(BaseReport):
         rows = [["Workspace",
                  "Second-Level Domain (SLD)",
                  "Host Name (HN)",
-                 "Companies (SLD)",
+                 "Companies All (SLD)",
+                 "Companies Verified (SLD)",
                  "Scope (SLD)",
                  "In Scope (HN)",
                  "In Scope (Vhost)",
@@ -266,6 +267,7 @@ class ReportClass(BaseReport):
                 any_company_in_scope = any([item.in_scope for item in domain.companies])
                 domain_scope = domain.scope_str
                 companies = domain.companies_str
+                companies_verified = domain.companies_verified_str
                 # Obtain statistics about subdomains
                 for host_name in domain.host_names:
                     stats = HostNameStatistics(self._protocols)
@@ -297,7 +299,8 @@ class ReportClass(BaseReport):
                         rows.append([workspace.name,                                    # Workspace
                                      domain.name,                                       # Second-Level Domain (SLD)
                                      host_name.full_name,                               # Host Name (HN)
-                                     companies,                                         # Companies (SLD)
+                                     companies,                                         # Companies All (SLD)
+                                     companies_verified,                                # Companies Verified (SLD)
                                      domain_scope,                                      # Scope (SLD)
                                      host_name._in_scope,                               # In Scope (HN)
                                      host_name.in_scope(CollectorType.vhost_service),   # In Scope (Vhost)

@@ -60,3 +60,16 @@ class BaseReportTestCase(BaseTestKisCommand):
         report = self._generator.create_report_instance(args=args, session=session, workspaces=[workspace])
         result = report._filter(item)
         self.assertEqual(expected_result, result)
+
+    def _get_csv_report(self,
+                    session: Session,
+                    workspace_str: str,
+                    argument_list: List[str]) -> List[List[str]]:
+        result = None
+        if "--testing" not in argument_list:
+            argument_list.insert(0, "--testing")
+            args = self._parser.parse_args(argument_list)
+            workspace = self.create_workspace(session, workspace=workspace_str)
+            report = self._generator.create_report_instance(args=args, session=session, workspaces=[workspace])
+            result = report.get_csv()
+        return result

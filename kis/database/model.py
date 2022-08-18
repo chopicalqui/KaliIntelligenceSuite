@@ -776,33 +776,45 @@ source_tls_info_cipher_suite_mapping = Table("source_tls_info_cipher_suite_mappi
                                                               "source_id",
                                                               name="_tls_source_info_cipher_suite_mapping_unique"))
 
-company_network_mapping = Table("company_network_mapping", DeclarativeBase.metadata,
-                                Column("id", Integer, primary_key=True),
-                                Column("company_id",
-                                       Integer,
-                                       ForeignKey('company.id', ondelete='cascade'),
-                                       nullable=False),
-                                Column("network_id", Integer, ForeignKey('network.id',
-                                                                         ondelete='cascade'), nullable=False),
-                                Column("creation_date", DateTime, nullable=False, default=datetime.utcnow()),
-                                Column("last_modified", DateTime, nullable=True, onupdate=datetime.utcnow()),
-                                UniqueConstraint("company_id",
-                                                 "network_id",
-                                                 name="_company_network_mapping_unique"))
+source_company_domain_name_mapping = Table("source_company_domain_name_mapping", DeclarativeBase.metadata,
+                                           Column("id", Integer, primary_key=True),
+                                           Column("company_domain_name_mapping_id",
+                                                  Integer,
+                                                  ForeignKey('company_domain_name_mapping.id', ondelete='cascade'),
+                                                  nullable=False),
+                                           Column("source_id", Integer, ForeignKey('source.id',
+                                                                                   ondelete='cascade'),
+                                                  nullable=False),
+                                           Column("creation_date",
+                                                  DateTime,
+                                                  nullable=False,
+                                                  default=datetime.utcnow()),
+                                           Column("last_modified",
+                                                  DateTime, nullable=True,
+                                                  onupdate=datetime.utcnow()),
+                                           UniqueConstraint("company_domain_name_mapping_id",
+                                                            "source_id",
+                                                            name="_source_company_domain_name_mapping_unique"))
 
-company_domain_name_mapping = Table("company_domain_name_mapping", DeclarativeBase.metadata,
-                                    Column("id", Integer, primary_key=True),
-                                    Column("company_id",
-                                           Integer,
-                                           ForeignKey('company.id', ondelete='cascade'),
-                                           nullable=False),
-                                    Column("domain_name_id", Integer, ForeignKey('domain_name.id',
-                                                                                 ondelete='cascade'), nullable=False),
-                                    Column("creation_date", DateTime, nullable=False, default=datetime.utcnow()),
-                                    Column("last_modified", DateTime, nullable=True, onupdate=datetime.utcnow()),
-                                    UniqueConstraint("company_id",
-                                                     "domain_name_id",
-                                                     name="_company_domain_name_mapping_unique"))
+source_company_network_mapping = Table("source_company_network_mapping", DeclarativeBase.metadata,
+                                       Column("id", Integer, primary_key=True),
+                                       Column("company_network_mapping_id",
+                                              Integer,
+                                              ForeignKey('company_network_mapping.id', ondelete='cascade'),
+                                              nullable=False),
+                                       Column("source_id", Integer, ForeignKey('source.id',
+                                                                               ondelete='cascade'),
+                                              nullable=False),
+                                       Column("creation_date",
+                                              DateTime,
+                                              nullable=False,
+                                              default=datetime.utcnow()),
+                                       Column("last_modified",
+                                              DateTime, nullable=True,
+                                              onupdate=datetime.utcnow()),
+                                       UniqueConstraint("company_network_mapping_id",
+                                                        "source_id",
+                                                        name="_source_company_network_mapping_unique"))
 
 
 #create unique index _host_index_address on host(address);
@@ -1222,6 +1234,10 @@ class Network(DeclarativeBase):
             result = ", ".join(["{} (in scope: {})".format(item.name, item.in_scope) for item in self.companies])
         return result
 
+    @property
+    def companies_verified_str(self) -> str:
+        return ", ".join([item.company.name for item in self.company_network_mappings if item.verified])
+
     def is_in_network(self, address: str) -> bool:
         """This method verifies whether the given IPv4 address is in the network"""
         return ipaddress.ip_address(address) in self.ip_network
@@ -1385,6 +1401,10 @@ class HostName(DeclarativeBase):
     @property
     def companies_str(self) -> str:
         return self.domain_name.companies_str
+
+    @property
+    def companies_verified_str(self) -> str:
+        return self.domain_name.companies_verified_str
 
     @property
     def canonical_name_records(self) -> list:
@@ -1685,6 +1705,13 @@ class HostHostNameMapping(DeclarativeBase):
                 result.append(item.name.upper())
         return ", ".join(result) if result else None
 
+    @property
+    def sources_str(self) -> str:
+        result = None
+        if self.sources:
+            result = ", ".join([item.name for item in self.sources])
+        return result
+
     def resolves_to_in_scope_ipv4_address(self) -> bool:
         """
         This method returns True, if the given host name resolves to the host via a DNS resource record type A
@@ -1757,6 +1784,13 @@ class HostNameHostNameMapping(DeclarativeBase):
                 result.append(item.name.upper())
         return ", ".join(result) if result else None
 
+    @property
+    def sources_str(self) -> str:
+        result = None
+        if self.sources:
+            result = ", ".join([item.name for item in self.sources])
+        return result
+
     def resolves_to_in_scope_ipv4_address(self) -> bool:
         """
         This method returns True, if the given host name resolves to the host via a DNS resource record type A
@@ -1819,6 +1853,10 @@ class DomainName(DeclarativeBase):
         if self.companies:
             result = ", ".join(["{} (in scope: {})".format(item.name, item.in_scope) for item in self.companies])
         return result
+
+    @property
+    def companies_verified_str(self) -> str:
+        return ", ".join([item.company.name for item in self.company_domain_name_mappings if item.verified])
 
     @property
     def ignore(self) -> bool:
@@ -2131,6 +2169,12 @@ class Source(DeclarativeBase):
     cert_info = relationship("CertInfo",
                              secondary=source_cert_info_mapping,
                              backref=backref("sources", order_by="asc(Source.name)"))
+    company_domain_name_mapping = relationship("CompanyDomainNameMapping",
+                                               secondary=source_company_domain_name_mapping,
+                                               backref=backref("sources", order_by="asc(Source.name)"))
+    company_network_mapping = relationship("CompanyNetworkMapping",
+                                           secondary=source_company_network_mapping,
+                                           backref=backref("sources", order_by="asc(Source.name)"))
 
     def __eq__(self, other) -> bool:
         return self.name == other.name
@@ -3557,6 +3601,62 @@ class CommandFileMapping(DeclarativeBase):
     __table_args__ = (UniqueConstraint('file_id', 'command_id', name='_command_file_unique'),)
 
 
+class CompanyNetworkMapping(DeclarativeBase):
+    __tablename__ = "company_network_mapping"
+    __mapper_args__ = {'confirm_deleted_rows': False}
+
+    id = Column("id", Integer, primary_key=True)
+    verified = Column(Boolean, nullable=False, unique=False, server_default='FALSE')
+    company_id = Column(Integer, ForeignKey('company.id', ondelete='cascade'), nullable=False)
+    network_id = Column(Integer, ForeignKey('network.id', ondelete='cascade'), nullable=False)
+    creation_date = Column(DateTime, nullable=False, default=datetime.utcnow())
+    last_modified = Column(DateTime, nullable=True, onupdate=datetime.utcnow())
+    company = relationship("Company", backref=backref('company_network_mappings',
+                                                      cascade='delete, delete-orphan',
+                                                      overlaps="companies,networks"),
+                           overlaps="companies,networks")
+    network = relationship("Network", backref=backref('company_network_mappings',
+                                                      cascade='delete, delete-orphan',
+                                                      overlaps="companies,networks"),
+                           overlaps="companies,networks")
+    __table_args__ = (UniqueConstraint('company_id', 'network_id', name='_company_network_mapping_unique'),)
+
+    @property
+    def sources_str(self) -> str:
+        result = None
+        if self.sources:
+            result = ", ".join([item.name for item in self.sources])
+        return result
+
+
+class CompanyDomainNameMapping(DeclarativeBase):
+    __tablename__ = "company_domain_name_mapping"
+    __mapper_args__ = {'confirm_deleted_rows': False}
+
+    id = Column("id", Integer, primary_key=True)
+    verified = Column(Boolean, nullable=False, unique=False, server_default='FALSE')
+    company_id = Column(Integer, ForeignKey('company.id', ondelete='cascade'), nullable=False)
+    domain_name_id = Column(Integer, ForeignKey('domain_name.id', ondelete='cascade'), nullable=False)
+    creation_date = Column(DateTime, nullable=False, default=datetime.utcnow())
+    last_modified = Column(DateTime, nullable=True, onupdate=datetime.utcnow())
+    company = relationship("Company", backref=backref('company_domain_name_mappings',
+                                                      cascade='delete, delete-orphan',
+                                                      overlaps="companies,domain_names"),
+                           overlaps="companies,domain_names")
+    domain_name = relationship("DomainName", backref=backref('company_domain_name_mappings',
+                                                             cascade='delete, delete-orphan',
+                                                             overlaps="companies,domain_names"),
+                               overlaps="companies,domain_names")
+    __table_args__ = (UniqueConstraint('company_id', 'domain_name_id', name='_company_domain_name_unique'),)
+
+    @property
+    def sources_str(self) -> str:
+        result = None
+        if self.sources:
+            result = ", ".join([item.name for item in self.sources])
+        return result
+
+
 class Company(DeclarativeBase):
     """This class holds all information about a company."""
 
@@ -3568,10 +3668,10 @@ class Company(DeclarativeBase):
     creation_date = Column(DateTime, nullable=False, default=datetime.utcnow())
     last_modified = Column(DateTime, nullable=True, onupdate=datetime.utcnow())
     domain_names = relationship("DomainName",
-                                secondary=company_domain_name_mapping,
+                                secondary="company_domain_name_mapping",
                                 backref=backref("companies", order_by="asc(Company.name)"))
     networks = relationship("Network",
-                            secondary=company_network_mapping,
+                            secondary="company_network_mapping",
                             backref=backref("companies", order_by="asc(Company.name)"))
     __table_args__ = (UniqueConstraint('name', 'workspace_id', name='_company_unique'),)
 

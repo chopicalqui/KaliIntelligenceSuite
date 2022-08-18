@@ -86,6 +86,7 @@ class ExcelReport(enum.Enum):
     tls = enum.auto()
     cert = enum.auto()
     leaves = enum.auto()
+    dnsrecord = enum.auto()
 
 
 class BaseReport:

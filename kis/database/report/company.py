@@ -88,7 +88,17 @@ class ReportClass(BaseReport):
         This method returns all information as CSV.
         :return:
         """
-        rows = [["DB ID", "Workspace", "Company", "Owns", "Owns Type", "In Scope", "Owns Scope", "Sources"]]
+        rows = [["Workspace",
+                 "Company",
+                 "In Scope",
+                 "Verified",
+                 "Owns",
+                 "Owns Type",
+                 "Owns Scope",
+                 "Sources (Company)",
+                 "Sources (Mappings)",
+                 "DB ID (Company)",
+                 "DB ID (Mapping)"]]
         for workspace in self._workspaces:
             results = self._session.query(Company)\
                 .join(Workspace)\
@@ -97,38 +107,49 @@ class ReportClass(BaseReport):
                 if self._filter(company):
                     has_results = False
                     in_scope = company.in_scope
-                    sources = company.sources_str
-                    for network in company.networks:
+                    sources_companies = company.sources_str
+                    for mapping in company.company_network_mappings:
                         has_results = True
-                        row = [company.id,
-                               company.workspace.name,
-                               company.name,
-                               network.network,
-                               "network",
-                               in_scope,
-                               network.scope_str,
-                               sources]
+                        sources_mappings = mapping.sources_str
+                        row = [company.workspace.name,  # Workspace
+                               company.name,  # Company
+                               in_scope,  # In Scope
+                               mapping.verified,  # Verified
+                               mapping.network.network,  # Owns
+                               "network",  # Owns Type
+                               mapping.network.scope_str,  # Owns Scope
+                               sources_companies,  # Sources (Company)
+                               sources_mappings,  # Sources (Mappings)
+                               company.id,  # DB ID (Company)
+                               mapping.id]  # DB ID (Mapping)
                         rows.append(row)
-                    for domain in company.domain_names:
+                    for mapping in company.company_domain_name_mappings:
                         has_results = True
-                        row = [company.id,
-                               company.workspace.name,
-                               company.name,
-                               domain.name,
-                               "domain",
-                               in_scope,
-                               domain.scope_str,
-                               sources]
+                        sources_mappings = mapping.sources_str
+                        row = [company.workspace.name,  # Workspace
+                               company.name,  # Company
+                               in_scope,  # In Scope
+                               mapping.verified,  # Verified
+                               mapping.domain_name.name,  # Owns
+                               "domain",  # Owns Type
+                               mapping.domain_name.scope_str,  # Owns Scope
+                               sources_companies,  # Sources (Company)
+                               sources_mappings,  # Sources (Mappings)
+                               company.id,  # DB ID (Company)
+                               mapping.id]  # DB ID (Mapping)
                         rows.append(row)
                     if not has_results:
-                        row = [company.id,
-                               company.workspace.name,
-                               company.name,
-                               None,
-                               None,
-                               in_scope,
-                               None,
-                               sources]
+                        row = [company.workspace.name,  # Workspace
+                               company.name,  # Company
+                               in_scope,  # In Scope
+                               None,  # Verified
+                               None,  # Owns
+                               "domain",  # Owns Type
+                               None,  # Owns Scope
+                               sources_companies,  # Sources (Company)
+                               None,  # Sources (Mappings)
+                               company.id,  # DB ID (Company)
+                               None]  # DB ID (Mapping)
                         rows.append(row)
         return rows
 

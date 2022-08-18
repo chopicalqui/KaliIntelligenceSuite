@@ -98,7 +98,17 @@ class TestReportCreation(BaseReportTestCase):
         for module_name in report_classes.keys():
             if module_name in ["excel", "final", "file"]:
                 continue
-            elif module_name not in ["additionalinfo", "breach", "cert", "tls", "cname", "credential", "file", "path", "vulnerability"]:
+            elif module_name not in ["additionalinfo",
+                                     "breach",
+                                     "cert",
+                                     "tls",
+                                     "cname",
+                                     "credential",
+                                     "file",
+                                     "path",
+                                     "vulnerability",
+                                     "dnsrecord",
+                                     "leaves"]:
                 if module_name == "service":
                     self.execute(subcommand=module_name, arguments="-w {} --text".format(workspaces))
                     self.execute(subcommand=module_name, arguments="-w {} -r domain --text".format(workspaces))
@@ -134,6 +144,8 @@ class TestReportCreation(BaseReportTestCase):
                                    "file",
                                    "path",
                                    "tls",
+                                   "dnsrecord",
+                                   "leaves",
                                    "vulnerability"]:
                 print(module_name)
                 self.execute(subcommand=module_name, arguments="-w {} --grep test".format(workspaces))

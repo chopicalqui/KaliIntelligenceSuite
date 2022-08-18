@@ -216,7 +216,8 @@ class ReportClass(BaseReport):
                  "Netmask",
                  "IP Address (Host)",
                  "Private IP",
-                 "Companies",
+                 "Companies All",
+                 "Companies Verified",
                  "Scope (NW)",
                  "In Scope (Host)",
                  "In Scope (Company)",
@@ -246,6 +247,7 @@ class ReportClass(BaseReport):
                     network_prefixlen = host.ipv4_network.ip_network.prefixlen
                     network_version = host.ipv4_network.version_str
                     network_companies_str = host.ipv4_network.companies_str
+                    network_companies_verified_str = host.ipv4_network.companies_str
                     network_scope_str = host.ipv4_network.scope_str
                     network_sources_str = host.ipv4_network.sources_str
                     any_company_in_scope = any([item.in_scope for item in host.ipv4_network.companies])
@@ -257,6 +259,7 @@ class ReportClass(BaseReport):
                     network_scope_str = None
                     network_sources_str = None
                     network_companies_str = None
+                    network_companies_verified_str = None
                     any_company_in_scope = False
                 if self._filter(host):
                     # Calculate statistics
@@ -268,7 +271,8 @@ class ReportClass(BaseReport):
                                  network_prefixlen,                             # Netmask
                                  host.address,                                  # IP Address (Host)
                                  host.ip_address.is_private,                    # Private IP
-                                 network_companies_str,                         # Companies
+                                 network_companies_str,                         # Companies All
+                                 network_companies_verified_str,                # Companies Verified
                                  network_scope_str,                             # Scope (NW)
                                  host.in_scope,                                 # In Scope (Host)
                                  any_company_in_scope,                          # In Scope (Company)

@@ -245,20 +245,27 @@ class TestDatabaseVerificationMethods(BaseKisTestCase):
         self.assertListEqual(["www.test.local"],
                              self._domain_utils.extract_domains("Did not follow redirect to https://www.test.local:8080"))
 
-    def test_match_tld(self):
+    def test_get_second_level_domain_name(self):
         """
         Unittest for BaseUtils.match_tld
         :return:
         """
-        self.assertEqual("local", self._domain_utils.matches_tld("www.test.local"))
-        self.assertEqual("local", self._domain_utils.matches_tld("www.test.local."))
-        self.assertEqual("com", self._domain_utils.matches_tld("www.test.com"))
-        self.assertEqual("com", self._domain_utils.matches_tld("www.test.com."))
-        self.assertEqual("公司.hk", self._domain_utils.matches_tld("www.test.公司.hk"))
-        self.assertEqual("公司.hk", self._domain_utils.matches_tld("www.test.公司.hk"))
-        self.assertEqual("konyvelo.hu", self._domain_utils.matches_tld("www.test.konyvelo.hu"))
-        self.assertEqual("konyvelo.hu", self._domain_utils.matches_tld("www.test.konyvelo.hu"))
-        self.assertIsNone(self._domain_utils.matches_tld("www.test.konyvelo.thisisnotatld"))
+        self.assertIsNone(self._domain_utils.get_second_level_domain_name(DomainName(name=None)))
+        self.assertIsNone(self._domain_utils.get_second_level_domain_name(DomainName(name=".")))
+        self.assertIsNone(self._domain_utils.get_second_level_domain_name(DomainName(name="..")))
+        self.assertIsNone(self._domain_utils.get_second_level_domain_name(DomainName(name="local")))
+        self.assertIsNone(self._domain_utils.get_second_level_domain_name(DomainName(name="thisnotatld")))
+        self.assertEqual("test", self._domain_utils.get_second_level_domain_name(DomainName(name="test.local")))
+        self.assertEqual("test", self._domain_utils.get_second_level_domain_name(DomainName(name="test.local.")))
+        self.assertEqual("test", self._domain_utils.get_second_level_domain_name(DomainName(name="test.local.")))
+        self.assertEqual("www.test", self._domain_utils.get_second_level_domain_name(DomainName(name="www.test.local.")))
+        self.assertEqual("www.test", self._domain_utils.get_second_level_domain_name(DomainName(name="www.test.com")))
+        self.assertEqual("www.test", self._domain_utils.get_second_level_domain_name(DomainName(name="www.test.com.")))
+        self.assertEqual("www.test", self._domain_utils.get_second_level_domain_name(DomainName(name="www.test.公司.hk")))
+        self.assertEqual("www.test", self._domain_utils.get_second_level_domain_name(DomainName(name="www.test.公司.hk")))
+        self.assertEqual("www.test", self._domain_utils.get_second_level_domain_name(DomainName(name="www.test.konyvelo.hu")))
+        self.assertEqual("www.test", self._domain_utils.get_second_level_domain_name(DomainName(name="www.test.konyvelo.hu")))
+        self.assertIsNone(self._domain_utils.get_second_level_domain_name(DomainName(name="www.test.konyvelo.thisisnotatld")))
 
     def test_split_host_name(self):
         """
@@ -268,6 +275,9 @@ class TestDatabaseVerificationMethods(BaseKisTestCase):
         self.assertIsNone(self._domain_utils.split_host_name("."))
         self.assertIsNone(self._domain_utils.split_host_name("...."))
         self.assertIsNone(self._domain_utils.split_host_name("www.test.konyvelo.thisisnotatld"))
+        self.assertIsNone(self._domain_utils.split_host_name(""))
+        self.assertIsNone(self._domain_utils.split_host_name(None))
+        self.assertListEqual(["doesnotexist"], self._domain_utils.split_host_name("doesnotexist"))
         self.assertListEqual(["test"], self._domain_utils.split_host_name("test"))
         self.assertListEqual(["www", "test", "local"], self._domain_utils.split_host_name("www.test.local"))
         self.assertListEqual(["www", "test", "local"], self._domain_utils.split_host_name("www.test.local."))
@@ -277,6 +287,7 @@ class TestDatabaseVerificationMethods(BaseKisTestCase):
         self.assertListEqual(["www", "test", "local"], self._domain_utils.split_host_name("*.www.test.local"))
         self.assertListEqual(["www", "test", "konyvelo.hu"], self._domain_utils.split_host_name("www.test.konyvelo.hu"))
         self.assertListEqual(["www", "test", "公司.hk"], self._domain_utils.split_host_name("www.test.公司.hk"))
+        self.assertListEqual(["www", "test", "kitashiobara.fukushima.jp"], self._domain_utils.split_host_name("www.test.kitashiobara.fukushima.jp"))
 
     def test_valid_email(self):
         """

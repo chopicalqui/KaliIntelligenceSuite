@@ -73,6 +73,8 @@ from database.model import AsymmetricAlgorithm
 from database.model import ExtensionType
 from database.model import ScopeType
 from database.model import DomainNameNotFound
+from database.model import CompanyDomainNameMapping
+from database.model import CompanyNetworkMapping
 from datetime import datetime
 from database.model import ExecutionInfoType
 from database.model import VHostNameMapping
@@ -117,8 +119,14 @@ class BaseUtils:
         with open(os.path.join(self._utils_dir, BaseUtils.TLD_DEFINITION_FILE), "r") as f:
             text = f.read()
             json_object = json.JSONDecoder().decode(text)
-            for item in json_object["data"]:
-                self._top_level_domains[item] = re.compile(".+\.{}\.?$".format(item.replace(".", "\\.")), re.IGNORECASE)
+            for domain in json_object["data"]:
+                domain_parts = domain.strip().split(".")
+                domain_parts.reverse()
+                current_element = self._top_level_domains
+                for item in domain_parts:
+                    if item not in current_element:
+                        current_element[item] = {}
+                    current_element = current_element[item]
 
     @property
     def utils_dir(self):
@@ -629,6 +637,44 @@ class BaseUtils:
                     report_item.report_type = "COMPANY"
                     report_item.notify()
         return rvalue
+
+    def add_company_domain_name_mapping(self,
+                                        session: Session,
+                                        company: Company,
+                                        host_name: HostName,
+                                        source: Source = None,
+                                        verified: bool = None) -> CompanyDomainNameMapping:
+        result = session.query(CompanyDomainNameMapping) \
+            .filter_by(domain_name_id=host_name.domain_name.id,
+                       company_id=company.id).one_or_none()
+        if not result:
+            result = CompanyDomainNameMapping(company=company, domain_name=host_name.domain_name, verified=verified)
+            session.add(result)
+            session.flush()
+        if source:
+            source.company_domain_name_mapping.append(result)
+        if verified is not None:
+            result.verified = verified
+        return result
+
+    def add_company_network_mapping(self,
+                                    session: Session,
+                                    company: Company,
+                                    network: Network,
+                                    source: Source = None,
+                                    verified: bool = None) -> CompanyNetworkMapping:
+        result = session.query(CompanyNetworkMapping) \
+            .filter_by(network_id=network.id,
+                       company_id=company.id).one_or_none()
+        if not result:
+            result = CompanyNetworkMapping(company=company, network=network, verified=verified)
+            session.add(result)
+            session.flush()
+        if source:
+            source.company_network_mapping.append(result)
+        if verified is not None:
+            result.verified = verified
+        return result
 
     @staticmethod
     def add_json_results(command: Command,
@@ -1548,13 +1594,26 @@ class BaseUtils:
         :return:
         """
         result = None
-        if domain_name.name:
-            tld = self.matches_tld(domain_name.name)
-            if tld:
-                result = domain_name.name.rstrip(tld)
-                result = result.rstrip(".")
+        if not domain_name.name:
+            return result
+        elements = re.sub("^\*\.", "", domain_name.name).lower().strip(".")
+        if not elements:
+            return None
+        elements = elements.split(".")
+        current_element = self._top_level_domains
+        tld = ""
+        subdomains = []
+        for i in range(len(elements) - 1, -1, -1):
+            item = elements[i]
+            if not subdomains and item in current_element:
+                tld = item + "." + tld if tld else item
+                current_element = current_element[item]
+            elif tld:
+                subdomains.insert(0, item)
             else:
-                result = ".".join(domain_name.name.split(".")[0:-1])
+                break
+        if subdomains:
+            result = ".".join(subdomains)
         return result
 
     def split_host_name(self, host_name: str) -> List[str]:
@@ -1566,19 +1625,27 @@ class BaseUtils:
         result = None
         if host_name is None:
             return result
-        host_name = re.sub("^\*\.", "", host_name)
-        if len(host_name) < 3:
-            return result
-        if "." not in host_name:
-            return [host_name]
-        host_name = host_name.lower()
-        host_name = host_name.strip(".")
-        if host_name:
-            tld = self.matches_tld(host_name)
-            if tld:
-                host_name = host_name[:-(len(tld) + 1)]
-                result = host_name.split(".")
-                result.append(tld)
+        elements = re.sub("^\*\.", "", host_name).lower().strip(".")
+        if not elements:
+            return None
+        elements = elements.split(".")
+        if len(elements) == 1:
+            return elements
+        current_element = self._top_level_domains
+        tld = ""
+        subdomains = []
+        for i in range(len(elements) - 1, -1, -1):
+            item = elements[i]
+            if not subdomains and item in current_element:
+                tld = item + "." + tld if tld else item
+                current_element = current_element[item]
+            elif tld:
+                subdomains.insert(0, item)
+            else:
+                break
+        if tld:
+            subdomains.append(tld)
+            result = subdomains
         return result
 
     @staticmethod
