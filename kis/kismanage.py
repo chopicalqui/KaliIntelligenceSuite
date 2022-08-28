@@ -36,6 +36,7 @@ import ipaddress
 from database.utils import Engine
 from database.utils import Setup
 from database.utils import DeclarativeBase
+from database.utils import CloneType
 from database.model import HostNotFound
 from database.model import ScopeType
 from database.model import ReportScopeType
@@ -136,6 +137,11 @@ class ManageDatabase:
                 self._domain_utils.add_workspace(session, self._arguments.WORKSPACE)
             elif self._arguments.delete:
                 self._domain_utils.delete_workspace(session, self._arguments.WORKSPACE)
+            elif self._arguments.clone:
+                clone_types = [CloneType[item.replace("-", "_")] for item in self._arguments.tables]
+                self._engine.clone_workspace(source_workspace_str=self._arguments.clone,
+                                             destination_workspace_str=self._arguments.WORKSPACE,
+                                             clone_types=clone_types)
 
     def _manage_url(self, session: Session, workspace: Workspace, source: Source):
         if self._arguments.module == "url":
@@ -566,6 +572,17 @@ https://github.com/chopicalqui/KaliIntelligenceSuite/wiki/kismanage-Use-Cases
                                         action="store_true",
                                         help="delete the given workspace WORKSPACE together with all associated "
                                              "information from KIS database (use with caution)")
+    parser_workspace_group.add_argument('-c', '--clone',
+                                        type=str,
+                                        help="the source workspace that shall be cloned")
+    parser_workspace.add_argument('-t', '--tables',
+                                  type=str,
+                                  default=[item.name.replace("_", "-") for item in CloneType],
+                                  choices=[item.name.replace("_", "-") for item in CloneType],
+                                  help="list of tables that shall be cloned into the new workspace")
+    parser_workspace.add_argument('-s', '--source',
+                                  type=str,
+                                  help="the source workspace that shall be cloned")
     # setup database parser
     parser_database.add_argument("--init",
                                  help="creates tables, views, functions, and triggers for the KIS database",

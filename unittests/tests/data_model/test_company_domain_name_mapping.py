@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 __version__ = 0.1
 
+from database.model import HostName
 from database.model import CompanyDomainNameMapping
 from unittests.tests.core import BaseDataModelTestCase
 
@@ -58,4 +59,32 @@ class TestCompanyDomainNameMapping(BaseDataModelTestCase):
         with self._engine.session_scope() as session:
             domain_name = self.create_domain_name(session=session, workspace_str=self._workspaces[0])
             company = self.create_company(session=session, workspace_str=self._workspaces[0])
-            self._test_success(session, company=company, domain_name=domain_name)
+            self._test_success(session, company=company, domain_name=domain_name, verified=True)
+            mapping = session.query(CompanyDomainNameMapping).first()
+            self.assertTrue(mapping.verified)
+
+    def test_add_mapping_1(self):
+        self.init_db()
+        with self._engine.session_scope() as session:
+            host_name = self.create_hostname(session=session, workspace_str=self._workspaces[0])
+            company = self.create_company(session=session, workspace_str=self._workspaces[0])
+            self._domain_utils.add_company_domain_name_mapping(session=session,
+                                                               company=company,
+                                                               host_name=host_name,
+                                                               verified=True)
+        with self._engine.session_scope() as session:
+            mapping = session.query(CompanyDomainNameMapping).first()
+            self.assertTrue(mapping.verified)
+
+    def test_add_mapping_2(self):
+        self.init_db()
+        with self._engine.session_scope() as session:
+            domain_name = self.create_domain_name(session=session, workspace_str=self._workspaces[0])
+            company = self.create_company(session=session, workspace_str=self._workspaces[0])
+            self._domain_utils.add_company_domain_name_mapping(session=session,
+                                                               company=company,
+                                                               host_name=HostName(domain_name=domain_name),
+                                                               verified=True)
+        with self._engine.session_scope() as session:
+            mapping = session.query(CompanyDomainNameMapping).first()
+            self.assertTrue(mapping.verified)

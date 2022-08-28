@@ -202,6 +202,7 @@ class TestReportCreation(BaseReportTestCase):
         with self._engine.session_scope() as session:
             workspaces = DomainUtils.get_workspaces(session=session)
             for module_name in self._report_classes.keys():
+                print(module_name)
                 if module_name != "service":
                     args = self._parser.parse_args([module_name, "--csv"])
                     report = self._generator.create_report_instance(args=args, session=session, workspaces=workspaces)

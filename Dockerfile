@@ -7,15 +7,14 @@ ENV LD_LIBRARY_PATH=/usr/local/lib \
     PIP_NO_CACHE_DIR=off \
     PIP_DISABLE_PIP_VERSION_CHECK=on \
     PIP_DEFAULT_TIMEOUT=100 \
-    PATH="/opt/kaliintelsuite/.venv/bin:${PATH}" \
-    VIRTUAL_ENV="/opt/kaliintelsuite/.venv/"
+    PATH="/opt/kaliintelsuite/venv/bin:${PATH}" \
+    VIRTUAL_ENV="/opt/kaliintelsuite/venv/"
 # Do base installation
 WORKDIR /opt/kaliintelsuite
 RUN apt update && \
     apt install -y ca-certificates openssl apt-transport-https && \
     echo "deb https://http.kali.org/kali kali-rolling main non-free contrib" >> /etc/apt/sources.list && \
-    apt update && \
-    apt upgrade -y
+    apt update
 RUN apt install -y amass \
                    bind9-dnsutils \
                    bind9-host \
@@ -100,10 +99,11 @@ RUN wget https://raw.githubusercontent.com/SECFORCE/sparta/master/wordlists/snmp
 RUN apt install -y python3-pip python2
 ENV POETRY_HOME="/opt/poetry" \
     POETRY_VIRTUALENVS_IN_PROJECT=true \
-    POETRY_NO_INTERACTION=1
+    POETRY_NO_INTERACTION=1 \
+    POETRY_VERSION=1.1.13
 COPY pyproject.toml /opt/kaliintelsuite/
 WORKDIR /opt/kaliintelsuite/
-RUN pip install poetry && \
+RUN pip install "poetry==$POETRY_VERSION" && \
     ln -sT python2 /usr/bin/python && poetry install --no-root --no-dev
 
 
@@ -125,7 +125,7 @@ COPY --from=builder /tmp/routes-small.kite /usr/share/kiterunner/
 COPY --from=builder /tmp/slurp /usr/local/bin/
 COPY --from=builder /tmp/slurp-1.1.0/permutations.json /usr/share/slurp/
 # Deploy Python3 virtual environment
-COPY --from=builder /opt/kaliintelsuite/.venv /opt/kaliintelsuite/.venv/
+COPY --from=builder /opt/kaliintelsuite/.venv /opt/kaliintelsuite/venv/
 # Create KIS commands
 RUN ln -sT /opt/kaliintelsuite/kis/kiscollect.py /usr/bin/kiscollect && \
     ln -sT /opt/kaliintelsuite/kis/kismanage.py /usr/bin/kismanage && \

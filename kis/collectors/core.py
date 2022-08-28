@@ -645,16 +645,15 @@ class BaseUtils:
                                         source: Source = None,
                                         verified: bool = None) -> CompanyDomainNameMapping:
         result = session.query(CompanyDomainNameMapping) \
-            .filter_by(domain_name_id=host_name.domain_name.id,
-                       company_id=company.id).one_or_none()
+            .filter_by(domain_name_id=host_name.domain_name.id, company_id=company.id).one_or_none()
         if not result:
             result = CompanyDomainNameMapping(company=company, domain_name=host_name.domain_name, verified=verified)
             session.add(result)
             session.flush()
+        elif verified is not None:
+            result.verified = verified
         if source:
             source.company_domain_name_mapping.append(result)
-        if verified is not None:
-            result.verified = verified
         return result
 
     def add_company_network_mapping(self,
@@ -664,21 +663,19 @@ class BaseUtils:
                                     source: Source = None,
                                     verified: bool = None) -> CompanyNetworkMapping:
         result = session.query(CompanyNetworkMapping) \
-            .filter_by(network_id=network.id,
-                       company_id=company.id).one_or_none()
+            .filter_by(network_id=network.id, company_id=company.id).one_or_none()
         if not result:
             result = CompanyNetworkMapping(company=company, network=network, verified=verified)
             session.add(result)
             session.flush()
+        elif verified is not None:
+            result.verified = verified
         if source:
             source.company_network_mapping.append(result)
-        if verified is not None:
-            result.verified = verified
         return result
 
     @staticmethod
-    def add_json_results(command: Command,
-                         json_objects: List[Dict[str, str]]):
+    def add_json_results(command: Command, json_objects: List[Dict[str, str]]):
         """
         This method adds the given json objects to the given command
         :param command:

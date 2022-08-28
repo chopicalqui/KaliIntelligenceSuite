@@ -7,7 +7,7 @@ cryptography
 passgen
 openpyxl
 psutil
-pytest
+pytest==7.0
 pysqlcipher3
 pandas
 bs4

@@ -47,6 +47,23 @@ from database.model import *
 logger = logging.getLogger('database')
 
 
+class CloneType(enum.Enum):
+    network_is = enum.auto()
+    network_ofs = enum.auto()
+    host_is = enum.auto()
+    host_ofs = enum.auto()
+    service = enum.auto()
+    domain_name_is = enum.auto()
+    domain_name_ofs = enum.auto()
+    host_name_is = enum.auto()
+    host_name_ofs = enum.auto()
+    company_is = enum.auto()
+    company_ofs = enum.auto()
+    credential = enum.auto()
+    path = enum.auto()
+    email = enum.auto()
+
+
 class Engine:
     """This class implements general methods to interact with the underlying database."""
 
@@ -1115,6 +1132,242 @@ class Engine:
         with self.session_scope() as session:
             for cipher_suite in cipher_suites:
                 session.add(cipher_suite)
+
+    def _clone_object(self,
+                      session: Session,
+                      source_object: object,
+                      custom_attributes: dict) -> object:
+        """
+        This is a helper method for method clone_workspace, which clones the given source_object in the database.
+
+        The code is based on:
+        https://stackoverflow.com/questions/57280412/sqlalchemy-copy-records-update-one-column-and-save-as-new-records
+        """
+        source_object_type = type(source_object)
+        result = source_object_type()
+        for item in [p.key for p in sqlalchemy.orm.class_mapper(source_object_type).iterate_properties]:
+            if item in custom_attributes.keys():
+                setattr(result, item, custom_attributes[item])
+            elif item.lower() != "id":
+                setattr(result, item, getattr(source_object, item))
+        session.add(result)
+        return result
+
+    def _get_clone_scope(self,
+                         in_scope_type: CloneType,
+                         out_of_scope_type: CloneType,
+                         clone_types: List[CloneType]) -> ScopeType:
+        """
+        This method is a helper method for method clone_workspace.
+        """
+        result = None
+        if in_scope_type in clone_types and out_of_scope_type in clone_types:
+            result = ScopeType.all
+        elif in_scope_type in clone_types:
+            result = ScopeType.strict
+        elif out_of_scope_type in clone_types:
+            result = ScopeType.exclude
+        return result
+
+    def clone_workspace(self, source_workspace_str: str, destination_workspace_str: str, clone_types: List[CloneType]):
+        """
+        This method clones the given workspace
+        """
+        from collectors.core import BaseUtils
+        utils = BaseUtils()
+        creation_date = datetime.utcnow()
+        # todo: update if data model was updated
+        with self.session_scope() as session:
+            source_workspace = session.query(Workspace).filter_by(name=source_workspace_str).one()
+            destination_workspace = session.query(Workspace).filter_by(name=destination_workspace_str).one()
+            if len(destination_workspace.ipv4_networks) > 0 or \
+                    len(destination_workspace.hosts) > 0 or \
+                    len(destination_workspace.files) > 0 or \
+                    len(destination_workspace.domain_names) > 0 or \
+                    len(destination_workspace.companies) > 0:
+                raise ValueError("target workspace is not empty.")
+            # Clone networks (and their sources)
+            scope_type = self._get_clone_scope(in_scope_type=CloneType.network_is,
+                                               out_of_scope_type=CloneType.network_ofs,
+                                               clone_types=clone_types)
+            if scope_type:
+                print("[*] Clone networks")
+                for network in session.query(Network).filter_by(workspace_id=source_workspace.id):
+                    if (scope_type == ScopeType.all and network.scope != ScopeType.ignore) or \
+                            (scope_type == ScopeType.strict and network.in_scope) or \
+                            (scope_type == ScopeType.exclude and not network.in_scope):
+                        new_network = self._clone_object(session=session,
+                                                         source_object=network,
+                                                         custom_attributes={"commands": [],
+                                                                            "companies": [],
+                                                                            "company_network_mappings": [],
+                                                                            "workspace_id": None,
+                                                                            "workspace": destination_workspace,
+                                                                            "creation_date": creation_date,
+                                                                            "last_modified": None})
+                        # Clone the network's companies (and their sources)
+                        for mapping in network.company_network_mappings:
+                            company = utils.add_company(session=session,
+                                                        workspace=destination_workspace,
+                                                        name=mapping.company.name,
+                                                        verify=False,
+                                                        in_scope=mapping.company.in_scope)
+                            company.sources = mapping.company.sources
+                            mapping1 = utils.add_company_network_mapping(session=session,
+                                                                         company=company,
+                                                                         network=new_network,
+                                                                         verified=mapping.verified)
+                            mapping1.sources = mapping.sources
+            # Clone hosts (and their sources)
+            scope_type = self._get_clone_scope(in_scope_type=CloneType.host_is,
+                                               out_of_scope_type=CloneType.host_ofs,
+                                               clone_types=clone_types)
+            if scope_type:
+                print("[*] Clone hosts and services")
+                for host in session.query(Host).filter_by(workspace_id=source_workspace.id):
+                    if scope_type == ScopeType.all or \
+                            (scope_type == ScopeType.strict and host.in_scope) or \
+                            (scope_type == ScopeType.exclude and not host.in_scope):
+                        new_host = self._clone_object(session=session,
+                                                      source_object=host,
+                                                      custom_attributes={"commands": [],
+                                                                         "services": [],
+                                                                         "additional_info": [],
+                                                                         "host_names": [],
+                                                                         "host_host_name_mappings": [],
+                                                                         "network_id": None,
+                                                                         "network": None,
+                                                                         "workspace_id": None,
+                                                                         "workspace": destination_workspace,
+                                                                         "creation_date": creation_date,
+                                                                         "last_modified": None})
+                        # Clone services (and their sources)
+                        for service in host.services:
+                            service1 = self._clone_object(session=session,
+                                                          source_object=service,
+                                                          custom_attributes={"commands": [],
+                                                                             "host": new_host,
+                                                                             "service_methods": [],
+                                                                             "additional_info": [],
+                                                                             "paths": [],
+                                                                             "credentials": [],
+                                                                             "creation_date": creation_date,
+                                                                             "last_modified": None})
+                            # Clone credentials (and their sources)
+                            if CloneType.credential in clone_types:
+                                for credential in service.credentials:
+                                    self._clone_object(session=session,
+                                                       source_object=credential,
+                                                       custom_attributes={"service": service1,
+                                                                          "email": None,
+                                                                          "creation_date": creation_date,
+                                                                          "last_modified": None})
+                            # Clone paths (and their sources)
+                            if CloneType.path in clone_types:
+                                for path in service.paths:
+                                    path1 = utils.add_url_path(session=session,
+                                                               service=service1,
+                                                               url_path=path.name,
+                                                               status_code=path.return_code,
+                                                               size_bytes=path.size_bytes)
+                                    path1.sources = path.sources
+                                    for query in path.queries:
+                                        self._clone_object(session=session,
+                                                           source_object=query,
+                                                           custom_attributes={"path": path1,
+                                                                              "creation_date": creation_date,
+                                                                              "last_modified": None})
+            # Clone domain names
+            domain_name_scope_type = self._get_clone_scope(in_scope_type=CloneType.domain_name_is,
+                                                           out_of_scope_type=CloneType.domain_name_ofs,
+                                                           clone_types=clone_types)
+            host_name_scope_type = self._get_clone_scope(in_scope_type=CloneType.host_name_is,
+                                                         out_of_scope_type=CloneType.host_name_ofs,
+                                                         clone_types=clone_types)
+            if domain_name_scope_type:
+                print("[*] Clone domain and host names")
+                for item in session.query(DomainName).filter_by(workspace_id=source_workspace.id):
+                    if (domain_name_scope_type == ScopeType.all and item.scope != ScopeType.ignore) or \
+                            (domain_name_scope_type == ScopeType.strict and item.in_scope) or \
+                            (domain_name_scope_type == ScopeType.exclude and not item.in_scope):
+                        domain_name = self._clone_object(session=session,
+                                                         source_object=item,
+                                                         custom_attributes={"commands": [],
+                                                                            "host_names": [],
+                                                                            "companies": [],
+                                                                            "company_domain_name_mappings": [],
+                                                                            "workspace_id": None,
+                                                                            "workspace": destination_workspace,
+                                                                            "creation_date": creation_date,
+                                                                            "last_modified": None})
+                        # Clone companies
+                        for mapping in item.company_domain_name_mappings:
+                            company = utils.add_company(session=session,
+                                                        workspace=destination_workspace,
+                                                        name=mapping.company.name,
+                                                        verify=False,
+                                                        in_scope=mapping.company.in_scope)
+                            company.sources = mapping.company.sources
+                            mapping1 = utils.add_company_domain_name_mapping(session=session,
+                                                                             company=company,
+                                                                             host_name=HostName(domain_name=domain_name),
+                                                                             verified=mapping.verified)
+                            mapping1.sources = mapping.sources
+                        # Clone host names
+                        if host_name_scope_type:
+                            for host_name in item.host_names:
+                                if host_name_scope_type == ScopeType.all or \
+                                        (host_name_scope_type == ScopeType.strict and host_name.in_scope) or \
+                                        (host_name_scope_type == ScopeType.exclude and not host_name.in_scope):
+                                    host_name1 = self._clone_object(session=session,
+                                                                    source_object=host_name,
+                                                                    custom_attributes={"commands": [],
+                                                                                       "additional_info": [],
+                                                                                       "hosts": [],
+                                                                                       "host_names": [],
+                                                                                       "services": [],
+                                                                                       "emails": [],
+                                                                                       "host_host_name_mappings": [],
+                                                                                       "resolved_host_name_mappings": [],
+                                                                                       "source_host_name_mappings": [],
+                                                                                       "domain_name_id": None,
+                                                                                       "domain_name": domain_name,
+                                                                                       "creation_date": creation_date,
+                                                                                       "last_modified": None})
+                                    # Clone emails (and their sources)
+                                    if CloneType.email in clone_types:
+                                        for email in host_name.emails:
+                                            email1 = self._clone_object(session=session,
+                                                                        source_object=email,
+                                                                        custom_attributes={"host_name": host_name1,
+                                                                                           "credentials": [],
+                                                                                           "creation_date": creation_date,
+                                                                                           "last_modified": None})
+                                            # Clone email credentials (and their sources)
+                                            if CloneType.credential in clone_types:
+                                                for credential in email.credentials:
+                                                    self._clone_object(session=session,
+                                                                       source_object=credential,
+                                                                       custom_attributes={"service": None,
+                                                                                          "email": email1,
+                                                                                          "creation_date": creation_date,
+                                                                                          "last_modified": None})
+            # Clone company names (and their sources)
+            scope_type = self._get_clone_scope(in_scope_type=CloneType.company_is,
+                                               out_of_scope_type=CloneType.company_ofs,
+                                               clone_types=clone_types)
+            if scope_type:
+                print("[*] Clone companies")
+                for company in session.query(Company).filter_by(workspace_id=source_workspace.id):
+                    if scope_type == ScopeType.all or \
+                            (scope_type == ScopeType.strict and company.in_scope) or \
+                            (scope_type == ScopeType.exclude and not company.in_scope):
+                        company1 = utils.add_company(session=session,
+                                                     workspace=destination_workspace,
+                                                     name=company.name,
+                                                     verify=False,
+                                                     in_scope=company.in_scope)
+                        company1.sources = company.sources
 
 
 class Setup:

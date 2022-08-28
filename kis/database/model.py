@@ -3675,7 +3675,6 @@ class Company(DeclarativeBase):
                             backref=backref("companies", order_by="asc(Company.name)"))
     __table_args__ = (UniqueConstraint('name', 'workspace_id', name='_company_unique'),)
 
-
     @property
     def sources_str(self) -> str:
         result = None
