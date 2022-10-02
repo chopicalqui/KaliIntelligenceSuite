@@ -944,33 +944,6 @@ class BaseCollector(config.Collector):
                                                 report_item=report_item)
         return rvalue
 
-    def add_certificate(self,
-                        session: Session,
-                        command: Command,
-                        content: str,
-                        type: CertType,
-                        source: Source = None,
-                        report_item: ReportItem = None) -> File:
-        """
-        This method adds a certificate to the database and thereby extracts host names
-        :param session: The database session used for addition the file path
-        :param command: The command to which the file should be attached
-        :param content: The certificate that should be added
-        :param type: Specifies whether the certificate is an entity, bridge, or root certificate
-        :param source: The source object from which the URL originates
-        :param report_item: Item that can be used for pushing information into the view
-        :return:
-        """
-        if report_item:
-            report_item.listener = self._listeners
-        certificate = self._domain_utils.add_certificate(session=session,
-                                                         command=command,
-                                                         content=content,
-                                                         type=type,
-                                                         source=source,
-                                                         report_item=report_item)
-        return certificate
-
     def add_file_content(self,
                          session: Session,
                          workspace: Workspace,
@@ -1355,61 +1328,30 @@ class BaseCollector(config.Collector):
 
     def add_cert_info(self,
                       session: Session,
-                      serial_number: int,
-                      common_name: str,
-                      issuer_name: str,
-                      signature_asym_algorithm: AsymmetricAlgorithm,
-                      hash_algorithm: HashAlgorithm,
+                      pem: str,
                       cert_type: CertType,
-                      signature_bits: int,
-                      valid_from: datetime,
-                      valid_until: datetime,
-                      subject_alt_names: List[str] = [],
-                      extension_info: Dict[str, str] = {},
+                      command: Command,
                       source: Source = None,
-                      service: Service = None,
-                      host_name: HostName = None,
-                      company: Company = None,
                       report_item: ReportItem = None) -> CertInfo:
         """
         This method adds certificate information to the given service
         :param session: The database session used for addition the URL
-        :param serial_number: The certificate's serial number
-        :param common_name: The certificate's common name
-        :param issuer_name: The certificate's issuer name
-        :param signature_asym_algorithm: The certificate's asymmetric algorithm
-        :param signature_bits: The size of the signature in bits
-        :param hash_algorithm: The certificate's hash algorithm
         :param cert_type: The certificate's type
-        :param valid_from: The certificate's start date
-        :param valid_until: The certificate's end date
-        :param subject_alt_names: The certificate's alternative subject names
-        :param extension_info: Additional certificate information
         :param source: The source object from which the URL originates
         :param report_item: Item that can be used for pushing information into the view
-        :param service: The service to which the URL belongs
-        :param host_name: The host name to which the URL belongs
-        :param company: The company to which the URL belongs
+        :param command: The command to which the file should be attached
         :return:
         """
         if report_item:
             report_item.listener = self._listeners
         result = self._domain_utils.add_cert_info(session=session,
-                                                  service=service,
-                                                  company=company,
-                                                  host_name=host_name,
-                                                  serial_number=serial_number,
-                                                  common_name=common_name,
-                                                  issuer_name=issuer_name,
-                                                  signature_asym_algorithm=signature_asym_algorithm,
-                                                  hash_algorithm=hash_algorithm,
+                                                  pem=pem,
                                                   cert_type=cert_type,
-                                                  signature_bits=signature_bits,
-                                                  valid_until=valid_until,
-                                                  valid_from=valid_from,
-                                                  subject_alt_names=subject_alt_names,
-                                                  extension_info=extension_info,
                                                   source=source,
+                                                  service=command.service,
+                                                  host_name=command.host_name,
+                                                  company=command.company,
+                                                  command=command,
                                                   report_item=report_item)
         return result
 

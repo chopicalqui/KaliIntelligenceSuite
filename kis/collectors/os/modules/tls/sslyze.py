@@ -243,14 +243,13 @@ class CollectorClass(BaseTlsCollector, ServiceCollector, HostNameServiceCollecto
                                     i = 1
                                     for item in chain:
                                         if "as_pem" in item:
-                                            self.add_certificate(session=session,
-                                                                 command=command,
-                                                                 content=item["as_pem"],
-                                                                 type=CertType.identity if i == 1 else
-                                                                 CertType.intermediate if i < len(chain)
-                                                                 else CertType.root,
-                                                                 source=source,
-                                                                 report_item=report_item)
+                                            cert_type = CertType.identity if i == 1 else CertType.intermediate if i < len(chain) else CertType.root
+                                            self.add_cert_info(session=session,
+                                                               pem=item["as_pem"],
+                                                               cert_type=cert_type,
+                                                               command=command,
+                                                               source=source,
+                                                               report_item=report_item)
                                             i += 1
                                         else:
                                             raise NotImplementedError(

@@ -141,6 +141,6 @@ Server certificate""".split(os.linesep)
             session.query(Company).filter_by(name="google llc").one()
             result = [item.full_name for item in session.query(HostName).all()]
             result.sort()
-            expected_result = ["google.com", "www.google.com"]
+            expected_result = ['crl.pki.goog', 'google.com', 'ocsp.pki.goog', 'pki.goog', 'www.google.com']
             expected_result.sort()
             self.assertListEqual(expected_result, result)

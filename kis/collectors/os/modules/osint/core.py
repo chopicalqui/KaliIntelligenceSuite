@@ -200,12 +200,12 @@ class BaseKisImport(BaseCollector):
                     cert_type = CertType.root
                 else:
                     cert_type = CertType.intermediate
-                self.add_certificate(session=session,
-                                     command=command,
-                                     content=certificate_chain[i],
-                                     type=cert_type,
-                                     source=source,
-                                     report_item=report_item)
+                self.add_cert_info(session=session,
+                                   pem=certificate_chain[i],
+                                   cert_type=cert_type,
+                                   command=command,
+                                   source=source,
+                                   report_item=report_item)
         if "http" in data and isinstance(data["http"], dict):
             nmap_service_name = "https" if tls_tunnel == "ssl" else "http"
         elif "ftp" in data and isinstance(data["ftp"], dict):

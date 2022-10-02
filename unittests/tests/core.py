@@ -96,6 +96,94 @@ class BaseKisTestCase(unittest.TestCase):
                                        protocol="tcp",
                                        collector_name=self._source_name)
         self._workspaces = ['test1', 'test2']
+        self._google_pem = ["""-----BEGIN CERTIFICATE-----
+MIIEiDCCA3CgAwIBAgIRAPprupBMJh3yElT2fczeZdswDQYJKoZIhvcNAQELBQAw
+RjELMAkGA1UEBhMCVVMxIjAgBgNVBAoTGUdvb2dsZSBUcnVzdCBTZXJ2aWNlcyBM
+TEMxEzARBgNVBAMTCkdUUyBDQSAxQzMwHhcNMjIwOTEyMDgxOTMzWhcNMjIxMjA1
+MDgxOTMyWjAZMRcwFQYDVQQDEw53d3cuZ29vZ2xlLmNvbTBZMBMGByqGSM49AgEG
+CCqGSM49AwEHA0IABLuGNDFRD5vjRL9r19zgztk6or2aBkZAlOcGVtS7iKnKImJB
+nCPqrI+5Ko1wgknUKBvbQ6gyuPCxGIsOGxgTRHyjggJnMIICYzAOBgNVHQ8BAf8E
+BAMCB4AwEwYDVR0lBAwwCgYIKwYBBQUHAwEwDAYDVR0TAQH/BAIwADAdBgNVHQ4E
+FgQUVtkpiUWge+tpanekeyuMECAc+vowHwYDVR0jBBgwFoAUinR/r4XN7pXNPZzQ
+4kYU83E1HScwagYIKwYBBQUHAQEEXjBcMCcGCCsGAQUFBzABhhtodHRwOi8vb2Nz
+cC5wa2kuZ29vZy9ndHMxYzMwMQYIKwYBBQUHMAKGJWh0dHA6Ly9wa2kuZ29vZy9y
+ZXBvL2NlcnRzL2d0czFjMy5kZXIwGQYDVR0RBBIwEIIOd3d3Lmdvb2dsZS5jb20w
+IQYDVR0gBBowGDAIBgZngQwBAgEwDAYKKwYBBAHWeQIFAzA8BgNVHR8ENTAzMDGg
+L6AthitodHRwOi8vY3Jscy5wa2kuZ29vZy9ndHMxYzMvemRBVHQwRXhfRmsuY3Js
+MIIBBAYKKwYBBAHWeQIEAgSB9QSB8gDwAHcAUaOw9f0BeZxWbbg3eI8MpHrMGyfL
+956IQpoN/tSLBeUAAAGDMP8w/QAABAMASDBGAiEA/uuwtXBdtlW6NKaoAZfgMMsH
+SIc3C0Yhx0jksSF/878CIQDknL8NS8r5mktgCwitwG+oBiOB9G61C78R3697Zybw
+4gB1ACl5vvCeOTkh8FZzn2Old+W+V32cYAr4+U1dJlwlXceEAAABgzD/MOwAAAQD
+AEYwRAIgN3uSwNWV9Fnwo2VPDiE56OFkhsZ/YQjOTlPPDJLZYagCIDkoi8MUxQNa
+/kpEGuooW9nBcIuTb4e3i7duHoNV43G+MA0GCSqGSIb3DQEBCwUAA4IBAQBkEFBf
+hhEENH9hrLPVXrduVxK0j3AwTwKdT31D5O6fCXdepKjANGnxX9JGyLSCiTFVxi7Y
+croQev4ko5LXTnW5o/HbZTD0n7IGlvZ2JQuKWAs2KPODKES/fbiofiasHDej4DAg
+hvD2KiTJq2mX9+FcDxdNw7xaYAMdwJd1sDcpwjx4Zjyiwy7+5xBax3Rl4axIvCuO
+KfMqmKAG5JTFqBuJPZMDIuMA6RsSuVoKEg78bN/fD4FfYtemu5xTQY8OBkS5/rgr
+3KRH/dXXxtZ9cCQQz4ICGfAmGU9FoeM2OjkrZq0ERBrbucTGQR+wJwcPuELKpdpS
+O5Y68FsQ6E0MhLyW
+-----END CERTIFICATE-----""", """-----BEGIN CERTIFICATE-----
+MIIFljCCA36gAwIBAgINAgO8U1lrNMcY9QFQZjANBgkqhkiG9w0BAQsFADBHMQsw
+CQYDVQQGEwJVUzEiMCAGA1UEChMZR29vZ2xlIFRydXN0IFNlcnZpY2VzIExMQzEU
+MBIGA1UEAxMLR1RTIFJvb3QgUjEwHhcNMjAwODEzMDAwMDQyWhcNMjcwOTMwMDAw
+MDQyWjBGMQswCQYDVQQGEwJVUzEiMCAGA1UEChMZR29vZ2xlIFRydXN0IFNlcnZp
+Y2VzIExMQzETMBEGA1UEAxMKR1RTIENBIDFDMzCCASIwDQYJKoZIhvcNAQEBBQAD
+ggEPADCCAQoCggEBAPWI3+dijB43+DdCkH9sh9D7ZYIl/ejLa6T/belaI+KZ9hzp
+kgOZE3wJCor6QtZeViSqejOEH9Hpabu5dOxXTGZok3c3VVP+ORBNtzS7XyV3NzsX
+lOo85Z3VvMO0Q+sup0fvsEQRY9i0QYXdQTBIkxu/t/bgRQIh4JZCF8/ZK2VWNAcm
+BA2o/X3KLu/qSHw3TT8An4Pf73WELnlXXPxXbhqW//yMmqaZviXZf5YsBvcRKgKA
+gOtjGDxQSYflispfGStZloEAoPtR28p3CwvJlk/vcEnHXG0g/Zm0tOLKLnf9LdwL
+tmsTDIwZKxeWmLnwi/agJ7u2441Rj72ux5uxiZ0CAwEAAaOCAYAwggF8MA4GA1Ud
+DwEB/wQEAwIBhjAdBgNVHSUEFjAUBggrBgEFBQcDAQYIKwYBBQUHAwIwEgYDVR0T
+AQH/BAgwBgEB/wIBADAdBgNVHQ4EFgQUinR/r4XN7pXNPZzQ4kYU83E1HScwHwYD
+VR0jBBgwFoAU5K8rJnEaK0gnhS9SZizv8IkTcT4waAYIKwYBBQUHAQEEXDBaMCYG
+CCsGAQUFBzABhhpodHRwOi8vb2NzcC5wa2kuZ29vZy9ndHNyMTAwBggrBgEFBQcw
+AoYkaHR0cDovL3BraS5nb29nL3JlcG8vY2VydHMvZ3RzcjEuZGVyMDQGA1UdHwQt
+MCswKaAnoCWGI2h0dHA6Ly9jcmwucGtpLmdvb2cvZ3RzcjEvZ3RzcjEuY3JsMFcG
+A1UdIARQME4wOAYKKwYBBAHWeQIFAzAqMCgGCCsGAQUFBwIBFhxodHRwczovL3Br
+aS5nb29nL3JlcG9zaXRvcnkvMAgGBmeBDAECATAIBgZngQwBAgIwDQYJKoZIhvcN
+AQELBQADggIBAIl9rCBcDDy+mqhXlRu0rvqrpXJxtDaV/d9AEQNMwkYUuxQkq/BQ
+cSLbrcRuf8/xam/IgxvYzolfh2yHuKkMo5uhYpSTld9brmYZCwKWnvy15xBpPnrL
+RklfRuFBsdeYTWU0AIAaP0+fbH9JAIFTQaSSIYKCGvGjRFsqUBITTcFTNvNCCK9U
++o53UxtkOCcXCb1YyRt8OS1b887U7ZfbFAO/CVMkH8IMBHmYJvJh8VNS/UKMG2Yr
+PxWhu//2m+OBmgEGcYk1KCTd4b3rGS3hSMs9WYNRtHTGnXzGsYZbr8w0xNPM1IER
+lQCh9BIiAfq0g3GvjLeMcySsN1PCAJA/Ef5c7TaUEDu9Ka7ixzpiO2xj2YC/WXGs
+Yye5TBeg2vZzFb8q3o/zpWwygTMD0IZRcZk0upONXbVRWPeyk+gB9lm+cZv9TSjO
+z23HFtz30dZGm6fKa+l3D/2gthsjgx0QGtkJAITgRNOidSOzNIb2ILCkXhAd4FJG
+AJ2xDx8hcFH1mt0G/FX0Kw4zd8NLQsLxdxP8c4CU6x+7Nz/OAipmsHMdMqUybDKw
+juDEI/9bfU1lcKwrmz3O2+BtjjKAvpafkmO8l7tdufThcV4q5O8DIrGKZTqPwJNl
+1IXNDw9bg1kWRxYtnCQ6yICmJhSFm/Y3m6xv+cXDBlHz4n/FsRC6UfTd
+-----END CERTIFICATE-----""", """-----BEGIN CERTIFICATE-----
+MIIFYjCCBEqgAwIBAgIQd70NbNs2+RrqIQ/E8FjTDTANBgkqhkiG9w0BAQsFADBX
+MQswCQYDVQQGEwJCRTEZMBcGA1UEChMQR2xvYmFsU2lnbiBudi1zYTEQMA4GA1UE
+CxMHUm9vdCBDQTEbMBkGA1UEAxMSR2xvYmFsU2lnbiBSb290IENBMB4XDTIwMDYx
+OTAwMDA0MloXDTI4MDEyODAwMDA0MlowRzELMAkGA1UEBhMCVVMxIjAgBgNVBAoT
+GUdvb2dsZSBUcnVzdCBTZXJ2aWNlcyBMTEMxFDASBgNVBAMTC0dUUyBSb290IFIx
+MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAthECix7joXebO9y/lD63
+ladAPKH9gvl9MgaCcfb2jH/76Nu8ai6Xl6OMS/kr9rH5zoQdsfnFl97vufKj6bwS
+iV6nqlKr+CMny6SxnGPb15l+8Ape62im9MZaRw1NEDPjTrETo8gYbEvs/AmQ351k
+KSUjB6G00j0uYODP0gmHu81I8E3CwnqIiru6z1kZ1q+PsAewnjHxgsHA3y6mbWwZ
+DrXYfiYaRQM9sHmklCitD38m5agI/pboPGiUU+6DOogrFZYJsuB6jC511pzrp1Zk
+j5ZPaK49l8KEj8C8QMALXL32h7M1bKwYUH+E4EzNktMg6TO8UpmvMrUpsyUqtEj5
+cuHKZPfmghCN6J3Cioj6OGaK/GP5Afl4/Xtcd/p2h/rs37EOeZVXtL0m79YB0esW
+CruOC7XFxYpVq9Os6pFLKcwZpDIlTirxZUTQAs6qzkm06p98g7BAe+dDq6dso499
+iYH6TKX/1Y7DzkvgtdizjkXPdsDtQCv9Uw+wp9U7DbGKogPeMa3Md+pvez7W35Ei
+Eua++tgy/BBjFFFy3l3WFpO9KWgz7zpm7AeKJt8T11dleCfeXkkUAKIAf5qoIbap
+sZWwpbkNFhHax2xIPEDgfg1azVY80ZcFuctL7TlLnMQ/0lUTbiSw1nH69MG6zO0b
+9f6BQdgAmD06yK56mDcYBZUCAwEAAaOCATgwggE0MA4GA1UdDwEB/wQEAwIBhjAP
+BgNVHRMBAf8EBTADAQH/MB0GA1UdDgQWBBTkrysmcRorSCeFL1JmLO/wiRNxPjAf
+BgNVHSMEGDAWgBRge2YaRQ2XyolQL30EzTSo//z9SzBgBggrBgEFBQcBAQRUMFIw
+JQYIKwYBBQUHMAGGGWh0dHA6Ly9vY3NwLnBraS5nb29nL2dzcjEwKQYIKwYBBQUH
+MAKGHWh0dHA6Ly9wa2kuZ29vZy9nc3IxL2dzcjEuY3J0MDIGA1UdHwQrMCkwJ6Al
+oCOGIWh0dHA6Ly9jcmwucGtpLmdvb2cvZ3NyMS9nc3IxLmNybDA7BgNVHSAENDAy
+MAgGBmeBDAECATAIBgZngQwBAgIwDQYLKwYBBAHWeQIFAwIwDQYLKwYBBAHWeQIF
+AwMwDQYJKoZIhvcNAQELBQADggEBADSkHrEoo9C0dhemMXoh6dFSPsjbdBZBiLg9
+NR3t5P+T4Vxfq7vqfM/b5A3Ri1fyJm9bvhdGaJQ3b2t6yMAYN/olUazsaL+yyEn9
+WprKASOshIArAoyZl+tJaox118fessmXn1hIVw41oeQa1v1vg4Fv74zPl6/AhSrw
+9U5pCZEt4Wi4wStz6dTZ/CLANx8LZh1J7QJVj2fhMtfTJr9w4z30Z209fOU0iOMy
++qduBmpvvYuR7hZL6Dupszfnw0Skfths18dG9ZKb59UhvmaSGZRVbNQpsg3BZlvi
+d0lIKO2d1xozclOzgjXPYovJJIultzkMu34qQb9Sz/yilrbCgj8=
+-----END CERTIFICATE-----"""]
 
     def setUp(self):
         self._engine = Engine(production=False)
@@ -501,34 +589,20 @@ class BaseKisTestCase(unittest.TestCase):
                          service: Service = None,
                          company: Company = None,
                          host_name: HostName = None,
-                         common_name: str = "www.test.com",
-                         issuer_name: str = "www.test.com",
-                         serial_number: str = 1,
-                         signature_asym_algorithm: AsymmetricAlgorithm = AsymmetricAlgorithm.rsa1024,
-                         hash_algorithm: HashAlgorithm = HashAlgorithm.sha256,
-                         cert_type: CertType = CertType.root,
-                         signature_bits: int = 2048,
-                         valid_from: datetime = datetime.now(),
-                         valid_until: datetime = datetime.now(),
-                         subject_alt_names: List[str] = [],
-                         extension_info: Dict[str, str] = {}):
+                         pem: str = None,
+                         cert_type: CertType = None):
         if not service and not host_name and not company:
             service = self.create_service(session=session)
+        if not cert_type:
+            cert_type = CertType.identity
+        if not pem:
+            pem = self._google_pem[0]
         result = self._domain_utils.add_cert_info(session=session,
                                                   service=service,
                                                   company=company,
                                                   host_name=host_name,
-                                                  serial_number=serial_number,
-                                                  common_name=common_name,
-                                                  issuer_name=issuer_name,
-                                                  signature_asym_algorithm=signature_asym_algorithm,
-                                                  hash_algorithm=hash_algorithm,
-                                                  cert_type=cert_type,
-                                                  signature_bits=signature_bits,
-                                                  valid_from=valid_from,
-                                                  valid_until=valid_until,
-                                                  subject_alt_names=subject_alt_names,
-                                                  extension_info=extension_info)
+                                                  pem=pem,
+                                                  cert_type=cert_type)
         return result
 
     def query_hostname(self, session: Session, workspace_str: str, host_name: str) -> HostName:
@@ -726,7 +800,7 @@ class BaseKisTestCase(unittest.TestCase):
         # add host names
         host_name = self._domain_utils.add_domain_name(session=session,
                                                        workspace=workspace,
-                                                       item="www.unittest.com",
+                                                       item="www1.unittest.com",
                                                        source=source)
         self._domain_utils.add_host_host_name_mapping(session=session,
                                                       host=host,
@@ -745,7 +819,7 @@ class BaseKisTestCase(unittest.TestCase):
         # add email
         email = self.create_email(session=session,
                                   workspace_str=workspace_str,
-                                  email_address="test@www.unittest.com",
+                                  email_address="test@www1.unittest.com",
                                   verify=True,
                                   scope=ScopeType.all)
         source.emails.append(email)
@@ -876,9 +950,9 @@ class BaseKisTestCase(unittest.TestCase):
                                             file_type=FileType.text,
                                             content=b'test')
         # add cert info
-        self.create_cert_info(session=session, service=service, common_name="www.test.com")
-        self.create_cert_info(session=session, company=company, common_name="www.test.com")
-        self.create_cert_info(session=session, host_name=host_name, common_name="www.test.com")
+        self.create_cert_info(session=session, service=service)
+        self.create_cert_info(session=session, company=company)
+        self.create_cert_info(session=session, host_name=host_name)
         # add tls info
         tls_info = self.create_tls_info(session=session, service=service, version=TlsVersion.tls13)
         cipher_suite = self.query_cipher_suite(session=session, iana_name="TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384")
@@ -902,7 +976,7 @@ class BaseKisTestCase(unittest.TestCase):
         host_name = session.query(HostName) \
             .join(DomainName) \
             .join(Workspace) \
-            .filter(Workspace.name == workspace, HostName.name == "www").one()
+            .filter(Workspace.name == workspace, HostName.name == "www1").one()
         resolved_host_name = session.query(HostName) \
             .join(DomainName) \
             .join(Workspace) \
@@ -929,7 +1003,7 @@ class BaseKisTestCase(unittest.TestCase):
         self.assertEqual("test llc", host.ipv4_network.companies[0].name)
         self.assertEqual(workspace, host.ipv4_network.workspace.name)
         # check host name, domain, and company
-        self.assertEqual("www.unittest.com", host_name.full_name)
+        self.assertEqual("www1.unittest.com", host_name.full_name)
         self.assertEqual("whoishost", host_name.sources[0].name)
         self.assertEqual("resolved.unittest.com", resolved_host_name.full_name)
         self.assertEqual("whoishost", resolved_host_name.sources[0].name)
@@ -938,7 +1012,7 @@ class BaseKisTestCase(unittest.TestCase):
         self.assertEqual("whoisdomain", host_name.domain_name.companies[0].sources[0].name)
         self.assertEqual(workspace, host_name.domain_name.workspace.name)
         # check email
-        self.assertEqual("test@www.unittest.com", host_name.emails[0].email_address)
+        self.assertEqual("test@www1.unittest.com", host_name.emails[0].email_address)
         self.assertEqual("whoishost", host_name.emails[0].sources[0].name)
         # check additional info
         self.assertEqual("test", host.services[0].additional_info[0].name)
@@ -958,7 +1032,7 @@ class BaseKisTestCase(unittest.TestCase):
         self.assertEqual("test", host.services[0].commands[0].collector_name.name)
         self.assertEqual("tcpnmap", host.ipv4_network.commands[0].collector_name.name)
         # cert info
-        self.assertEqual("www.test.com", host.services[0].cert_info[0].common_name)
+        self.assertEqual("www.google.com", host.services[0].cert_info[0].subject_common_names_str)
         # tls info
         self.assertEqual(TlsVersion.tls13, host.services[0].tls_info[0].version)
         self.assertEqual("TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",
@@ -997,7 +1071,7 @@ class BaseKisTestCase(unittest.TestCase):
         self.assertEqual(0, session.query(TlsInfo).count())
         self.assertEqual(0, session.query(TlsInfoCipherSuiteMapping).count())
         self.assertEqual(0, session.query(VHostNameMapping).count())
-        self.assertEqual(339, session.query(CipherSuite).count())
+        self.assertEqual(344, session.query(CipherSuite).count())
         # TODO: Update when adding a new table
 
 

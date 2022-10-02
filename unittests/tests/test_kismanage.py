@@ -171,11 +171,11 @@ class TestSubcommandWorkspace(BaseTestKisCommand):
                 .join(Workspace) \
                 .filter(Workspace.name == self._workspaces[1]) \
                 .filter(Network.network == "192.168.0.0/24").one_or_none()
-            self.assertIsNone(network)
+            self.assertIsNotNone(network)
             # Test domain and host names
             # Test test1.local
             host_name = session.query(DomainName).join(Workspace).filter(Workspace.name == self._workspaces[1]).count()
-            self.assertEqual(0, host_name)
+            self.assertEqual(1, host_name)
             # Test companies
             company = self.query_company(session=session, workspace_str=self._workspaces[1], name="test1 llc")
             self.assertIsNotNone(company)

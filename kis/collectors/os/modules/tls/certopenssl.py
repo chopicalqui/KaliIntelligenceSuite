@@ -175,9 +175,9 @@ class CollectorClass(BaseTlsCollector, ServiceCollector, HostNameServiceCollecto
                 cert_type = CertType.root
             else:
                 cert_type = CertType.intermediate
-            self.add_certificate(session=session,
-                                 command=command,
-                                 content=certificates[i],
-                                 type=cert_type,
-                                 source=source,
-                                 report_item=report_item)
+            self.add_cert_info(session=session,
+                               pem=certificates[i],
+                               cert_type=cert_type,
+                               command=command,
+                               source=source,
+                               report_item=report_item)

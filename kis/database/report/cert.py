@@ -111,24 +111,27 @@ class ReportClass(BaseReport):
                    "Is HTTP",
                    "URL",
                    "HN Coverage",
-                   "Common Name",
+                   "Cert. Type",
+                   "X509 Version",
+                   "Subject",
                    "Issuer",
                    "Invalid CA (Self-Signed)",
+                   "Signature Algorithm",
                    "Public Key Algorithm",
-                   "Key Length",
-                   "Public Key Summary",
-                   "Proper Key Length",
-                   "Hash Algorithm",
-                   "Weak Signature",
-                   "Cert. Type",
+                   "Public Key Size",
+                   "Exponent",
                    "Valid From",
                    "Valid Until",
                    "Valid Years",
-                   "Is Valid",
-                   "Within Recommended Validity",
+                   "Verification",
+                   "Has Expired",
+                   "Recommended Duration",
                    "Subject Alternative Names",
                    "Key Usage",
+                   "Extended Key Usage",
                    "Critical Extensions",
+                   "OCSP Server",
+                   "CRL",
                    "Serial Number",
                    "DB ID (NW)",
                    "DB ID (IP)",
@@ -160,63 +163,67 @@ class ReportClass(BaseReport):
                         for cert_info in service.cert_info:
                             if self._filter(cert_info):
                                 matching_host = "n/a"
-                                result.append([workspace.name,
-                                               "Host",
-                                               network_str,
-                                               network_scope,
-                                               network_companies,
-                                               host.address,
-                                               host.version_str,
-                                               host_is_private,
-                                               host.in_scope,
-                                               host.os_family,
-                                               host.os_details,
-                                               None,
-                                               None,
-                                               host.address,
-                                               host.in_scope,
-                                               None,
-                                               None,
-                                               None,
-                                               service.protocol_str,
-                                               service.port,
-                                               service.protocol_port_str,
-                                               service.service_name_with_confidence,
-                                               service.service_confidence,
-                                               service.state_str,
-                                               service.nmap_service_state_reason,
-                                               service.nmap_product_version,
-                                               is_http,
-                                               url_str[0] if url_str else None,
-                                               matching_host,
-                                               cert_info.common_name.lower(),
-                                               cert_info.issuer_name.lower(),
-                                               cert_info.is_self_signed(),
-                                               cert_info.signature_asym_algorithm_str,
-                                               cert_info.signature_bits,
-                                               cert_info.signature_asym_algorithm_summary,
-                                               None,
-                                               cert_info.hash_algorithm_str,
-                                               cert_info.has_weak_signature(),
-                                               cert_info.cert_type_str,
-                                               cert_info.valid_from_str,
-                                               cert_info.valid_until_str,
-                                               cert_info.validity_period_days / 365,
-                                               cert_info.is_valid(),
-                                               cert_info.has_recommended_duration(),
-                                               cert_info.subject_alt_names_str.lower(),
-                                               cert_info.key_usage_str,
-                                               ", ".join(cert_info.critical_extension_names),
-                                               cert_info.serial_number,
-                                               network_id,
-                                               host.id,
-                                               None,
-                                               service.id,
-                                               cert_info.id,
-                                               network_sources,
-                                               host_sources,
-                                               None,
-                                               service.sources_str,
+                                extensions = cert_info.extensions_dict
+                                result.append([workspace.name,  # Workspace
+                                               "Host",  # Type
+                                               network_str,  # Network (NW)
+                                               network_scope,  # Scope (NW)
+                                               network_companies,  # Company (NW)
+                                               host.address,  # IP Address (IP)
+                                               host.version_str,  # Version (IP)
+                                               host_is_private,  # Private IP
+                                               host.in_scope,  # In Scope (IP)
+                                               host.os_family,  # OS Family
+                                               host.os_details,  # OS Details
+                                               None,  # Second-Level Domain (SLD)
+                                               None,  # Scope (SLD)
+                                               host.address,  # Host Name (HN)
+                                               host.in_scope,  # In Scope (HN)
+                                               None,  # Name (HN)
+                                               None,  # Company (HN)
+                                               None,  # Environment
+                                               service.protocol_str,  # UDP/TCP
+                                               service.port,  # Port
+                                               service.protocol_port_str,  # Service (SRV)
+                                               service.service_name_with_confidence,  # Nmap Name (SRV)
+                                               service.service_confidence,  # Confidence (SRV)
+                                               service.state_str,  # State (SRV)
+                                               service.nmap_service_state_reason,  # Reason State
+                                               service.nmap_product_version,  # Banner Information
+                                               is_http,  # Is HTTP
+                                               url_str[0] if url_str else None,  # URL
+                                               matching_host,  # HN Coverage
+                                               cert_info.cert_type_str,  # Cert. Type
+                                               cert_info.version,  # X509 Version
+                                               cert_info.subject,  # Subject
+                                               cert_info.issuer,  # Issuer
+                                               cert_info.is_self_signed(),  # Invalid CA (Self-Signed)
+                                               cert_info.signature_algorithm,  # Signature Algorithm
+                                               cert_info.public_key_name,  # Public Key Algorithm
+                                               cert_info.public_key_size,  # Public Key Size
+                                               cert_info.exponent,  # Exponent
+                                               cert_info.valid_from_str,  # Valid From
+                                               cert_info.valid_until_str,  # Valid Until
+                                               cert_info.validity_period_days / 365,  # Valid Years
+                                               "TODO",  # Verification
+                                               cert_info.has_exired(),  # Has Expired
+                                               cert_info.has_recommended_duration(),  # Recommended Duration
+                                               cert_info.subject_alt_names_str,  # Subject Alternative Names
+                                               str(extensions["keyUsage"]),  # Key Usage
+                                               str(extensions["extendedKeyUsage"]),  # Extended Key Usage
+                                               cert_info.critical_extensions_str,  # Critical Extensions
+                                               cert_info.ocsp_servers_str,  # OCSP Server
+                                               cert_info.crl_distribution_points_str,  # CRL
+                                               cert_info.serial_number,  # Serial Number
+                                               network_id,  # DB ID (NW)
+                                               host.id,  # DB ID (IP)
+                                               None,  # DB ID (HN)
+                                               service.id,  # DB ID (SRV)
+                                               cert_info.id,  # DB ID (CERT)
+                                               network_sources,  # Source (NW)
+                                               host_sources,  # Source (IP)
+                                               None,  # Source (HN)
+                                               service.sources_str,  # Source (SRV)
                                                cert_info.sources_str])
                 for host_name in host_names:
                     environment = self._domain_config.get_environment(host_name)
@@ -230,208 +237,68 @@ class ReportClass(BaseReport):
                                 if is_http else []
                             for cert_info in service.cert_info:
                                 if self._filter(cert_info):
+                                    extensions = cert_info.extensions_dict
                                     matching_host = cert_info.matches_host_name(host_name) \
                                         if cert_info.cert_type == CertType.identity else None
-                                    result.append([workspace.name,
-                                                   "VHost",
-                                                   network_str,
-                                                   network_scope,
-                                                   network_companies,
-                                                   host.address,
-                                                   host.version_str,
-                                                   host_is_private,
-                                                   host.in_scope,
-                                                   host.os_family,
-                                                   host.os_details,
-                                                   host_name.domain_name.name,
-                                                   host_name.domain_name.scope_str,
-                                                   host_name.full_name,
-                                                   host_name._in_scope,
-                                                   host_name.name,
-                                                   host_name.companies_str,
-                                                   environment,
-                                                   service.protocol_str,
-                                                   service.port,
-                                                   service.protocol_port_str,
-                                                   service.service_name_with_confidence,
-                                                   service.service_confidence,
-                                                   service.state_str,
-                                                   service.nmap_service_state_reason,
-                                                   service.nmap_product_version,
-                                                   True,
-                                                   url_str[0] if url_str else None,
-                                                   matching_host,
-                                                   cert_info.common_name.lower(),
-                                                   cert_info.issuer_name.lower(),
-                                                   cert_info.is_self_signed(),
-                                                   cert_info.signature_asym_algorithm_str,
-                                                   cert_info.signature_bits,
-                                                   cert_info.signature_asym_algorithm_summary,
-                                                   None,
-                                                   cert_info.hash_algorithm_str,
-                                                   cert_info.has_weak_signature(),
-                                                   cert_info.cert_type_str,
-                                                   cert_info.valid_from_str,
-                                                   cert_info.valid_until_str,
-                                                   cert_info.validity_period_days / 365,
-                                                   cert_info.is_valid(),
-                                                   cert_info.has_recommended_duration(),
-                                                   cert_info.subject_alt_names_str.lower(),
-                                                   cert_info.key_usage_str,
-                                                   ", ".join(cert_info.critical_extension_names),
-                                                   cert_info.serial_number,
-                                                   network_id,
-                                                   host.id,
-                                                   host_name.id,
-                                                   service.id,
-                                                   cert_info.id,
-                                                   network_sources,
-                                                   host_sources,
-                                                   host_name_sources,
-                                                   service.sources_str,
+                                    result.append([workspace.name,  # Workspace
+                                                   "Host",  # Type
+                                                   network_str,  # Network (NW)
+                                                   network_scope,  # Scope (NW)
+                                                   network_companies,  # Company (NW)
+                                                   host.address,  # IP Address (IP)
+                                                   host.version_str,  # Version (IP)
+                                                   host_is_private,  # Private IP
+                                                   host.in_scope,  # In Scope (IP)
+                                                   host.os_family,  # OS Family
+                                                   host.os_details,  # OS Details
+                                                   host_name.domain_name.name,  # Second-Level Domain (SLD)
+                                                   host_name.domain_name.scope_str,  # Scope (SLD)
+                                                   host_name.full_name,  # Host Name (HN)
+                                                   host_name._in_scope,  # In Scope (HN)
+                                                   host_name.name,  # Name (HN)
+                                                   host_name.companies_str,  # Company (HN)
+                                                   environment,  # Environment
+                                                   service.protocol_str,  # UDP/TCP
+                                                   service.port,  # Port
+                                                   service.protocol_port_str,  # Service (SRV)
+                                                   service.service_name_with_confidence,  # Nmap Name (SRV)
+                                                   service.service_confidence,  # Confidence (SRV)
+                                                   service.state_str,  # State (SRV)
+                                                   service.nmap_service_state_reason,  # Reason State
+                                                   service.nmap_product_version,  # Banner Information
+                                                   True,  # Is HTTP
+                                                   url_str[0] if url_str else None,  # URL
+                                                   matching_host,  # HN Coverage
+                                                   cert_info.cert_type_str,  # Cert. Type
+                                                   cert_info.version,  # X509 Version
+                                                   cert_info.subject,  # Subject
+                                                   cert_info.issuer,  # Issuer
+                                                   cert_info.is_self_signed(),  # Invalid CA (Self-Signed)
+                                                   cert_info.signature_algorithm,  # Signature Algorithm
+                                                   cert_info.public_key_name,  # Public Key Algorithm
+                                                   cert_info.public_key_size,  # Public Key Size
+                                                   cert_info.exponent,  # Exponent
+                                                   cert_info.valid_from_str,  # Valid From
+                                                   cert_info.valid_until_str,  # Valid Until
+                                                   cert_info.validity_period_days / 365,  # Valid Years
+                                                   "TODO",  # Verification
+                                                   cert_info.has_exired(),  # Has Expired
+                                                   cert_info.has_recommended_duration(),  # Recommended Duration
+                                                   cert_info.subject_alt_names_str,  # Subject Alternative Names
+                                                   str(extensions["keyUsage"]),  # Key Usage
+                                                   str(extensions["extendedKeyUsage"]),  # Extended Key Usage
+                                                   cert_info.critical_extensions_str,  # Critical Extensions
+                                                   cert_info.ocsp_servers_str,  # OCSP Server
+                                                   cert_info.crl_distribution_points_str,  # CRL
+                                                   cert_info.serial_number,  # Serial Number
+                                                   network_id,  # DB ID (NW)
+                                                   host.id,  # DB ID (IP)
+                                                   host_name.id,  # DB ID (HN)
+                                                   service.id,  # DB ID (SRV)
+                                                   cert_info.id,  # DB ID (CERT)
+                                                   network_sources,  # Source (NW)
+                                                   host_sources,  # Source (IP)
+                                                   host_name_sources,  # Source (HN)
+                                                   service.sources_str,  # Source (SRV)
                                                    cert_info.sources_str])
         return result
-
-    def _final_report_host_name_coverage(self, workbook: Workbook):
-        result = [["IP Address", "Service", "Host Names", "Common Name", "Subject Alternative\nNames", "Full\nCoverage"]]
-        if self._args.language == ReportLanguage.de:
-            result = [["IP-Adresse", "Dienst", "Hostnamen", "Common Name", "Subject Alternative\nNames", "Volle\nAbdeckung"]]
-        for workspace in self._workspaces:
-            for host in workspace.hosts:
-                host_names = [item.host_name.full_name
-                              for item in host.get_host_host_name_mappings([DnsResourceRecordType.a,
-                                                                            DnsResourceRecordType.aaaa])]
-                for service in host.services:
-                    for cert_info in service.cert_info:
-                        if cert_info.cert_type == CertType.identity:
-                            matching_host = cert_info.matches_host_names(host_names)
-                            result.append([host.address,
-                                           service.protocol_port_str,
-                                           ", ".join(host_names),
-                                           cert_info.common_name,
-                                           cert_info.subject_alt_names_str,
-                                           self.TRUE if matching_host else None])
-        if len(result) > 1:
-            self.fill_excel_sheet(worksheet=workbook.create_sheet(),
-                                  csv_list=result,
-                                  name="Cert - Name Coverage",
-                                  title="",
-                                  description="")
-
-    def _final_report_valid_ca(self, workbook: Workbook):
-        result = [["IP Address", "Service", "Name", "Common Name", "Issuer", "Self-\nSigned"]]
-        if self._args.language == ReportLanguage.de:
-            result = [["IP-Adresse", "Dienst", "Name", "Common Name", "Issuer", "Selbst\nSigniert"]]
-        for workspace in self._workspaces:
-            for host in workspace.hosts:
-                for service in host.services:
-                    for cert_info in service.cert_info:
-                        if cert_info.cert_type == CertType.identity:
-                            result.append([host.address,
-                                           service.protocol_port_str,
-                                           service.service_name_with_confidence,
-                                           cert_info.common_name,
-                                           cert_info.issuer_name,
-                                           self.TRUE if cert_info.is_self_signed() else None])
-        if len(result) > 1:
-            self.fill_excel_sheet(worksheet=workbook.create_sheet(),
-                                  csv_list=result,
-                                  name="Cert - Valid CAs",
-                                  title="",
-                                  description="")
-
-    def _final_report_signature_algorithm(self, workbook: Workbook):
-        result = [["IP Address", "Service", "Name", "Public Key\nAlgorithm", "Hash Algorithm"]]
-        if self._args.language == ReportLanguage.de:
-            result = [["IP-Adresse", "Dienst", "Name", "Public-Key-\nAlgorithmus", "Hashalgorithmus"]]
-        for workspace in self._workspaces:
-            for host in workspace.hosts:
-                for service in host.services:
-                    for cert_info in service.cert_info:
-                        if cert_info.cert_type == CertType.identity:
-                            result.append([host.address,
-                                           service.protocol_port_str,
-                                           service.service_name_with_confidence,
-                                           cert_info.signature_asym_algorithm_summary,
-                                           cert_info.hash_algorithm_str])
-        if len(result) > 1:
-            self.fill_excel_sheet(worksheet=workbook.create_sheet(),
-                                  csv_list=result,
-                                  name="Cert - Signing Algorithms",
-                                  title="",
-                                  description="")
-
-    def _final_report_durations(self, workbook: Workbook):
-        result = [["IP Address", "Service", "Name", "Valid\nFrom", "Valid\nUntil", "Valid", "Years", "Valid\nDuration"]]
-        if self._args.language == ReportLanguage.de:
-            result = [["IP-Adresse", "Dienst", "Name", "Gültig\nvon", "Gültig\nbis", "Gültig", "Jahre", "Gültige\nDauer"]]
-        for workspace in self._workspaces:
-            for host in workspace.hosts:
-                for service in host.services:
-                    for cert_info in service.cert_info:
-                        if cert_info.cert_type == CertType.identity:
-                            result.append([host.address,
-                                           service.protocol_port_str,
-                                           service.service_name,
-                                           cert_info.valid_from_str,
-                                           cert_info.valid_until_str,
-                                           self.TRUE if cert_info.is_valid() else None,
-                                           "{:.2f}".format(cert_info.validity_period_days / 365),
-                                           self.TRUE if cert_info.has_recommended_duration() else None])
-        if len(result) > 1:
-            self.fill_excel_sheet(worksheet=workbook.create_sheet(),
-                                  csv_list=result,
-                                  name="Cert - Durations",
-                                  title="",
-                                  description="")
-
-    def _final_report_key_usages(self, workbook: Workbook):
-        result = [["IP Address", "Service", "Name", "Key Usage"]]
-        if self._args.language == ReportLanguage.de:
-            result = [["IP-Adresse", "Dienst", "Name", "Verwendungszweck"]]
-        for workspace in self._workspaces:
-            for host in workspace.hosts:
-                for service in host.services:
-                    for cert_info in service.cert_info:
-                        if cert_info.cert_type == CertType.identity:
-                            result.append([host.address,
-                                           service.protocol_port_str,
-                                           service.service_name_with_confidence,
-                                           cert_info.key_usage_str])
-        if len(result) > 1:
-            self.fill_excel_sheet(worksheet=workbook.create_sheet(),
-                                  csv_list=result,
-                                  name="Cert - Key Usage",
-                                  title="",
-                                  description="")
-
-    def _final_report_critical_extensions(self, workbook: Workbook):
-        result = [["IP Address", "Service", "Name", "Critical Extensions"]]
-        if self._args.language == ReportLanguage.de:
-            result = [["IP-Adresse", "Dienst", "Name", "Kritische Erweiterungen"]]
-        for workspace in self._workspaces:
-            for host in workspace.hosts:
-                for service in host.services:
-                    for cert_info in service.cert_info:
-                        if cert_info.cert_type == CertType.identity:
-                            result.append([host.address,
-                                           service.protocol_port_str,
-                                           service.service_name_with_confidence,
-                                           ", ".join(cert_info.critical_extension_names)])
-        if len(result) > 1:
-            self.fill_excel_sheet(worksheet=workbook.create_sheet(),
-                                  csv_list=result,
-                                  name="Cert - Crit. Extensions",
-                                  title="",
-                                  description="")
-
-    def final_report(self, workbook: Workbook):
-        """
-        This method creates all tables that are relevant to the final report.
-        """
-        self._final_report_host_name_coverage(workbook)
-        self._final_report_valid_ca(workbook)
-        self._final_report_signature_algorithm(workbook)
-        self._final_report_durations(workbook)
-        self._final_report_key_usages(workbook)
-        self._final_report_critical_extensions(workbook)

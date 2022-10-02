@@ -188,13 +188,16 @@ class BaseShodanHostCollectorTestCase(BaseKaliCollectorTestCase):
             results = session.query(Path).filter_by().all()
             results = [item.name for item in results]
             results.sort()
-            paths = ["/", "/", "/en/start", "/secret"]
+            paths = ['/', '/', '/', '/', '/GTS1O1.crl', '/en/start', '/gts1o1', '/secret']
             self.assertListEqual(paths, results)
             # Check HostName
             results = session.query(HostName).filter_by().all()
             results = [item.full_name for item in results]
             results.sort()
-            hosts = ["google.com",
+            hosts = ["crl.pki.goog",
+                     "ocsp.pki.goog",
+                     "pki.goog",
+                     "google.com",
                      "www.google.com",
                      "unittest.com",
                      "openvpn.unittest.com",
@@ -213,6 +216,6 @@ class BaseShodanHostCollectorTestCase(BaseKaliCollectorTestCase):
             results = session.query(Service).filter_by().all()
             results = ["{}/{}".format(service.protocol_str, service.port) for service in results]
             results.sort()
-            service = ["tcp/80", "tcp/443", "tcp/21", "udp/1194"]
+            service = ['tcp/21', 'tcp/443', 'tcp/80', 'tcp/80', 'tcp/80', 'udp/1194']
             service.sort()
             self.assertListEqual(service, results)

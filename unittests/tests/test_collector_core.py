@@ -1475,412 +1475,6 @@ class TestAddServiceMethod(BaseKisTestCase):
         self._unittest_add_service_method(method="PUT", service_port=80)
 
 
-class TestCertInfo(BaseKisTestCase):
-    """
-    This test case tests BaseUtils.add_cert_info
-    """
-
-    def __init__(self, test_name: str):
-        super().__init__(test_name)
-
-    def _test_add_cert_info(self,
-                            session: Session,
-                            service_port: int,
-                            host_name_str: str,
-                            company_name_str: str,
-                            serial_number: int,
-                            common_name: str,
-                            issuer_name: str,
-                            signature_asym_algorithm: AsymmetricAlgorithm,
-                            signature_bits: int,
-                            hash_algorithm: HashAlgorithm,
-                            cert_type: CertType,
-                            valid_from: datetime,
-                            valid_until: datetime,
-                            subject_alt_names: List[str] = [],
-                            extension_info: Dict[str, str] = {},
-                            source: Source = None,
-                            ex_message: str = None) -> None:
-        """
-        This is a helper method for testing BaseUtils.add_cert_info
-        :return:
-        """
-        serial_number = str(serial_number)
-        extension_info = dict(extension_info)
-        if subject_alt_names:
-            if "subject_alt_name" in extension_info:
-                extension_info["subject_alt_name"].extend(subject_alt_names)
-            else:
-                extension_info["subject_alt_name"] = subject_alt_names
-        for item in self._workspaces:
-            service = None
-            host_name = None
-            company = None
-            if service_port:
-                service = self.create_service(session=session,
-                                              workspace_str=item,
-                                              port=service_port)
-            if host_name_str:
-                host_name = self.create_hostname(session=session,
-                                                 workspace_str=item,
-                                                 host_name=host_name_str)
-            if company_name_str:
-                company = self.create_company(session=session,
-                                              workspace_str=item,
-                                              name_str=company_name_str)
-                company_name_str = company_name_str.lower()
-            try:
-                result = self._domain_utils.add_cert_info(session=session,
-                                                          service=service,
-                                                          host_name=host_name,
-                                                          company=company,
-                                                          serial_number=serial_number,
-                                                          common_name=common_name,
-                                                          issuer_name=issuer_name,
-                                                          signature_asym_algorithm=signature_asym_algorithm,
-                                                          signature_bits=signature_bits,
-                                                          hash_algorithm=hash_algorithm,
-                                                          cert_type=cert_type,
-                                                          valid_until=valid_until,
-                                                          valid_from=valid_from,
-                                                          subject_alt_names=subject_alt_names,
-                                                          extension_info=extension_info,
-                                                          source=source)
-                self.assertIsNotNone(result)
-                session.commit()
-            except Exception as ex:
-                if ex_message:
-                    self.assertEqual(ex_message, str(ex))
-                    return
-                raise ex
-            self.assertIsNone(ex_message)
-            if service_port:
-                self.assertIsNotNone(result.service)
-                self.assertEqual(service.id, result.service_id)
-                self.assertEqual(service_port, result.service.port)
-                results = session.query(CertInfo) \
-                    .join(Service) \
-                    .join(Host) \
-                    .join(Workspace).filter(CertInfo.serial_number == serial_number,
-                                            CertInfo.service_id == service.id,
-                                            Workspace.name == item).all()
-                self.assertEqual(1, len(results))
-                if source:
-                    results = session.query(Source) \
-                        .join((CertInfo, Source.cert_info)) \
-                        .join(Service) \
-                        .join(Host) \
-                        .join(Workspace) \
-                        .filter(CertInfo.serial_number == serial_number,
-                                CertInfo.service_id == service.id,
-                                Workspace.name == item).count()
-                    self.assertEqual(1, results)
-            if host_name_str:
-                self.assertIsNotNone(result.host_name)
-                self.assertEqual(host_name.id, result.host_name_id)
-                self.assertEqual(host_name_str, result.host_name.full_name)
-                results = session.query(CertInfo) \
-                    .join(HostName) \
-                    .join(DomainName) \
-                    .join(Workspace).filter(CertInfo.serial_number == serial_number,
-                                            CertInfo.host_name_id == host_name.id,
-                                            Workspace.name == item).all()
-                self.assertEqual(1, len(results))
-                if source:
-                    results = session.query(Source) \
-                        .join((CertInfo, Source.cert_info)) \
-                        .join(HostName) \
-                        .join(DomainName) \
-                        .join(Workspace) \
-                        .filter(CertInfo.serial_number == serial_number,
-                                CertInfo.host_name_id == host_name.id,
-                                Workspace.name == item).count()
-                    self.assertEqual(1, results)
-            if company_name_str:
-                self.assertIsNotNone(result.company)
-                self.assertEqual(company.id, result.company_id)
-                self.assertEqual(company_name_str, result.company.name)
-                results = session.query(CertInfo) \
-                    .join(Company) \
-                    .join(Workspace).filter(CertInfo.serial_number == serial_number,
-                                            CertInfo.company_id == company.id,
-                                            Workspace.name == item).all()
-                self.assertEqual(1, len(results))
-                if source:
-                    results = session.query(Source) \
-                        .join((CertInfo, Source.cert_info)) \
-                        .join(Company) \
-                        .join(Workspace) \
-                        .filter(CertInfo.serial_number == serial_number,
-                                CertInfo.company_id == company.id,
-                                Workspace.name == item).count()
-                    self.assertEqual(1, results)
-            self.assertEqual(serial_number, result.serial_number)
-            self.assertEqual(common_name, result.common_name)
-            self.assertEqual(issuer_name, result.issuer_name)
-            self.assertEqual(signature_asym_algorithm, result.signature_asym_algorithm)
-            self.assertEqual(hash_algorithm, result.hash_algorithm)
-            self.assertEqual(cert_type, result.cert_type)
-            self.assertEqual(valid_from, result.valid_from)
-            self.assertEqual(valid_until, result.valid_until)
-            self.assertEqual(subject_alt_names, result.subject_alt_names)
-            self.assertDictEqual(extension_info, result.extension_info)
-        # we should have the same company name in different workspaces
-        results = session.query(CertInfo).count()
-        self.assertEqual(len(self._workspaces), results)
-
-    def _unittest_add_cert_info(self,
-                                service_port: int,
-                                host_name_str: str,
-                                company_name_str: str,
-                                serial_number: int,
-                                common_name: str,
-                                issuer_name: str,
-                                signature_asym_algorithm: AsymmetricAlgorithm,
-                                signature_bits: int,
-                                hash_algorithm: HashAlgorithm,
-                                cert_type: CertType,
-                                valid_from: datetime,
-                                valid_until: datetime,
-                                subject_alt_names: List[str] = [],
-                                extension_info: Dict[str, str] = {},
-                                source: Source = None,
-                                ex_message: str = None) -> None:
-        """
-        Unittests for BaseUtils.add_cert_info
-        :return:
-        """
-        self.init_db(load_cipher_suites=True)
-        with self._engine.session_scope() as session:
-            source = self.create_source(session)
-            #  source
-            self._test_add_cert_info(session=session,
-                                     service_port=service_port,
-                                     host_name_str=host_name_str,
-                                     company_name_str=company_name_str,
-                                     serial_number=serial_number,
-                                     common_name=common_name,
-                                     issuer_name=issuer_name,
-                                     signature_asym_algorithm=signature_asym_algorithm,
-                                     signature_bits=signature_bits,
-                                     hash_algorithm=hash_algorithm,
-                                     cert_type=cert_type,
-                                     valid_from=valid_from,
-                                     valid_until=valid_until,
-                                     subject_alt_names=subject_alt_names,
-                                     extension_info=extension_info,
-                                     source=source,
-                                     ex_message=ex_message)
-        self.init_db(load_cipher_suites=True)
-        with self._engine.session_scope() as session:
-            # without source
-            self._test_add_cert_info(session=session,
-                                     service_port=service_port,
-                                     host_name_str=host_name_str,
-                                     company_name_str=company_name_str,
-                                     serial_number=serial_number,
-                                     common_name=common_name,
-                                     issuer_name=issuer_name,
-                                     signature_asym_algorithm=signature_asym_algorithm,
-                                     signature_bits=signature_bits,
-                                     hash_algorithm=hash_algorithm,
-                                     cert_type=cert_type,
-                                     valid_from=valid_from,
-                                     valid_until=valid_until,
-                                     subject_alt_names=subject_alt_names,
-                                     extension_info=extension_info,
-                                     ex_message=ex_message)
-
-    def test_service_host_name_company_exception(self):
-        """
-        Unittests for BaseUtils.add_cert_info
-        :return:
-        """
-        self._unittest_add_cert_info(service_port=80,
-                                     host_name_str="www.test.com",
-                                     company_name_str=None,
-                                     serial_number=1,
-                                     common_name="www.test.com",
-                                     issuer_name="www.test.com",
-                                     signature_asym_algorithm=AsymmetricAlgorithm.rsa,
-                                     signature_bits=2048,
-                                     hash_algorithm=HashAlgorithm.sha256,
-                                     cert_type=CertType.identity,
-                                     valid_from=datetime.now(),
-                                     valid_until=datetime.now(),
-                                     subject_alt_names=["web.test.com", "owa.test.com", "dev.test.com"],
-                                     extension_info={"test": ["test", "test"]},
-                                     ex_message="cert info must either be assigned to a service, host name, or company")
-        self._unittest_add_cert_info(service_port=80,
-                                     host_name_str=None,
-                                     company_name_str="Test LLC",
-                                     serial_number=1,
-                                     common_name="www.test.com",
-                                     issuer_name="www.test.com",
-                                     signature_asym_algorithm=AsymmetricAlgorithm.rsa,
-                                     signature_bits=2048,
-                                     hash_algorithm=HashAlgorithm.sha256,
-                                     cert_type=CertType.identity,
-                                     valid_from=datetime.now(),
-                                     valid_until=datetime.now(),
-                                     subject_alt_names=["web.test.com", "owa.test.com", "dev.test.com"],
-                                     extension_info={"test": ["test", "test"]},
-                                     ex_message="cert info must either be assigned to a service, host name, or company")
-        self._unittest_add_cert_info(service_port=None,
-                                     host_name_str="www.test.com",
-                                     company_name_str="Test LLC",
-                                     serial_number=1,
-                                     common_name="www.test.com",
-                                     issuer_name="www.test.com",
-                                     signature_asym_algorithm=AsymmetricAlgorithm.rsa,
-                                     signature_bits=2048,
-                                     hash_algorithm=HashAlgorithm.sha256,
-                                     cert_type=CertType.identity,
-                                     valid_from=datetime.now(),
-                                     valid_until=datetime.now(),
-                                     subject_alt_names=["web.test.com", "owa.test.com", "dev.test.com"],
-                                     extension_info={"test": ["test", "test"]},
-                                     ex_message="cert info must either be assigned to a service, host name, or company")
-
-    def test_service_add_cert_info(self):
-        """
-        Unittests for BaseUtils.add_cert_info
-        :return:
-        """
-        self._unittest_add_cert_info(service_port=80,
-                                     host_name_str=None,
-                                     company_name_str=None,
-                                     serial_number=1,
-                                     common_name="www.test.com",
-                                     issuer_name="www.test.com",
-                                     signature_asym_algorithm=AsymmetricAlgorithm.rsa,
-                                     signature_bits=2048,
-                                     hash_algorithm=HashAlgorithm.sha256,
-                                     cert_type=CertType.identity,
-                                     valid_from=datetime.now(),
-                                     valid_until=datetime.now(),
-                                     subject_alt_names=["web.test.com", "owa.test.com", "dev.test.com"],
-                                     extension_info={"test": ["test", "test"]})
-        self._unittest_add_cert_info(service_port=80,
-                                     host_name_str=None,
-                                     company_name_str=None,
-                                     serial_number=1,
-                                     common_name="www.test.com",
-                                     issuer_name="www.test.com",
-                                     signature_asym_algorithm=AsymmetricAlgorithm.rsa,
-                                     signature_bits=2048,
-                                     hash_algorithm=HashAlgorithm.sha256,
-                                     cert_type=CertType.identity,
-                                     valid_from=datetime.now(),
-                                     valid_until=datetime.now(),
-                                     extension_info={"test": ["test", "test"]})
-        self._unittest_add_cert_info(service_port=80,
-                                     host_name_str=None,
-                                     company_name_str=None,
-                                     serial_number=1,
-                                     common_name="www.test.com",
-                                     issuer_name="www.test.com",
-                                     signature_asym_algorithm=AsymmetricAlgorithm.rsa,
-                                     signature_bits=2048,
-                                     hash_algorithm=HashAlgorithm.sha256,
-                                     cert_type=CertType.identity,
-                                     valid_from=datetime.now(),
-                                     valid_until=datetime.now(),
-                                     subject_alt_names=["web.test.com", "owa.test.com", "dev.test.com"])
-
-    def test_host_name_add_cert_info(self):
-        """
-        Unittests for BaseUtils.add_cert_info
-        :return:
-        """
-        self._unittest_add_cert_info(service_port=None,
-                                     host_name_str="www.test.com",
-                                     company_name_str=None,
-                                     serial_number=1,
-                                     common_name="www.test.com",
-                                     issuer_name="www.test.com",
-                                     signature_asym_algorithm=AsymmetricAlgorithm.rsa,
-                                     signature_bits=2048,
-                                     hash_algorithm=HashAlgorithm.sha256,
-                                     cert_type=CertType.identity,
-                                     valid_from=datetime.now(),
-                                     valid_until=datetime.now(),
-                                     subject_alt_names=["web.test.com", "owa.test.com", "dev.test.com"],
-                                     extension_info={"test": ["test", "test"]})
-        self._unittest_add_cert_info(service_port=None,
-                                     host_name_str="www.test.com",
-                                     company_name_str=None,
-                                     serial_number=1,
-                                     common_name="www.test.com",
-                                     issuer_name="www.test.com",
-                                     signature_asym_algorithm=AsymmetricAlgorithm.rsa,
-                                     signature_bits=2048,
-                                     hash_algorithm=HashAlgorithm.sha256,
-                                     cert_type=CertType.identity,
-                                     valid_from=datetime.now(),
-                                     valid_until=datetime.now(),
-                                     extension_info={"test": ["test", "test"]})
-        self._unittest_add_cert_info(service_port=None,
-                                     host_name_str="www.test.com",
-                                     company_name_str=None,
-                                     serial_number=1,
-                                     common_name="www.test.com",
-                                     issuer_name="www.test.com",
-                                     signature_asym_algorithm=AsymmetricAlgorithm.rsa,
-                                     signature_bits=2048,
-                                     hash_algorithm=HashAlgorithm.sha256,
-                                     cert_type=CertType.identity,
-                                     valid_from=datetime.now(),
-                                     valid_until=datetime.now(),
-                                     subject_alt_names=["web.test.com", "owa.test.com", "dev.test.com"])
-
-    def test_company_add_cert_info(self):
-        """
-        Unittests for BaseUtils.add_cert_info
-        :return:
-        """
-        self._unittest_add_cert_info(service_port=None,
-                                     host_name_str=None,
-                                     company_name_str="Test LLC",
-                                     serial_number=1,
-                                     common_name="www.test.com",
-                                     issuer_name="www.test.com",
-                                     signature_asym_algorithm=AsymmetricAlgorithm.rsa,
-                                     signature_bits=2048,
-                                     hash_algorithm=HashAlgorithm.sha256,
-                                     cert_type=CertType.identity,
-                                     valid_from=datetime.now(),
-                                     valid_until=datetime.now(),
-                                     subject_alt_names=["web.test.com", "owa.test.com", "dev.test.com"],
-                                     extension_info={"test": ["test", "test"]})
-        self._unittest_add_cert_info(service_port=None,
-                                     host_name_str=None,
-                                     company_name_str="Test LLC",
-                                     serial_number=1,
-                                     common_name="www.test.com",
-                                     issuer_name="www.test.com",
-                                     signature_asym_algorithm=AsymmetricAlgorithm.rsa,
-                                     signature_bits=2048,
-                                     hash_algorithm=HashAlgorithm.sha256,
-                                     cert_type=CertType.identity,
-                                     valid_from=datetime.now(),
-                                     valid_until=datetime.now(),
-                                     extension_info={"test": ["test", "test"]})
-        self._unittest_add_cert_info(service_port=None,
-                                     host_name_str=None,
-                                     company_name_str="Test LLC",
-                                     serial_number=1,
-                                     common_name="www.test.com",
-                                     issuer_name="www.test.com",
-                                     signature_asym_algorithm=AsymmetricAlgorithm.rsa,
-                                     signature_bits=2048,
-                                     hash_algorithm=HashAlgorithm.sha256,
-                                     cert_type=CertType.identity,
-                                     valid_from=datetime.now(),
-                                     valid_until=datetime.now(),
-                                     subject_alt_names=["web.test.com", "owa.test.com", "dev.test.com"])
-
-
 class TestAddTlsInfo(BaseKisTestCase):
     """
     This test case tests BaseUtils.add_tls_info
@@ -4355,9 +3949,9 @@ class TestAddHostNameHostNameMapping(BaseKisTestCase):
                                                        mapping_type=DnsResourceRecordType.a)
 
 
-class TestAddCertificate(BaseKisTestCase):
+class TestCertInfo(BaseKisTestCase):
     """
-    This test case tests BaseUtils.add_certificate
+    This test case tests BaseUtils.add_cert_info
     """
 
     def __init__(self, test_name: str):
@@ -4391,17 +3985,17 @@ LV7Xq47alFBvD8nLARX9mqLFXjaiMNLPihX/Oo3AJd+kXuDeJz6igUsf9UeIcbRc
 1KJj8WrPtP2Xvq/dixvp08ui
 -----END CERTIFICATE-----"""
 
-    def _test_add_certificate(self,
-                              session: Session,
-                              type: CertType,
-                              content: str,
-                              service_port: int = None,
-                              host_name_str: str = None,
-                              company_name_str: str = None,
-                              source: Source = None,
-                              report_item: ReportItem = None) -> None:
+    def _test_add_cert_info(self,
+                            session: Session,
+                            cert_type: CertType,
+                            content: str,
+                            service_port: int = None,
+                            host_name_str: str = None,
+                            company_name_str: str = None,
+                            source: Source = None,
+                            report_item: ReportItem = None) -> None:
         """
-        This is a helper method for testing BaseUtils.add_certificate
+        This is a helper method for testing BaseUtils.add_cert_info
         :return:
         """
         self._reset_report_item(report_item)
@@ -4422,115 +4016,112 @@ LV7Xq47alFBvD8nLARX9mqLFXjaiMNLPihX/Oo3AJd+kXuDeJz6igUsf9UeIcbRc
                                               workspace_str=item,
                                               company_name_str=company_name_str)
                 company_name_str = company_name_str.lower()
-            result = self._domain_utils.add_certificate(session=session,
-                                                        command=command,
-                                                        content=content,
-                                                        type=type,
-                                                        source=source,
-                                                        report_item=report_item)
+            result = self._domain_utils.add_cert_info(session=session,
+                                                      pem=content,
+                                                      cert_type=cert_type,
+                                                      command=command,
+                                                      source=source,
+                                                      report_item=report_item)
             self.assertIsNotNone(result)
             session.commit()
             if service_port:
                 result = session.query(CertInfo) \
-                    .filter(CertInfo.serial_number == "2199150634980703004737029206949691373",
-                            CertInfo.service_id == command.service.id).one()
-                self.assertIsNotNone(result)
+                    .filter(CertInfo.service_id == command.service.id).one()
+                self.assertEqual("01:a7:8a:7f:5e:bb:b7:ba:02:00:00:00:00:42:ff:ed", result.serial_number)
             elif host_name_str:
                 result = session.query(CertInfo) \
-                    .filter(CertInfo.serial_number == "2199150634980703004737029206949691373",
-                            CertInfo.host_name_id == command.host_name.id).one()
-                self.assertIsNotNone(result)
+                    .filter(CertInfo.host_name_id == command.host_name.id).one()
+                self.assertEqual("01:a7:8a:7f:5e:bb:b7:ba:02:00:00:00:00:42:ff:ed", result.serial_number)
             elif company_name_str:
                 result = session.query(CertInfo) \
-                    .filter(CertInfo.serial_number == "2199150634980703004737029206949691373",
-                            CertInfo.company_id == command.company.id).one()
-                self.assertIsNotNone(result)
+                    .filter(CertInfo.company_id == command.company.id).one()
+                self.assertEqual("01:a7:8a:7f:5e:bb:b7:ba:02:00:00:00:00:42:ff:ed", result.serial_number)
 
-    def _unittest_add_certificate(self,
-                                  type: CertType,
-                                  content: str,
-                                  service_port: int = None,
-                                  host_name_str: str = None,
-                                  company_name_str: str = None) -> None:
+    def _unittest_add_cert_info(self,
+                                cert_type: CertType,
+                                content: str,
+                                service_port: int = None,
+                                host_name_str: str = None,
+                                company_name_str: str = None) -> None:
         """
-        Unittests for BaseUtils.add_certificate
+        Unittests for BaseUtils.add_cert_info
         :return:
         """
         # without source and report item
         self.init_db()
         with self._engine.session_scope() as session:
-            self._test_add_certificate(session=session,
-                                       type=type,
-                                       content=content,
-                                       service_port=service_port,
-                                       host_name_str=host_name_str,
-                                       company_name_str=company_name_str)
+            self._test_add_cert_info(session=session,
+                                     cert_type=cert_type,
+                                     content=content,
+                                     service_port=service_port,
+                                     host_name_str=host_name_str,
+                                     company_name_str=company_name_str)
         # with source
         self.init_db()
         with self._engine.session_scope() as session:
             source = self.create_source(session)
-            self._test_add_certificate(session=session,
-                                       type=type,
-                                       content=content,
-                                       service_port=service_port,
-                                       host_name_str=host_name_str,
-                                       company_name_str=company_name_str,
-                                       source=source)
+            self._test_add_cert_info(session=session,
+                                     cert_type=cert_type,
+                                     content=content,
+                                     service_port=service_port,
+                                     host_name_str=host_name_str,
+                                     company_name_str=company_name_str,
+                                     source=source)
         # with report item
         self.init_db()
         with self._engine.session_scope() as session:
-            self._test_add_certificate(session=session,
-                                       type=type,
-                                       content=content,
-                                       service_port=service_port,
-                                       host_name_str=host_name_str,
-                                       company_name_str=company_name_str,
-                                       report_item=self._report_item)
+            self._test_add_cert_info(session=session,
+                                     cert_type=cert_type,
+                                     content=content,
+                                     service_port=service_port,
+                                     host_name_str=host_name_str,
+                                     company_name_str=company_name_str,
+                                     report_item=self._report_item)
         # with source and report item
         self.init_db()
         with self._engine.session_scope() as session:
             source = self.create_source(session)
-            self._test_add_certificate(session=session,
-                                       type=type,
-                                       content=content,
-                                       service_port=service_port,
-                                       host_name_str=host_name_str,
-                                       company_name_str=company_name_str,
-                                       source=source,
-                                       report_item=self._report_item)
+            self._test_add_cert_info(session=session,
+                                     cert_type=cert_type,
+                                     content=content,
+                                     service_port=service_port,
+                                     host_name_str=host_name_str,
+                                     company_name_str=company_name_str,
+                                     source=source,
+                                     report_item=self._report_item)
 
-    def test_service_add_certificate(self):
+    def test_service_add_cert_info(self):
         """
-        Unittests for BaseUtils.add_certificate
+        Unittests for BaseUtils.add_cert_info
         :return:
         """
-        self._unittest_add_certificate(type=CertType.identity,
-                                       content=self._certificate,
-                                       service_port=80,
-                                       host_name_str=None,
-                                       company_name_str=None)
+        self._unittest_add_cert_info(cert_type=CertType.identity,
+                                     content=self._certificate,
+                                     service_port=80,
+                                     host_name_str=None,
+                                     company_name_str=None)
 
-    def test_host_name_add_certificate(self):
+    def test_host_name_add_cert_info(self):
         """
-        Unittests for BaseUtils.add_certificate
+        Unittests for BaseUtils.add_cert_info
         :return:
         """
-        self._unittest_add_certificate(type=CertType.identity,
-                                       content=self._certificate,
-                                       service_port=None,
-                                       host_name_str="www.test.com",
-                                       company_name_str=None)
+        self._unittest_add_cert_info(cert_type=CertType.identity,
+                                     content=self._certificate,
+                                     service_port=None,
+                                     host_name_str="www.test.com",
+                                     company_name_str=None)
 
-    def test_company_add_certificate(self):
+    def test_company_add_cert_info(self):
         """
-        Unittests for BaseUtils.add_certificate
+        Unittests for BaseUtils.add_cert_info
         :return:
         """
-        self._unittest_add_certificate(type=CertType.identity,
-                                       content=self._certificate,
-                                       service_port=None,
-                                       host_name_str=None,
-                                       company_name_str="Test LLC")
+        self._unittest_add_cert_info(cert_type=CertType.identity,
+                                     content=self._certificate,
+                                     service_port=None,
+                                     host_name_str=None,
+                                     company_name_str="Test LLC")
 
 
 class TestIpv4NetworkExcludedHosts(BaseKisTestCase):

@@ -154,8 +154,8 @@ class SslyzeCollectorTestCase(BaseNmapCollectorTestCase):
                                           report_item=self._report_item)
         with self._engine.session_scope() as session:
             # CertInfo
-            results = session.query(CertInfo).filter_by(common_name="www.google.com").count()
-            self.assertEqual(2, results)
+            results = session.query(CertInfo).all()
+            self.assertEqual(4, len(results))
             # TlsInfo
             results = session.query(TlsInfo).all()
             results = [item.version_str for item in results]

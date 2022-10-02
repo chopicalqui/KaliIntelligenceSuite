@@ -25,6 +25,7 @@ __version__ = 0.1
 import tempfile
 from database.model import CollectorType
 from database.model import TlsInfo
+from database.model import HostName
 from database.model import CertInfo
 from database.model import TlsVersion
 from database.model import ScopeType
@@ -291,7 +292,7 @@ Signed Certificate Timestamp:
         with self._engine.session_scope() as session:
             # CertInfo
             results = session.query(CertInfo).one()
-            self.assertEqual("www.google.com", results.common_name)
+            self.assertEqual("www.google.com", results.subject_common_names_str)
             # TlsInfo
             results = session.query(TlsInfo).all()
             results = [item.version_str for item in results]

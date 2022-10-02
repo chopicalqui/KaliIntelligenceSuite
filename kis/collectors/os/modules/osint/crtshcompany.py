@@ -90,9 +90,9 @@ class CollectorClass(BaseKisImportCompany, CompanyCollector):
                                process=process)
         for file in command.files:
             if file.type == FileType.certificate:
-                self.add_certificate(session=session,
-                                     command=command,
-                                     content=file.content.decode("utf-8"),
-                                     source=source,
-                                     type=CertType.identity,
-                                     report_item=report_item)
+                self.add_cert_info(session=session,
+                                   pem=file.content.decode(),
+                                   cert_type=CertType.identity,
+                                   command=command,
+                                   source=source,
+                                   report_item=report_item)

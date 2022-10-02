@@ -244,17 +244,17 @@ class TestDeleteHost(BaseKisTestCase):
         self.init_db()
         # create database
         with self._engine.session_scope() as session:
-            self.create_host_host_name_mapping(session, host_name_str="www.unittest.com")
+            self.create_host_host_name_mapping(session, host_name_str="www1.unittest.com")
         # delete workspace
         with self._engine.session_scope() as session:
             host = session.query(Host).one()
             self.assertEqual(1, len(host.host_names))
-            self.assertEqual("www.unittest.com", host.host_names[0].full_name)
+            self.assertEqual("www1.unittest.com", host.host_names[0].full_name)
             # you must use this delete operation; host.delete() does not work
             session.query(Host).delete()
         # check database
         with self._engine.session_scope() as session:
-            self.assertListEqual(["unittest.com", "www.unittest.com"],
+            self.assertListEqual(["unittest.com", "www1.unittest.com"],
                                  [item.full_name for item in session.query(HostName).all()])
             self.assertEqual(0, session.query(HostHostNameMapping).count())
             self.assertEqual(1, session.query(DomainName).count())

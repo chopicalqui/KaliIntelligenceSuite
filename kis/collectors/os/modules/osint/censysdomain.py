@@ -92,9 +92,9 @@ class CollectorClass(BaseKisImportDomain, DomainCollector):
                 if "raw" in value and value["raw"].startswith("MII"):
                     certificate = "-----BEGIN CERTIFICATE-----{0}{1}{0}-----END CERTIFICATE-----".format(os.linesep,
                                                                                                          value["raw"])
-                    self.add_certificate(session=session,
-                                         command=command,
-                                         content=certificate,
-                                         type=CertType.identity,
-                                         source=source,
-                                         report_item=report_item)
+                    self.add_cert_info(session=session,
+                                       pem=certificate,
+                                       cert_type=CertType.identity,
+                                       command=command,
+                                       source=source,
+                                       report_item=report_item)

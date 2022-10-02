@@ -207,12 +207,12 @@ class CollectorClass(BaseTlsCollector, ServiceCollector, HostNameServiceCollecto
                     return
                 certinfo = results_tag.find("./certificates/*/certificate-blob")
                 if certinfo is not None and certinfo.text:
-                    self.add_certificate(session=session,
-                                         command=command,
-                                         content=certinfo.text,
-                                         type=CertType.identity,
-                                         source=source,
-                                         report_item=report_item)
+                    self.add_cert_info(session=session,
+                                       pem=certinfo.text,
+                                       cert_type=CertType.identity,
+                                       command=command,
+                                       source=source,
+                                       report_item=report_item)
                 else:
                     logger.error("no certificate information found.")
                 order = 1

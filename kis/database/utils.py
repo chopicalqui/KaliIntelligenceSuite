@@ -1193,7 +1193,7 @@ class Engine:
             if scope_type:
                 print("[*] Clone networks")
                 for network in session.query(Network).filter_by(workspace_id=source_workspace.id):
-                    if (scope_type == ScopeType.all and network.scope != ScopeType.ignore) or \
+                    if scope_type == ScopeType.all or \
                             (scope_type == ScopeType.strict and network.in_scope) or \
                             (scope_type == ScopeType.exclude and not network.in_scope):
                         new_network = self._clone_object(session=session,
@@ -1287,7 +1287,7 @@ class Engine:
             if domain_name_scope_type:
                 print("[*] Clone domain and host names")
                 for item in session.query(DomainName).filter_by(workspace_id=source_workspace.id):
-                    if (domain_name_scope_type == ScopeType.all and item.scope != ScopeType.ignore) or \
+                    if (domain_name_scope_type == ScopeType.all) or \
                             (domain_name_scope_type == ScopeType.strict and item.in_scope) or \
                             (domain_name_scope_type == ScopeType.exclude and not item.in_scope):
                         domain_name = self._clone_object(session=session,

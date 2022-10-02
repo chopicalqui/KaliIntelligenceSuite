@@ -42,6 +42,7 @@ from sqlalchemy import Boolean
 from sqlalchemy import Table
 from sqlalchemy import Enum
 from sqlalchemy.ext.mutable import Mutable
+from sqlalchemy import orm
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import backref
 from sqlalchemy import UniqueConstraint
@@ -57,6 +58,9 @@ from datetime import timedelta
 from typing import List
 from typing import Dict
 from urllib.parse import urlparse
+from OpenSSL import crypto
+from cryptography import x509
+
 
 DeclarativeBase = declarative_base()
 
@@ -3770,105 +3774,187 @@ class CertInfo(DeclarativeBase):
 
     __tablename__ = "cert_info"
     id = Column(Integer, primary_key=True)
-    serial_number = Column(Text, nullable=False, unique=False)
-    common_name = Column(Text, nullable=False, unique=False)
-    issuer_name = Column(Text, nullable=False, unique=False)
-    signature_asym_algorithm = Column(Enum(AsymmetricAlgorithm), nullable=False, unique=False)
-    signature_bits = Column(Integer, nullable=False)
-    hash_algorithm = Column(Enum(HashAlgorithm), nullable=False, unique=False)
+    pem = Column(Text, nullable=False, unique=False)
     cert_type = Column(Enum(CertType), nullable=False, unique=False)
-    valid_from = Column(DateTime, nullable=False, unique=False)
-    valid_until = Column(DateTime, nullable=False, unique=False)
-    _extension_info = Column("extension_info", MutableDict.as_mutable(JSON), nullable=True, unique=False, default={})
     creation_date = Column(DateTime, nullable=False, default=datetime.utcnow())
     last_modified = Column(DateTime, nullable=True, onupdate=datetime.utcnow())
     service_id = Column(Integer, ForeignKey("service.id", ondelete='cascade'), nullable=True, unique=False)
     company_id = Column(Integer, ForeignKey("company.id", ondelete='cascade'), nullable=True, unique=False)
     host_name_id = Column(Integer, ForeignKey("host_name.id", ondelete='cascade'), nullable=True, unique=False)
-    service = relationship("Service", backref=backref("cert_info",
-                                                      cascade='delete, delete-orphan',
-                                                      order_by='asc(CertInfo.valid_from), asc(CertInfo.common_name)'))
-    company = relationship("Company", backref=backref("cert_info",
-                                                      cascade='delete, delete-orphan',
-                                                      order_by='asc(CertInfo.valid_from), asc(CertInfo.common_name)'))
-    host_name = relationship("HostName", backref=backref("cert_info",
-                                                        cascade='delete, delete-orphan',
-                                                        order_by='asc(CertInfo.valid_from), asc(CertInfo.common_name)'))
-    __table_args__ = (UniqueConstraint('service_id', 'serial_number',
-                                       name='_cert_info_unique'),
-                      UniqueConstraint('service_id',
-                                       'serial_number', name='_cert_info_service_unique'),
-                      UniqueConstraint('company_id',
-                                       'serial_number', name='_cert_info_company_unique'),
-                      UniqueConstraint('host_name_id',
-                                       'serial_number', name='_cert_info_host_name_unique'),
+    service = relationship("Service", backref=backref("cert_info", cascade='delete, delete-orphan'))
+    company = relationship("Company", backref=backref("cert_info", cascade='delete, delete-orphan'))
+    host_name = relationship("HostName", backref=backref("cert_info", cascade='delete, delete-orphan'))
+    __table_args__ = (UniqueConstraint('service_id', 'pem', name='_cert_info_service_unique'),
+                      UniqueConstraint('company_id', 'pem', name='_cert_info_company_unique'),
+                      UniqueConstraint('host_name_id', 'pem', name='_cert_info_host_name_unique'),
                       CheckConstraint(
                           '(case when not service_id is null and company_id is null and host_name_id is null then 1 else 0 end'
                           '+case when service_id is null and not company_id is null and host_name_id is null then 1 else 0 end'
                           '+case when service_id is null and company_id is null and not host_name_id is null then 1 else 0 end) = 1',
                           name='_cert_info_mutex_constraint'),)
 
-    @property
-    def signature_asym_algorithm_str(self) -> str:
-        return self.signature_asym_algorithm.name.upper() if self.signature_asym_algorithm else None
+    def __init__(self,
+                 pem: str,
+                 cert_type: CertType,
+                 service: Service = None,
+                 company: Company = None,
+                 host_name: HostName = None):
+        super().__init__()
+        self.pem = pem
+        self.cert_type = cert_type
+        self.service = service
+        self.company = company
+        self.host_name = host_name
+        self._certificate = crypto.load_certificate(crypto.FILETYPE_PEM, self.pem.encode())
+        self._crypto = self._certificate.to_cryptography()
 
-    @property
-    def signature_asym_algorithm_summary(self) -> str:
-        result = self.signature_asym_algorithm_str
-        if result and self.signature_bits:
-            result += " {}".format(self.signature_bits)
+    @orm.reconstructor
+    def init_on_load(self):
+        # https://docs.sqlalchemy.org/en/13/orm/constructors.html
+        if not self.pem:
+            raise ValueError("pem is none")
+        self._certificate = crypto.load_certificate(crypto.FILETYPE_PEM, self.pem.encode())
+        self._crypto = self._certificate.to_cryptography()
+
+    @staticmethod
+    def print_hex(item: int, line_break_after_bytes: int = None) -> list:
+        result = "{:02x}".format(item)
+        if (len(result) % 2) != 0:
+            result = "0" + result
+        if line_break_after_bytes:
+            tmp = ""
+            for i in range(len(result)):
+                tmp += result[i]
+                if i >= line_break_after_bytes and i % (line_break_after_bytes * 2) == 0:
+                    tmp += os.linesep
+            result = [':'.join(re.findall('..', line)) for line in tmp.split(os.linesep)]
+            result = [line + ":" for line in result if line]
+        else:
+            result = [':'.join(re.findall('..', result))]
         return result
 
+    @staticmethod
+    def print_x509_name(item: crypto.X509Name):
+        return "".join(
+            ", {:s}={:s}".format(name.decode(), value.decode()) for name, value in item.get_components()).strip(", ")
+
     @property
-    def hash_algorithm_str(self) -> str:
-        return self.hash_algorithm.name.upper() if self.hash_algorithm else None
+    def cert(self):
+        return self._certificate
 
     @property
     def cert_type_str(self) -> str:
-        return self.cert_type.name[0].upper() + self.cert_type.name[1:] if self.cert_type else None
+        return self.cert_type.name[0].upper() + self.cert_type.name[1:]
+
+    @property
+    def version(self) -> str:
+        return self._certificate.get_version()
+
+    @property
+    def serial_number(self) -> str:
+        return "".join(self.print_hex(self._certificate.get_serial_number()))
+
+    @property
+    def signature_algorithm(self) -> str:
+        return self._certificate.get_signature_algorithm().decode()
+
+    @property
+    def issuer(self):
+        return self.print_x509_name(self._certificate.get_issuer())
+
+    @property
+    def issuer_common_names(self) -> List[str]:
+        try:
+            result = [item.value for item in self._crypto.issuer.get_attributes_for_oid(x509.oid.NameOID.COMMON_NAME)]
+        except x509.ExtensionNotFound:
+            result = []
+        return result
+
+    @property
+    def issuer_common_names_str(self) -> str:
+        return ", ".join(self.issuer_common_names)
+
+    @property
+    def valid_from(self) -> datetime:
+        return self._crypto.not_valid_before
 
     @property
     def valid_from_str(self) -> str:
-        return self.valid_from.strftime("%Y-%m-%d") if self.valid_from else None
+        return self.valid_from.strftime("%Y-%m-%d")
+
+    @property
+    def valid_until(self) -> datetime:
+        return self._crypto.not_valid_after
 
     @property
     def valid_until_str(self) -> str:
-        return self.valid_until.strftime("%Y-%m-%d") if self.valid_until else None
+        return self.valid_until.strftime("%Y-%m-%d")
 
     @property
-    def extension_info(self) -> Dict[str, str]:
-        if self._extension_info is None:
-            self._extension_info = {}
-        return self._extension_info
+    def validity_period_days(self):
+        """
+        Returns the total number of days the certificate is valid
+        """
+        return (self.valid_until - self.valid_from).days if self.valid_until and self.valid_from else None
 
-    @extension_info.setter
-    def extension_info(self, value: Dict[str, str]):
-        self._extension_info = value
+    @property
+    def subject(self):
+        return self.print_x509_name(self._certificate.get_subject())
+
+    @property
+    def subject_common_names(self) -> List[str]:
+        try:
+            result = [item.value for item in self._crypto.subject.get_attributes_for_oid(x509.oid.NameOID.COMMON_NAME)]
+        except x509.ExtensionNotFound:
+            result = []
+        return result
+
+    @property
+    def subject_common_names_str(self) -> str:
+        return ", ".join(self.subject_common_names)
+
+    @property
+    def organizations(self) -> List[str]:
+        try:
+            result = [item.value for item in self._crypto.subject.get_attributes_for_oid(x509.oid.NameOID.ORGANIZATION_NAME)]
+        except x509.ExtensionNotFound:
+            result = []
+        return result
+
+    @property
+    def organizations_str(self) -> str:
+        return ", ".join(self.organizations)
+
+    @property
+    def email_addresses(self) -> List[str]:
+        try:
+            result = [item.value for item in self._crypto.subject.get_attributes_for_oid(x509.oid.NameOID.EMAIL_ADDRESS)]
+        except x509.ExtensionNotFound:
+            result = []
+        return result
+
+    @property
+    def email_addresses_str(self) -> str:
+        return ", ".join(self.email_addresses)
 
     @property
     def subject_alt_names(self) -> List[str]:
-        result = []
-        if "subject_alt_name" in self.extension_info:
-            result = [item.lower() for item in self.extension_info["subject_alt_name"]]
+        try:
+            result = self._crypto.extensions.get_extension_for_class(x509.SubjectAlternativeName)\
+                .value.get_values_for_type(x509.DNSName)
+        except x509.ExtensionNotFound:
+            result = []
         return result
 
-    @subject_alt_names.setter
-    def subject_alt_names(self, value: List[str]):
-        if "subject_alt_name" not in self.extension_info:
-            self.extension_info["subject_alt_name"] = []
-        self.extension_info["subject_alt_name"].extend(value)
-
     @property
-    def subject_alt_names_str(self) -> str:
+    def subject_alt_names_str(self) -> List[str]:
         return ", ".join(self.subject_alt_names)
 
     @property
     def all_names(self) -> List[str]:
-        result = []
-        if self.common_name:
-            result.append(self.common_name.lower())
+        result = self.subject_common_names
         result += self.subject_alt_names
-        return result
+        return list(set(result))
 
     @property
     def all_names_re(self) -> List[re.Pattern]:
@@ -3879,32 +3965,82 @@ class CertInfo(DeclarativeBase):
         return result
 
     @property
-    def key_usage(self) -> List[str]:
-        result = []
-        if "extended_key_usage1" in self.extension_info and "values" in self.extension_info["extended_key_usage"]:
-            result = self.extension_info["extended_key_usage"]["values"]
-        elif "key_usage" in self.extension_info and "values" in self.extension_info["key_usage"]:
-            result = self.extension_info["key_usage"]["values"]
+    def public_key_size(self) -> int:
+        return self._certificate.get_pubkey().bits()
+
+    @property
+    def public_key_name(self) -> str:
+        from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicNumbers
+        from cryptography.hazmat.primitives.asymmetric.dsa import DSAPublicNumbers
+        from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePublicNumbers
+        public_key = self._certificate.get_pubkey().to_cryptography_key().public_numbers()
+        if isinstance(public_key, RSAPublicNumbers):
+            result = "RSA"
+        elif isinstance(public_key, DSAPublicNumbers):
+            result = "DSA"
+        elif isinstance(public_key, EllipticCurvePublicNumbers):
+            result = public_key.curve.name
+        else:
+            raise NotImplementedError("case not implemented")
         return result
 
     @property
-    def critical_extensions(self) -> list:
-        return [item for item in self.extension_info.values() if "critical" in item and item["critical"]]
+    def exponent(self) -> int:
+        from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicNumbers
+        from cryptography.hazmat.primitives.asymmetric.dsa import DSAPublicNumbers
+        result = None
+        public_key = self._certificate.get_pubkey().to_cryptography_key().public_numbers()
+        if isinstance(public_key, RSAPublicNumbers) or isinstance(public_key, DSAPublicNumbers):
+            result = public_key.e
+        return result
 
     @property
-    def critical_extension_names(self) -> List[str]:
-        return [item["name"] for item in self.critical_extensions if "name" in item]
+    def ocsp_servers(self) -> List[str]:
+        try:
+            aia = self._crypto.extensions.get_extension_for_oid(x509.oid.ExtensionOID.AUTHORITY_INFORMATION_ACCESS).value
+            result = [ia.access_location.value for ia in aia if ia.access_method == x509.AuthorityInformationAccessOID.OCSP]
+        except x509.ExtensionNotFound:
+            result = []
+        return result
 
     @property
-    def key_usage_str(self) -> str:
-        return ", ".join(self.key_usage)
+    def ocsp_servers_str(self) -> str:
+        return ", ".join(self.ocsp_servers)
 
     @property
-    def validity_period_days(self):
-        """
-        Returns the total number of days the certificate is valid
-        """
-        return (self.valid_until - self.valid_from).days if self.valid_until and self.valid_from else None
+    def crl_distribution_points(self) -> str:
+        result = []
+        try:
+            for point in self._crypto.extensions.get_extension_for_oid(x509.oid.ExtensionOID.CRL_DISTRIBUTION_POINTS).value:
+                for item in point.full_name:
+                    result.append(item.value)
+        except x509.ExtensionNotFound:
+            result = []
+        return result
+
+    @property
+    def crl_distribution_points_str(self) -> str:
+        return ", ".join(self.crl_distribution_points)
+
+    @property
+    def extensions(self) -> list:
+        return [self._certificate.get_extension(i) for i in range(self._certificate.get_extension_count())]
+
+    @property
+    def extensions_dict(self) -> Dict[str, x509.Extension]:
+        result = {}
+        for i in range(self._certificate.get_extension_count()):
+            extension = self._certificate.get_extension(i)
+            result[extension.get_short_name().decode()] = extension
+        return result
+
+    @property
+    def critical_extensions(self) -> List[str]:
+        return [item.get_short_name().decode() for item in self.extensions if item.get_critical()]
+
+    @property
+    def critical_extensions_str(self) -> List[str]:
+        return ", ".join(self.critical_extensions)
 
     @property
     def sources_str(self) -> str:
@@ -3917,20 +4053,7 @@ class CertInfo(DeclarativeBase):
         """
         Returns true if the certificate is self signed
         """
-        return self.common_name.lower() == self.issuer_name.lower()
-
-    def has_weak_signature(self) -> bool:
-        """
-        Returns true if the certificate was created using a weak hash algorithm
-        """
-        return self.hash_algorithm in [HashAlgorithm.md5, HashAlgorithm.sha1]
-
-    def is_valid(self) -> bool:
-        """
-        Returns true if the certificate has expired
-        :return:
-        """
-        return (self.valid_from < datetime.now() < self.valid_until)
+        return self.subject.lower() == self.issuer.lower()
 
     def has_recommended_duration(self) -> bool:
         """
@@ -3970,6 +4093,24 @@ class CertInfo(DeclarativeBase):
             return False
         return all([self.matches_host_name(item) for item in host_names])
 
+    def has_exired(self):
+        return self._certificate.has_expired()
+
+    def verify(self, x509_store: crypto.X509Store, chain=[]):
+        """
+        This method verifies the current certificate.
+        """
+        # Create context
+        intermediate_ca = [item.cert for item in chain if item.cert_type == CertType.intermediate]
+        x509_ctx = crypto.X509StoreContext(store=x509_store,
+                                           certificate=self.cert,
+                                           chain=intermediate_ca)
+        x509_ctx.verify_certificate()
+
+    @property
+    def pem_str(self):
+        return crypto.dump_certificate(crypto.FILETYPE_PEM, self._certificate).decode().strip() if self._certificate else None
+
     def is_processable(self,
                        included_items: List[str],
                        excluded_items: List[str],
@@ -3999,9 +4140,9 @@ class CertInfo(DeclarativeBase):
         return rvalue
 
     def __repr__(self):
-        return "<CertInfo service_id='{}' common_name='{}' issuer_name='{}' " \
+        return "<CertInfo service_id='{}' subject='{}' issuer='{}' " \
                "valid_from='{}' valid_until='{}' />".format(self.service_id,
-                                                            self.common_name,
+                                                            self.subject,
                                                             self.issuer_name,
                                                             self.valid_from,
                                                             self.valid_until)

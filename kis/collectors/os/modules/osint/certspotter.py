@@ -93,10 +93,10 @@ class CollectorClass(BaseKisImportDomain, DomainCollector):
             if b64_content:
                 der_content = base64.b64decode(b64_content)
                 pem_content = CertificateUtils.der_to_pem(der_content)
-                self.add_certificate(session=session,
-                                     command=command,
-                                     content=pem_content,
-                                     source=source,
-                                     type=CertType.identity,
-                                     report_item=report_item)
+                self.add_cert_info(session=session,
+                                   pem=pem_content,
+                                   cert_type=CertType.identity,
+                                   command=command,
+                                   source=source,
+                                   report_item=report_item)
 

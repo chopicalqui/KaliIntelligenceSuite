@@ -83,6 +83,7 @@ from database.utils import CredentialType
 from database.model import CertType
 from database.utils import ServiceMethod
 from view.core import ReportItem
+from OpenSSL import crypto
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives import asymmetric
@@ -1115,88 +1116,6 @@ class BaseUtils:
                 report_item.report_type = "HINT"
                 report_item.notify()
 
-    def add_certificate(self,
-                        session: Session,
-                        command: Command,
-                        content: str,
-                        type: CertType = None,
-                        source: Source = None,
-                        report_item: ReportItem = None) -> File:
-        """
-        This method adds a certificate to the database and thereby extracts host names
-        :param session: The database session used for addition the file path
-        :param command: The command to which the file should be attached
-        :param type: Specifies whether the certificate is an entity, bridge, or root certificate
-        :param content: The certificate
-        :param source: The source object from which the URL originates
-        :param report_item: Item that can be used for pushing information into the view
-        :return:
-        """
-        content_bytes = content.encode("utf-8")
-        certificate = CertificateUtils(content_bytes)
-        host_names = certificate.subject_alt_name
-        host_names.append(certificate.issuer_name)
-        signature_algorithm = certificate.signature_asym_algorithm
-        hash_algorithm = certificate.signature_hash_algorithm
-        for host_name in host_names:
-            host_name_object = self.add_domain_name(session=session,
-                                                    workspace=command.workspace,
-                                                    item=host_name,
-                                                    source=source,
-                                                    verify=True,
-                                                    report_item=report_item)
-            if host_name_object:
-                for company in certificate.organizations:
-                    self.add_company(session=session,
-                                     workspace=command.workspace,
-                                     name=company,
-                                     domain_name=host_name_object.domain_name,
-                                     source=source,
-                                     report_item=report_item)
-            else:
-                logger.debug("ignoring host name due to invalid domain: {}".format(host_name))
-        if command.service or command.host_name or command.company:
-            if signature_algorithm and hash_algorithm:
-                self.add_cert_info(session=session,
-                                   service=command.service,
-                                   company=command.company,
-                                   host_name=command.host_name if not command.service else None,
-                                   common_name=certificate.common_name,
-                                   issuer_name=certificate.issuer_name,
-                                   signature_asym_algorithm=signature_algorithm,
-                                   hash_algorithm=hash_algorithm,
-                                   cert_type=type,
-                                   signature_bits=certificate.signature_bits,
-                                   valid_from=certificate.not_valid_before,
-                                   valid_until=certificate.not_valid_after,
-                                   subject_alt_names=certificate.subject_alt_name,
-                                   extension_info=certificate.extensions,
-                                   serial_number=certificate.cert.serial_number,
-                                   source=source,
-                                   report_item=report_item)
-            else:
-                logger.error("certificate does not contain signature or hash algorithm and therefore was not added.")
-        if not host_names:
-            for company in certificate.organizations:
-                self.add_company(session=session,
-                                 workspace=command.workspace,
-                                 name=company,
-                                 source=source,
-                                 report_item=report_item)
-        for email_address in certificate.email_addresses:
-            self.add_email(session=session,
-                           workspace=command.workspace,
-                           text=email_address,
-                           source=source,
-                           report_item=report_item)
-        return self.add_file_content(session=session,
-                                     command=command,
-                                     file_type=FileType.certificate,
-                                     file_name="{}.pem".format(command.file_name),
-                                     workspace=command.workspace,
-                                     content=content_bytes,
-                                     report_item=report_item)
-
     @staticmethod
     def add_file_content(session: Session,
                          workspace: Workspace,
@@ -1338,7 +1257,7 @@ class BaseUtils:
                 report_item: ReportItem = None,
                 add_all: bool = False) -> Path:
         """
-        This method adds the given URL (path and query part) to the database
+        This method adds the pull URL (host, service, path and query part) to the database
         :param session: The database session used for addition the URL
         :param workspace: The workspace to which the URL belongs
         :param url: The URL's path and query that shall be added to the database
@@ -1487,17 +1406,9 @@ class BaseUtils:
 
     def add_cert_info(self,
                       session: Session,
-                      serial_number: int,
-                      common_name: str,
-                      issuer_name: str,
-                      signature_asym_algorithm: AsymmetricAlgorithm,
-                      hash_algorithm: HashAlgorithm,
+                      pem: str,
                       cert_type: CertType,
-                      signature_bits: int,
-                      valid_from: datetime,
-                      valid_until: datetime,
-                      subject_alt_names: List[str] = [],
-                      extension_info: Dict[str, Dict[str, str]] = {},
+                      command: Command = None,
                       source: Source = None,
                       service: Service = None,
                       host_name: HostName = None,
@@ -1506,58 +1417,106 @@ class BaseUtils:
         """
         This method adds certificate information to the given service
         :param session: The database session used for addition the URL
-        :param serial_number: The certificate's serial number
-        :param common_name: The certificate's common name
-        :param issuer_name: The certificate's issuer name
-        :param signature_asym_algorithm: The certificate's asymmetric algorithm
-        :param hash_algorithm: The certificate's hash algorithm
         :param cert_type: The certificate's type
-        :param valid_from: The certificate's start date
-        :param valid_until: The certificate's end date
-        :param subject_alt_names: The certificate's alternative subject names
-        :param extension_info: Additional certificate information
         :param source: The source object from which the URL originates
         :param report_item: Item that can be used for pushing information into the view
         :param service: The service to which the URL belongs
         :param host_name: The host name to which the URL belongs
         :param company: The company to which the URL belongs
+        :param command: The command to which the file should be attached
         :return:
         """
+        workspace = None
+        if command:
+            workspace = command.workspace
+            if not service and command.service:
+                service = command.service
+            elif not host_name and command.host_name:
+                host_name = command.host_name
+            elif not company and command.company:
+                company = command.company
         if (service and host_name) or (service and company) or (host_name and company):
             raise ValueError("cert info must either be assigned to a service, host name, or company")
-        serial_number_str = str(serial_number)
         if service:
-            result = session.query(CertInfo).filter_by(service_id=service.id,
-                                                       serial_number=serial_number_str).one_or_none()
+            result = session.query(CertInfo).filter_by(service_id=service.id, pem=pem).one_or_none()
         elif host_name:
-            result = session.query(CertInfo).filter_by(host_name_id=host_name.id,
-                                                       serial_number=serial_number_str).one_or_none()
+            result = session.query(CertInfo).filter_by(host_name_id=host_name.id, pem=pem).one_or_none()
         elif company:
-            result = session.query(CertInfo).filter_by(company_id=company.id,
-                                                       serial_number=serial_number_str).one_or_none()
+            result = session.query(CertInfo).filter_by(company_id=company.id, pem=pem).one_or_none()
         else:
             raise ValueError("cert info must have a service, host name, or company")
         if not result:
+            # Add certificate to database
             result = CertInfo(service=service,
                               host_name=host_name,
                               company=company,
-                              serial_number=serial_number_str,
-                              common_name=common_name,
-                              issuer_name=issuer_name,
-                              signature_bits=signature_bits,
-                              valid_from=valid_from,
-                              valid_until=valid_until,
-                              signature_asym_algorithm=signature_asym_algorithm,
-                              hash_algorithm=hash_algorithm,
+                              pem=pem,
                               cert_type=cert_type)
             session.add(result)
             session.flush()
-        if extension_info:
-            result.extension_info = extension_info
-        if subject_alt_names:
-            result.subject_alt_names = [item.lower() for item in subject_alt_names]
         if source:
             source.cert_info.append(result)
+        if not workspace:
+            if service:
+                workspace = service.workspace
+            elif host_name:
+                workspace = host_name.workspace
+            elif company:
+                workspace = company.workspace
+        organizations = result.organizations
+        email_addresses = result.email_addresses
+        urls = result.ocsp_servers
+        urls += result.crl_distribution_points
+        # Add all host names
+        for host_name in result.all_names:
+            host_name_object = self.add_domain_name(session=session,
+                                                    workspace=workspace,
+                                                    item=host_name,
+                                                    source=source,
+                                                    verify=cert_type != CertType.identity,
+                                                    report_item=report_item)
+            if host_name_object:
+                for company in organizations:
+                    self.add_company(session=session,
+                                     workspace=workspace,
+                                     name=company,
+                                     domain_name=host_name_object.domain_name,
+                                     source=source,
+                                     verify=False,
+                                     report_item=report_item)
+            else:
+                logger.debug("ignoring host name due to invalid domain: {}".format(host_name))
+        # Add OCSP and CRL servers
+        for item in urls:
+            self.add_url(session=session,
+                         workspace=workspace,
+                         url=item,
+                         verify=False,
+                         report_item=report_item,
+                         source=source)
+        # Add all company names
+        for company in organizations:
+            self.add_company(session=session,
+                             workspace=workspace,
+                             name=company,
+                             source=source,
+                             report_item=report_item)
+        # Add all identified email addresses
+        for email_address in email_addresses:
+            self.add_email(session=session,
+                           workspace=workspace,
+                           text=email_address,
+                           source=source,
+                           report_item=report_item)
+        # Add certificate to files table
+        if command:
+            self.add_file_content(session=session,
+                                  command=command,
+                                  file_type=FileType.certificate,
+                                  file_name="{}.pem".format(command.file_name),
+                                  workspace=command.workspace,
+                                  content=pem.encode(),
+                                  report_item=report_item)
         return result
 
     def add_dns_names(self,

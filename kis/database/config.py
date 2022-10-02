@@ -27,6 +27,7 @@ import configparser
 from argparse import RawDescriptionHelpFormatter
 from operator import attrgetter
 from typing import List
+from OpenSSL import crypto
 
 
 class SortingHelpFormatter(RawDescriptionHelpFormatter):
@@ -415,11 +416,16 @@ class DomainConfig(BaseConfig):
     def __init__(self):
         super().__init__("domain.config")
         self.environments = {}
+        self.cert_stores = json.loads(self.config.get("openssl", "capath"))
         raw_config = json.loads(self.config.get("general", "environment_wordlist"))
         for key, values in raw_config.items():
             self.environments[key] = []
             for item in values:
                 self.environments[key].append(re.compile(item, re.IGNORECASE))
+        self.x509_store = crypto.X509Store()
+        for item in json.loads(self.config.get("openssl", "capath")):
+            if os.path.isdir(item):
+                self.x509_store.load_locations(capath=item, cafile=None)
 
     def get_environment(self, host_name) -> str:
         """

@@ -4216,6 +4216,63 @@
             }
         },
         {
+            "TLS_GOSTR341112_256_WITH_28147_CNT_IMIT": {
+                "gnutls_name": "",
+                "openssl_name": "",
+                "hex_byte_1": "0xC1",
+                "hex_byte_2": "0x02",
+                "protocol_version": "TLS",
+                "kex_algorithm": "GOSTR341112",
+                "auth_algorithm": "256",
+                "enc_algorithm": "28147 CNT",
+                "hash_algorithm": "IMIT",
+                "security": "secure",
+                "tls_version": [
+                    "TLS1.0",
+                    "TLS1.1",
+                    "TLS1.2"
+                ]
+            }
+        },
+        {
+            "TLS_GOSTR341112_256_WITH_KUZNYECHIK_CTR_OMAC": {
+                "gnutls_name": "",
+                "openssl_name": "",
+                "hex_byte_1": "0xC1",
+                "hex_byte_2": "0x00",
+                "protocol_version": "TLS",
+                "kex_algorithm": "GOSTR341112",
+                "auth_algorithm": "256",
+                "enc_algorithm": "KUZNYECHIK CTR",
+                "hash_algorithm": "OMAC",
+                "security": "secure",
+                "tls_version": [
+                    "TLS1.0",
+                    "TLS1.1",
+                    "TLS1.2"
+                ]
+            }
+        },
+        {
+            "TLS_GOSTR341112_256_WITH_MAGMA_CTR_OMAC": {
+                "gnutls_name": "",
+                "openssl_name": "",
+                "hex_byte_1": "0xC1",
+                "hex_byte_2": "0x01",
+                "protocol_version": "TLS",
+                "kex_algorithm": "GOSTR341112",
+                "auth_algorithm": "256",
+                "enc_algorithm": "MAGMA CTR",
+                "hash_algorithm": "OMAC",
+                "security": "secure",
+                "tls_version": [
+                    "TLS1.0",
+                    "TLS1.1",
+                    "TLS1.2"
+                ]
+            }
+        },
+        {
             "TLS_KRB5_EXPORT_WITH_DES_CBC_40_MD5": {
                 "gnutls_name": "",
                 "openssl_name": "",
@@ -5899,6 +5956,40 @@
                     "TLS1.0",
                     "TLS1.1",
                     "TLS1.2"
+                ]
+            }
+        },
+        {
+            "TLS_SHA256_SHA256": {
+                "gnutls_name": "",
+                "openssl_name": "",
+                "hex_byte_1": "0xC0",
+                "hex_byte_2": "0xB4",
+                "protocol_version": "TLS",
+                "kex_algorithm": "SHA256",
+                "auth_algorithm": "SHA256",
+                "enc_algorithm": "",
+                "hash_algorithm": "",
+                "security": "recommended",
+                "tls_version": [
+                    "TLS1.3"
+                ]
+            }
+        },
+        {
+            "TLS_SHA384_SHA384": {
+                "gnutls_name": "",
+                "openssl_name": "",
+                "hex_byte_1": "0xC0",
+                "hex_byte_2": "0xB5",
+                "protocol_version": "TLS",
+                "kex_algorithm": "SHA384",
+                "auth_algorithm": "SHA384",
+                "enc_algorithm": "",
+                "hash_algorithm": "",
+                "security": "recommended",
+                "tls_version": [
+                    "TLS1.3"
                 ]
             }
         },

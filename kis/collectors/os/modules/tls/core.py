@@ -96,12 +96,13 @@ class CertInfoExtraction(BaseExtraServiceInfoExtraction):
             pem_tag = script.find("./elem[@key='pem']")
             if not pem_tag and self._command:
                 content = pem_tag.text
-                self._domain_utils.add_certificate(session=self._session,
-                                                   command=self._command,
-                                                   content=content,
-                                                   type=CertType.identity,
-                                                   source=self._source,
-                                                   report_item=self._report_item)
+                self._domain_utils.add_cert_info(session=self._session,
+                                                 pem=content,
+                                                 cert_type=CertType.identity,
+                                                 source=self._source,
+                                                 command=self._command,
+                                                 service=self._service,
+                                                 report_item=self._report_item)
 
     def extract(self, **kwargs):
         """This method extracts the required information."""
