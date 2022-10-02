@@ -33,6 +33,8 @@ from database.model import File
 from database.model import HostName
 from database.model import Company
 from database.model import ScopeType
+from database.model import CertInfo
+from database.model import CertType
 
 
 class CertOpensslCollectorTestCase(BaseKaliDnsCollectorTestCase):
@@ -144,3 +146,6 @@ Server certificate""".split(os.linesep)
             expected_result = ['crl.pki.goog', 'google.com', 'ocsp.pki.goog', 'pki.goog', 'www.google.com']
             expected_result.sort()
             self.assertListEqual(expected_result, result)
+            result = session.query(CertInfo).filter_by(cert_type=CertType.identity).one()
+            chain = result.chain
+            self.assertEqual(2, len(chain))

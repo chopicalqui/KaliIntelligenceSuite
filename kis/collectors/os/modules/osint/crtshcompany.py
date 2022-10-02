@@ -30,6 +30,7 @@ from database.model import Source
 from database.model import Command
 from database.model import FileType
 from database.model import CertType
+from database.model import CertInfo
 from collectors.os.core import PopenCommand
 from collectors.os.modules.osint.core import BaseKisImportCompany
 from collectors.os.modules.core import CompanyCollector
@@ -91,8 +92,7 @@ class CollectorClass(BaseKisImportCompany, CompanyCollector):
         for file in command.files:
             if file.type == FileType.certificate:
                 self.add_cert_info(session=session,
-                                   pem=file.content.decode(),
-                                   cert_type=CertType.identity,
+                                   cert_info=CertInfo(pem=file.content.decode(), cert_type=CertType.identity),
                                    command=command,
                                    source=source,
                                    report_item=report_item)

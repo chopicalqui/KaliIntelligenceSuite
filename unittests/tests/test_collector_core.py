@@ -4017,8 +4017,7 @@ LV7Xq47alFBvD8nLARX9mqLFXjaiMNLPihX/Oo3AJd+kXuDeJz6igUsf9UeIcbRc
                                               company_name_str=company_name_str)
                 company_name_str = company_name_str.lower()
             result = self._domain_utils.add_cert_info(session=session,
-                                                      pem=content,
-                                                      cert_type=cert_type,
+                                                      cert_info=CertInfo(pem=content, cert_type=cert_type),
                                                       command=command,
                                                       source=source,
                                                       report_item=report_item)

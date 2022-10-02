@@ -51,6 +51,7 @@ from database.model import IpSupport
 from database.model import PathType
 from database.model import ExecutionInfoType
 from database.model import CertType
+from database.model import CertInfo
 from view.core import ReportItem
 from sqlalchemy.orm.session import Session
 
@@ -193,6 +194,7 @@ class BaseKisImport(BaseCollector):
             tls_tunnel = "ssl"
             certificate_chain = self._json_utils.get_attribute_value(ssl_item, "chain", default_value=[])
             cert_count = len(certificate_chain)
+            chain = []
             for i in range(0, cert_count):
                 if i == 0:
                     cert_type = CertType.identity
@@ -200,12 +202,15 @@ class BaseKisImport(BaseCollector):
                     cert_type = CertType.root
                 else:
                     cert_type = CertType.intermediate
-                self.add_cert_info(session=session,
-                                   pem=certificate_chain[i],
-                                   cert_type=cert_type,
-                                   command=command,
-                                   source=source,
-                                   report_item=report_item)
+                chain.append(self.add_cert_info(session=session,
+                                                cert_info=CertInfo(pem=certificate_chain[i], cert_type=cert_type),
+                                                command=command,
+                                                source=source,
+                                                report_item=report_item))
+            self.add_cert_chain(session=session,
+                                chain=chain,
+                                command=command,
+                                source=source)
         if "http" in data and isinstance(data["http"], dict):
             nmap_service_name = "https" if tls_tunnel == "ssl" else "http"
         elif "ftp" in data and isinstance(data["ftp"], dict):

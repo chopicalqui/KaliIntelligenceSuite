@@ -29,6 +29,7 @@ import base64
 from database.model import Source
 from database.model import Command
 from database.model import CertType
+from database.model import CertInfo
 from collectors.os.core import PopenCommand
 from collectors.os.modules.osint.core import BaseKisImportDomain
 from collectors.os.modules.core import DomainCollector
@@ -94,8 +95,7 @@ class CollectorClass(BaseKisImportDomain, DomainCollector):
                 der_content = base64.b64decode(b64_content)
                 pem_content = CertificateUtils.der_to_pem(der_content)
                 self.add_cert_info(session=session,
-                                   pem=pem_content,
-                                   cert_type=CertType.identity,
+                                   cert_info=CertInfo(pem=pem_content, cert_type=CertType.identity),
                                    command=command,
                                    source=source,
                                    report_item=report_item)

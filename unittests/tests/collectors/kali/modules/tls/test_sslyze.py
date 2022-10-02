@@ -27,6 +27,7 @@ import tempfile
 import json
 from database.model import CollectorType
 from database.model import TlsInfo
+from database.model import CertType
 from database.model import CertInfo
 from database.model import TlsInfoCipherSuiteMapping
 from database.model import CipherSuite
@@ -156,6 +157,9 @@ class SslyzeCollectorTestCase(BaseNmapCollectorTestCase):
             # CertInfo
             results = session.query(CertInfo).all()
             self.assertEqual(4, len(results))
+            results = session.query(CertInfo)\
+                .filter_by(_serial_number="ef:d0:fa:ba:cd:58:19:88:0a:00:00:00:01:2e:07:79").one()
+            self.assertEqual(3, len(results.chain))
             # TlsInfo
             results = session.query(TlsInfo).all()
             results = [item.version_str for item in results]

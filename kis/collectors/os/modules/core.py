@@ -1326,17 +1326,39 @@ class BaseCollector(config.Collector):
                                                                       report_item=report_item)
         return result
 
+    def add_cert_chain(self,
+                       session: Session,
+                       chain: List[CertInfo],
+                       command: Command = None,
+                       source: Source = None,
+                       report_item: ReportItem = None):
+        """
+        This method adds certificate information to the given service
+        :param session: The database session used for addition the URL
+        :param chain: List of certificates.
+        :param source: The source object from which the URL originates
+        :param report_item: Item that can be used for pushing information into the view
+        :param command: The command to which the file should be attached
+        :return:
+        """
+        if report_item:
+            report_item.listener = self._listeners
+        result = self._domain_utils.add_cert_chain(session=session,
+                                                   chain=chain,
+                                                   command=command,
+                                                   source=source,
+                                                   report_item=report_item)
+
     def add_cert_info(self,
                       session: Session,
-                      pem: str,
-                      cert_type: CertType,
+                      cert_info: CertInfo,
                       command: Command,
                       source: Source = None,
                       report_item: ReportItem = None) -> CertInfo:
         """
         This method adds certificate information to the given service
         :param session: The database session used for addition the URL
-        :param cert_type: The certificate's type
+        :param cert_info: Contains basic information about the cert like PEM, cert_type and serial number
         :param source: The source object from which the URL originates
         :param report_item: Item that can be used for pushing information into the view
         :param command: The command to which the file should be attached
@@ -1345,8 +1367,7 @@ class BaseCollector(config.Collector):
         if report_item:
             report_item.listener = self._listeners
         result = self._domain_utils.add_cert_info(session=session,
-                                                  pem=pem,
-                                                  cert_type=cert_type,
+                                                  cert_info=cert_info,
                                                   source=source,
                                                   service=command.service,
                                                   host_name=command.host_name,

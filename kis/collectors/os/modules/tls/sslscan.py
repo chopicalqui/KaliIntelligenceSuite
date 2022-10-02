@@ -43,6 +43,7 @@ from database.model import Service
 from database.model import Command
 from database.model import CollectorName
 from database.model import Source
+from database.model import CertInfo
 from database.model import CertType
 from database.model import TlsInfo
 from database.model import TlsInfoCipherSuiteMapping
@@ -208,8 +209,7 @@ class CollectorClass(BaseTlsCollector, ServiceCollector, HostNameServiceCollecto
                 certinfo = results_tag.find("./certificates/*/certificate-blob")
                 if certinfo is not None and certinfo.text:
                     self.add_cert_info(session=session,
-                                       pem=certinfo.text,
-                                       cert_type=CertType.identity,
+                                       cert_info=CertInfo(pem=certinfo.text, cert_type=CertType.identity),
                                        command=command,
                                        source=source,
                                        report_item=report_item)

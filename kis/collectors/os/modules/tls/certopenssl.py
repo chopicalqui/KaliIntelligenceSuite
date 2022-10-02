@@ -37,6 +37,7 @@ from database.model import Command
 from database.model import CollectorName
 from database.model import Source
 from database.model import CertType
+from database.model import CertInfo
 from view.core import ReportItem
 from sqlalchemy.orm.session import Session
 
@@ -162,6 +163,7 @@ class CollectorClass(BaseTlsCollector, ServiceCollector, HostNameServiceCollecto
         :param process: The PopenCommand object that executed the given result. This object holds stderr, stdout, return
         code etc.
         """
+        chain = []
         command.hide = True
         output = os.linesep.join(command.stdout_output)
         certificates = self._re_cert.findall(output)
@@ -175,9 +177,12 @@ class CollectorClass(BaseTlsCollector, ServiceCollector, HostNameServiceCollecto
                 cert_type = CertType.root
             else:
                 cert_type = CertType.intermediate
-            self.add_cert_info(session=session,
-                               pem=certificates[i],
-                               cert_type=cert_type,
-                               command=command,
-                               source=source,
-                               report_item=report_item)
+            chain.append(self.add_cert_info(session=session,
+                                            cert_info=CertInfo(pem=certificates[i], cert_type=cert_type),
+                                            command=command,
+                                            source=source,
+                                            report_item=report_item))
+        self.add_cert_chain(session=session,
+                            chain=chain,
+                            command=command,
+                            source=source)

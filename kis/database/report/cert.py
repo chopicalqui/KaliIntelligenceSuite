@@ -21,7 +21,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 __version__ = 0.1
 
 import argparse
-from openpyxl import Workbook
 from typing import List
 from database.model import CertType
 from database.model import CertInfo
@@ -30,7 +29,7 @@ from database.model import ServiceState
 from database.model import DnsResourceRecordType
 from collectors.os.modules.http.core import HttpServiceDescriptor
 from database.report.core import BaseReport
-from database.report.core import ReportLanguage
+from OpenSSL.crypto import X509StoreContextError
 
 
 class ReportClass(BaseReport):
@@ -162,6 +161,13 @@ class ReportClass(BaseReport):
                             if is_http else []
                         for cert_info in service.cert_info:
                             if self._filter(cert_info):
+                                try:
+                                    chain = cert_info.chain
+                                    cert_info.verify(x509_store=self._domain_config.x509_store,
+                                                     chain=chain)
+                                    verification = "ok"
+                                except X509StoreContextError as ex:
+                                    verification = str(ex)
                                 matching_host = "n/a"
                                 extensions = cert_info.extensions_dict
                                 result.append([workspace.name,  # Workspace
@@ -205,7 +211,7 @@ class ReportClass(BaseReport):
                                                cert_info.valid_from_str,  # Valid From
                                                cert_info.valid_until_str,  # Valid Until
                                                cert_info.validity_period_days / 365,  # Valid Years
-                                               "TODO",  # Verification
+                                               verification,  # Verification
                                                cert_info.has_exired(),  # Has Expired
                                                cert_info.has_recommended_duration(),  # Recommended Duration
                                                cert_info.subject_alt_names_str,  # Subject Alternative Names
@@ -237,6 +243,13 @@ class ReportClass(BaseReport):
                                 if is_http else []
                             for cert_info in service.cert_info:
                                 if self._filter(cert_info):
+                                    try:
+                                        chain = cert_info.chain
+                                        cert_info.verify(x509_store=self._domain_config.x509_store,
+                                                         chain=chain)
+                                        verification = "ok"
+                                    except X509StoreContextError as ex:
+                                        verification = str(ex)
                                     extensions = cert_info.extensions_dict
                                     matching_host = cert_info.matches_host_name(host_name) \
                                         if cert_info.cert_type == CertType.identity else None
@@ -281,7 +294,7 @@ class ReportClass(BaseReport):
                                                    cert_info.valid_from_str,  # Valid From
                                                    cert_info.valid_until_str,  # Valid Until
                                                    cert_info.validity_period_days / 365,  # Valid Years
-                                                   "TODO",  # Verification
+                                                   verification,  # Verification
                                                    cert_info.has_exired(),  # Has Expired
                                                    cert_info.has_recommended_duration(),  # Recommended Duration
                                                    cert_info.subject_alt_names_str,  # Subject Alternative Names

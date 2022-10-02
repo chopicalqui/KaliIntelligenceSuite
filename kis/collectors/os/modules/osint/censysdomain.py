@@ -33,6 +33,7 @@ from collectors.core import CertType
 from collectors.os.core import PopenCommand
 from database.model import Command
 from database.model import Source
+from database.model import CertInfo
 from view.core import ReportItem
 from sqlalchemy.orm.session import Session
 
@@ -93,8 +94,7 @@ class CollectorClass(BaseKisImportDomain, DomainCollector):
                     certificate = "-----BEGIN CERTIFICATE-----{0}{1}{0}-----END CERTIFICATE-----".format(os.linesep,
                                                                                                          value["raw"])
                     self.add_cert_info(session=session,
-                                       pem=certificate,
-                                       cert_type=CertType.identity,
+                                       cert_info=CertInfo(pem=certificate, cert_type=CertType.identity),
                                        command=command,
                                        source=source,
                                        report_item=report_item)

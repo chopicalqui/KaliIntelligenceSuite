@@ -3774,8 +3774,10 @@ class CertInfo(DeclarativeBase):
 
     __tablename__ = "cert_info"
     id = Column(Integer, primary_key=True)
-    pem = Column(Text, nullable=False, unique=False)
+    _pem = Column("pem", Text, nullable=False, unique=False)
+    _serial_number = Column("serial_number", Text, nullable=False, unique=False)
     cert_type = Column(Enum(CertType), nullable=False, unique=False)
+    parent_id = Column(Integer, ForeignKey("cert_info.id", ondelete='cascade'), nullable=True, unique=False)
     creation_date = Column(DateTime, nullable=False, default=datetime.utcnow())
     last_modified = Column(DateTime, nullable=True, onupdate=datetime.utcnow())
     service_id = Column(Integer, ForeignKey("service.id", ondelete='cascade'), nullable=True, unique=False)
@@ -3784,9 +3786,10 @@ class CertInfo(DeclarativeBase):
     service = relationship("Service", backref=backref("cert_info", cascade='delete, delete-orphan'))
     company = relationship("Company", backref=backref("cert_info", cascade='delete, delete-orphan'))
     host_name = relationship("HostName", backref=backref("cert_info", cascade='delete, delete-orphan'))
-    __table_args__ = (UniqueConstraint('service_id', 'pem', name='_cert_info_service_unique'),
-                      UniqueConstraint('company_id', 'pem', name='_cert_info_company_unique'),
-                      UniqueConstraint('host_name_id', 'pem', name='_cert_info_host_name_unique'),
+    parent = relationship("CertInfo", remote_side=[id], backref=backref("children", cascade='delete, delete-orphan'))
+    __table_args__ = (UniqueConstraint('service_id', 'serial_number', name='_cert_info_service_unique'),
+                      UniqueConstraint('company_id', 'serial_number', name='_cert_info_company_unique'),
+                      UniqueConstraint('host_name_id', 'serial_number', name='_cert_info_host_name_unique'),
                       CheckConstraint(
                           '(case when not service_id is null and company_id is null and host_name_id is null then 1 else 0 end'
                           '+case when service_id is null and not company_id is null and host_name_id is null then 1 else 0 end'
@@ -3800,13 +3803,13 @@ class CertInfo(DeclarativeBase):
                  company: Company = None,
                  host_name: HostName = None):
         super().__init__()
+        self._certificate = crypto.load_certificate(crypto.FILETYPE_PEM, pem.encode())
+        self._crypto = self._certificate.to_cryptography()
         self.pem = pem
         self.cert_type = cert_type
         self.service = service
         self.company = company
         self.host_name = host_name
-        self._certificate = crypto.load_certificate(crypto.FILETYPE_PEM, self.pem.encode())
-        self._crypto = self._certificate.to_cryptography()
 
     @orm.reconstructor
     def init_on_load(self):
@@ -3837,6 +3840,15 @@ class CertInfo(DeclarativeBase):
     def print_x509_name(item: crypto.X509Name):
         return "".join(
             ", {:s}={:s}".format(name.decode(), value.decode()) for name, value in item.get_components()).strip(", ")
+
+    @property
+    def pem(self):
+        return self._pem
+
+    @pem.setter
+    def pem(self, value):
+        self._pem = value.strip()
+        self._serial_number = self.serial_number
 
     @property
     def cert(self):
@@ -4047,6 +4059,18 @@ class CertInfo(DeclarativeBase):
         result = None
         if self.sources:
             result = ", ".join([item.name for item in self.sources])
+        return result
+
+    @property
+    def chain(self) -> list:
+        result = [self]
+        current = self
+        while True:
+            current = current.parent
+            if current:
+                result.append(current)
+            else:
+                break
         return result
 
     def is_self_signed(self) -> bool:

@@ -1404,10 +1404,38 @@ class BaseUtils:
             source.tls_info_cipher_suite_mappings.append(rvalue)
         return rvalue
 
+    def add_cert_chain(self,
+                       session: Session,
+                       chain: List[CertInfo],
+                       command: Command = None,
+                       source: Source = None,
+                       report_item: ReportItem = None) -> List[CertInfo]:
+        """
+        This method adds certificate information to the given service
+        :param session: The database session used for addition the URL
+        :param chain: List of certificates.
+        :param source: The source object from which the URL originates
+        :param report_item: Item that can be used for pushing information into the view
+        :param command: The command to which the file should be attached
+        :return:
+        """
+        i = 0
+        result = []
+        for item in chain:
+            # Make sure the certificate is already in the database
+            cert_info = self.add_cert_info(session=session,
+                                           cert_info=item,
+                                           command=command,
+                                           source=source)
+            result.append(cert_info)
+            if i > 0:
+                cert_info.children.append(result[i - 1])
+            i += 1
+        return result
+
     def add_cert_info(self,
                       session: Session,
-                      pem: str,
-                      cert_type: CertType,
+                      cert_info: CertInfo,
                       command: Command = None,
                       source: Source = None,
                       service: Service = None,
@@ -1417,7 +1445,7 @@ class BaseUtils:
         """
         This method adds certificate information to the given service
         :param session: The database session used for addition the URL
-        :param cert_type: The certificate's type
+        :param cert_info: Contains basic information about the cert like PEM, cert_type and serial number
         :param source: The source object from which the URL originates
         :param report_item: Item that can be used for pushing information into the view
         :param service: The service to which the URL belongs
@@ -1438,11 +1466,14 @@ class BaseUtils:
         if (service and host_name) or (service and company) or (host_name and company):
             raise ValueError("cert info must either be assigned to a service, host name, or company")
         if service:
-            result = session.query(CertInfo).filter_by(service_id=service.id, pem=pem).one_or_none()
+            result = session.query(CertInfo).filter_by(service_id=service.id,
+                                                       _serial_number=cert_info.serial_number).one_or_none()
         elif host_name:
-            result = session.query(CertInfo).filter_by(host_name_id=host_name.id, pem=pem).one_or_none()
+            result = session.query(CertInfo).filter_by(host_name_id=host_name.id,
+                                                       _serial_number=cert_info.serial_number).one_or_none()
         elif company:
-            result = session.query(CertInfo).filter_by(company_id=company.id, pem=pem).one_or_none()
+            result = session.query(CertInfo).filter_by(company_id=company.id,
+                                                       _serial_number=cert_info.serial_number).one_or_none()
         else:
             raise ValueError("cert info must have a service, host name, or company")
         if not result:
@@ -1450,8 +1481,8 @@ class BaseUtils:
             result = CertInfo(service=service,
                               host_name=host_name,
                               company=company,
-                              pem=pem,
-                              cert_type=cert_type)
+                              pem=cert_info.pem_str,
+                              cert_type=cert_info.cert_type)
             session.add(result)
             session.flush()
         if source:
@@ -1473,7 +1504,7 @@ class BaseUtils:
                                                     workspace=workspace,
                                                     item=host_name,
                                                     source=source,
-                                                    verify=cert_type != CertType.identity,
+                                                    verify=cert_info.cert_type != CertType.identity,
                                                     report_item=report_item)
             if host_name_object:
                 for company in organizations:
@@ -1515,7 +1546,7 @@ class BaseUtils:
                                   file_type=FileType.certificate,
                                   file_name="{}.pem".format(command.file_name),
                                   workspace=command.workspace,
-                                  content=pem.encode(),
+                                  content=cert_info.pem_str.encode(),
                                   report_item=report_item)
         return result
 

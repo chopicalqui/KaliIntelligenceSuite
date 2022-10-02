@@ -25,6 +25,7 @@ __version__ = 0.1
 from database.model import Service
 from database.model import CertType
 from database.model import TlsInfo
+from database.model import CertInfo
 from database.model import TlsInfoCipherSuiteMapping
 from collectors.os.modules.core import BaseCollector
 from collectors.os.modules.core import BaseHydra
@@ -97,8 +98,7 @@ class CertInfoExtraction(BaseExtraServiceInfoExtraction):
             if not pem_tag and self._command:
                 content = pem_tag.text
                 self._domain_utils.add_cert_info(session=self._session,
-                                                 pem=content,
-                                                 cert_type=CertType.identity,
+                                                 cert_info=CertInfo(pem=content, cert_type=CertType.identity),
                                                  source=self._source,
                                                  command=self._command,
                                                  service=self._service,

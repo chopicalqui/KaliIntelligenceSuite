@@ -46,11 +46,10 @@ from database.model import Command
 from database.model import CollectorName
 from database.model import Source
 from database.model import CertType
-from database.model import TlsPreference
-from database.model import TlsInfo
 from database.model import TlsVersion
 from database.model import TlsInfoCipherSuiteMapping
 from database.model import ExecutionInfoType
+from database.model import CertInfo
 from view.core import ReportItem
 from sqlalchemy.orm.session import Session
 import xml.etree.ElementTree as ET
@@ -241,19 +240,24 @@ class CollectorClass(BaseTlsCollector, ServiceCollector, HostNameServiceCollecto
                                         isinstance(certificate_deployment["received_certificate_chain"], list):
                                     chain = certificate_deployment["received_certificate_chain"]
                                     i = 1
+                                    certificates = []
                                     for item in chain:
                                         if "as_pem" in item:
                                             cert_type = CertType.identity if i == 1 else CertType.intermediate if i < len(chain) else CertType.root
-                                            self.add_cert_info(session=session,
-                                                               pem=item["as_pem"],
-                                                               cert_type=cert_type,
-                                                               command=command,
-                                                               source=source,
-                                                               report_item=report_item)
+                                            certificates.append(self.add_cert_info(session=session,
+                                                                                   cert_info=CertInfo(pem=item["as_pem"],
+                                                                                                      cert_type=cert_type),
+                                                                                   command=command,
+                                                                                   source=source,
+                                                                                   report_item=report_item))
                                             i += 1
                                         else:
                                             raise NotImplementedError(
                                                 "unexpected JSON format (missing attribute 'as_pem')")
+                                    self.add_cert_chain(session=session,
+                                                        chain=certificates,
+                                                        command=command,
+                                                        source=source)
                                 else:
                                     raise NotImplementedError("unexpected JSON format (missing attribute "
                                                               "'received_certificate_chain')")
