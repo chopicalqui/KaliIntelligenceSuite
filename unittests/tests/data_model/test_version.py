@@ -23,7 +23,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 __version__ = 0.1
 
 from database.model import Version
-from database.model import DatabaseVersionMismatchEnum
 from database.model import DatabaseVersionMismatchError
 from database.model import DatabaseUninitializationError
 from unittests.tests.core import BaseDataModelTestCase
@@ -135,7 +134,3 @@ class TestPreFlightCheck(BaseDataModelTestCase):
         self._engine.drop()
         with self.assertRaises(DatabaseUninitializationError):
             self._engine.perform_preflight_check()
-
-    def test_database_patch(self):
-        self.init_db()
-        self._engine.perform_preflight_check(test_deployed_version="0.1.2", appy_patches=True, ask_user=False)
