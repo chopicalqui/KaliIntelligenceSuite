@@ -601,8 +601,7 @@ d0lIKO2d1xozclOzgjXPYovJJIultzkMu34qQb9Sz/yilrbCgj8=
                                                   service=service,
                                                   company=company,
                                                   host_name=host_name,
-                                                  pem=pem,
-                                                  cert_type=cert_type)
+                                                  cert_info=CertInfo(pem=pem, cert_type=cert_type))
         return result
 
     def query_hostname(self, session: Session, workspace_str: str, host_name: str) -> HostName:

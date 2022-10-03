@@ -387,7 +387,7 @@ CREATE OR REPLACE FUNCTION public.add_services_to_host_name() RETURNS trigger
                 ELSIF (TG_OP = 'DELETE') THEN
                     RAISE NOTICE 'DELETE';
                     IF (OLD.host_id IS NOT NULL) THEN
-                        RAISE NOTICE 'DELETE host name service';
+                        -- RAISE NOTICE 'DELETE host name service';
                         -- Check if a host's service was deleted. If so, then delete the corresponding host name service
                         DELETE FROM service
                         WHERE id IN (SELECT s.id FROM service s
@@ -396,7 +396,7 @@ CREATE OR REPLACE FUNCTION public.add_services_to_host_name() RETURNS trigger
                                      INNER JOIN host h ON hhnm.host_id = h.id
                                      WHERE s.protocol = OLD.protocol AND s.port = OLD.port AND h.id = OLD.host_id);
                     ELSIF (OLD.host_name_id IS NOT NULL) THEN
-                        RAISE NOTICE 'DELETE host name service';
+                        -- RAISE NOTICE 'DELETE host name service';
                         -- Check if a host's service was deleted. If so, then delete the corresponding host name service
                         DELETE FROM service
                         WHERE id IN (SELECT s.id FROM service s
@@ -466,3 +466,197 @@ ALTER FUNCTION public.pre_update_hosts_after_host_changes() OWNER TO kis;
 --
 DROP TRIGGER IF EXISTS service_insert ON public.service;
 CREATE TRIGGER service_insert AFTER INSERT OR DELETE OR UPDATE ON public.service FOR EACH ROW EXECUTE FUNCTION public.add_services_to_host_name();
+
+
+
+
+
+--
+-- CREATE/UPDATE TABLES
+--
+DROP TABLE IF EXISTS vhost_mapping CASCADE;
+
+--
+-- Name: source_vhost_name_mapping; Type: TABLE; Schema: public; Owner: kis
+--
+
+CREATE TABLE IF NOT EXISTS public.source_vhost_name_mapping (
+    id integer NOT NULL,
+    vhost_name_mapping_id integer NOT NULL,
+    source_id integer NOT NULL,
+    creation_date timestamp without time zone NOT NULL,
+    last_modified timestamp without time zone
+);
+
+
+ALTER TABLE public.source_vhost_name_mapping OWNER TO kis;
+
+--
+-- Name: source_vhost_name_mapping_id_seq; Type: SEQUENCE; Schema: public; Owner: kis
+--
+
+CREATE SEQUENCE IF NOT EXISTS public.source_vhost_name_mapping_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.source_vhost_name_mapping_id_seq OWNER TO kis;
+
+--
+-- Name: source_vhost_name_mapping_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: kis
+--
+
+ALTER SEQUENCE public.source_vhost_name_mapping_id_seq OWNED BY public.source_vhost_name_mapping.id;
+
+
+
+--
+-- Name: vhost_name_mapping; Type: TABLE; Schema: public; Owner: kis
+--
+
+CREATE TABLE public.vhost_name_mapping (
+    id integer NOT NULL,
+    service_id integer NOT NULL,
+    host_name_id integer,
+    host_id integer,
+    return_code integer,
+    size_bytes integer,
+    creation_date timestamp without time zone NOT NULL,
+    last_modified timestamp without time zone,
+    CONSTRAINT _vhost_name_mapping_mutex_constraint CHECK (((
+CASE
+    WHEN ((NOT (host_name_id IS NULL)) AND (host_id IS NULL)) THEN 1
+    ELSE 0
+END +
+CASE
+    WHEN ((host_name_id IS NULL) AND (NOT (host_id IS NULL))) THEN 1
+    ELSE 0
+END) = 1))
+);
+
+
+ALTER TABLE public.vhost_name_mapping OWNER TO kis;
+
+--
+-- Name: vhost_name_mapping_id_seq; Type: SEQUENCE; Schema: public; Owner: kis
+--
+
+CREATE SEQUENCE public.vhost_name_mapping_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.vhost_name_mapping_id_seq OWNER TO kis;
+
+--
+-- Name: vhost_name_mapping_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: kis
+--
+
+ALTER SEQUENCE public.vhost_name_mapping_id_seq OWNED BY public.vhost_name_mapping.id;
+
+--
+-- Name: source_vhost_name_mapping id; Type: DEFAULT; Schema: public; Owner: kis
+--
+
+ALTER TABLE ONLY public.source_vhost_name_mapping ALTER COLUMN id SET DEFAULT nextval('public.source_vhost_name_mapping_id_seq'::regclass);
+
+--
+-- Name: vhost_name_mapping id; Type: DEFAULT; Schema: public; Owner: kis
+--
+
+ALTER TABLE ONLY public.vhost_name_mapping ALTER COLUMN id SET DEFAULT nextval('public.vhost_name_mapping_id_seq'::regclass);
+
+--
+-- Name: source_vhost_name_mapping_id_seq; Type: SEQUENCE SET; Schema: public; Owner: kis
+--
+
+SELECT pg_catalog.setval('public.source_vhost_name_mapping_id_seq', 1, false);
+
+--
+-- Name: vhost_name_mapping_id_seq; Type: SEQUENCE SET; Schema: public; Owner: kis
+--
+
+SELECT pg_catalog.setval('public.vhost_name_mapping_id_seq', 1, false);
+
+--
+-- Name: source_vhost_name_mapping _source_vhost_name_mapping_unique; Type: CONSTRAINT; Schema: public; Owner: kis
+--
+
+ALTER TABLE ONLY public.source_vhost_name_mapping
+    ADD CONSTRAINT _source_vhost_name_mapping_unique UNIQUE (vhost_name_mapping_id, source_id);
+
+--
+-- Name: vhost_name_mapping _vhost_host_mapping_unique; Type: CONSTRAINT; Schema: public; Owner: kis
+--
+
+ALTER TABLE ONLY public.vhost_name_mapping
+    ADD CONSTRAINT _vhost_host_mapping_unique UNIQUE (service_id, host_id);
+
+--
+-- Name: vhost_name_mapping _vhost_host_name_mapping_unique; Type: CONSTRAINT; Schema: public; Owner: kis
+--
+
+ALTER TABLE ONLY public.vhost_name_mapping
+    ADD CONSTRAINT _vhost_host_name_mapping_unique UNIQUE (service_id, host_name_id);
+
+--
+-- Name: source_vhost_name_mapping source_vhost_name_mapping_pkey; Type: CONSTRAINT; Schema: public; Owner: kis
+--
+
+ALTER TABLE ONLY public.source_vhost_name_mapping
+    ADD CONSTRAINT source_vhost_name_mapping_pkey PRIMARY KEY (id);
+
+--
+-- Name: vhost_name_mapping vhost_name_mapping_pkey; Type: CONSTRAINT; Schema: public; Owner: kis
+--
+
+ALTER TABLE ONLY public.vhost_name_mapping
+    ADD CONSTRAINT vhost_name_mapping_pkey PRIMARY KEY (id);
+
+--
+-- Name: source_vhost_name_mapping source_vhost_name_mapping_source_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: kis
+--
+
+ALTER TABLE ONLY public.source_vhost_name_mapping
+    ADD CONSTRAINT source_vhost_name_mapping_source_id_fkey FOREIGN KEY (source_id) REFERENCES public.source(id) ON DELETE CASCADE;
+
+
+--
+-- Name: source_vhost_name_mapping source_vhost_name_mapping_vhost_name_mapping_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: kis
+--
+
+ALTER TABLE ONLY public.source_vhost_name_mapping
+    ADD CONSTRAINT source_vhost_name_mapping_vhost_name_mapping_id_fkey FOREIGN KEY (vhost_name_mapping_id) REFERENCES public.vhost_name_mapping(id) ON DELETE CASCADE;
+--
+-- Name: vhost_name_mapping vhost_name_mapping_host_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: kis
+--
+
+ALTER TABLE ONLY public.vhost_name_mapping
+    ADD CONSTRAINT vhost_name_mapping_host_id_fkey FOREIGN KEY (host_id) REFERENCES public.host(id) ON DELETE CASCADE;
+
+
+--
+-- Name: vhost_name_mapping vhost_name_mapping_host_name_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: kis
+--
+
+ALTER TABLE ONLY public.vhost_name_mapping
+    ADD CONSTRAINT vhost_name_mapping_host_name_id_fkey FOREIGN KEY (host_name_id) REFERENCES public.host_name(id) ON DELETE CASCADE;
+
+
+--
+-- Name: vhost_name_mapping vhost_name_mapping_service_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: kis
+--
+
+ALTER TABLE ONLY public.vhost_name_mapping
+    ADD CONSTRAINT vhost_name_mapping_service_id_fkey FOREIGN KEY (service_id) REFERENCES public.service(id) ON DELETE CASCADE;
+
+
+

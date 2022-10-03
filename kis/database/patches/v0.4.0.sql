@@ -1,5 +1,5 @@
-ALTER type public.scopetype ADD VALUE IF NOT EXISTS 'ignore';
-ALTER type public.commandstatus ADD VALUE IF NOT EXISTS 'skipped';
+ALTER TYPE public.scopetype ADD VALUE IF NOT EXISTS 'ignore';
+ALTER TYPE public.commandstatus ADD VALUE IF NOT EXISTS 'skipped';
 
 ALTER TABLE company_domain_name_mapping ADD COLUMN IF NOT EXISTS verified BOOLEAN;
 ALTER TABLE company_network_mapping ADD COLUMN IF NOT EXISTS verified BOOLEAN;
@@ -9,7 +9,6 @@ UPDATE company_network_mapping SET verified=FALSE;
 UPDATE company_domain_name_mapping SET verified=FALSE;
 ALTER TABLE company_domain_name_mapping ALTER COLUMN verified SET NOT NULL;
 ALTER TABLE company_network_mapping ALTER COLUMN verified SET NOT NULL;
-
 
 CREATE OR REPLACE FUNCTION post_update_host_names_after_domain_name_scope_changes()
         RETURNS TRIGGER AS $$
@@ -306,3 +305,144 @@ ALTER TABLE ONLY public.source_company_network_mapping
 
 ALTER TABLE ONLY public.source_company_network_mapping
     ADD CONSTRAINT source_company_network_mapping_source_id_fkey FOREIGN KEY (source_id) REFERENCES public.source(id) ON DELETE CASCADE;
+
+
+--
+-- DELETE/UPDATE TABLES
+--
+
+DROP TABLE IF EXISTS public.cert_info CASCADE;
+DROP TYPE IF EXISTS public.asymmetricalgorithm;
+DROP TYPE IF EXISTS public.hashalgorithm;
+
+CREATE TABLE public.cert_info (
+    id integer NOT NULL,
+    pem text NOT NULL,
+    serial_number text NOT NULL,
+    cert_type public.certtype NOT NULL,
+    parent_id integer,
+    creation_date timestamp without time zone NOT NULL,
+    last_modified timestamp without time zone,
+    service_id integer,
+    company_id integer,
+    host_name_id integer,
+    CONSTRAINT _cert_info_mutex_constraint CHECK ((((
+CASE
+    WHEN ((NOT (service_id IS NULL)) AND (company_id IS NULL) AND (host_name_id IS NULL)) THEN 1
+    ELSE 0
+END +
+CASE
+    WHEN ((service_id IS NULL) AND (NOT (company_id IS NULL)) AND (host_name_id IS NULL)) THEN 1
+    ELSE 0
+END) +
+CASE
+    WHEN ((service_id IS NULL) AND (company_id IS NULL) AND (NOT (host_name_id IS NULL))) THEN 1
+    ELSE 0
+END) = 1))
+);
+
+
+ALTER TABLE public.cert_info OWNER TO kis;
+
+--
+-- Name: cert_info_id_seq; Type: SEQUENCE; Schema: public; Owner: kis
+--
+
+CREATE SEQUENCE public.cert_info_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.cert_info_id_seq OWNER TO kis;
+
+--
+-- Name: cert_info_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: kis
+--
+
+ALTER SEQUENCE public.cert_info_id_seq OWNED BY public.cert_info.id;
+
+--
+-- Name: cert_info id; Type: DEFAULT; Schema: public; Owner: kis
+--
+
+ALTER TABLE ONLY public.cert_info ALTER COLUMN id SET DEFAULT nextval('public.cert_info_id_seq'::regclass);
+
+--
+-- Name: cert_info_id_seq; Type: SEQUENCE SET; Schema: public; Owner: kis
+--
+
+SELECT pg_catalog.setval('public.cert_info_id_seq', 1, false);
+
+--
+-- Name: cert_info _cert_info_company_unique; Type: CONSTRAINT; Schema: public; Owner: kis
+--
+
+ALTER TABLE ONLY public.cert_info
+    ADD CONSTRAINT _cert_info_company_unique UNIQUE (company_id, serial_number);
+
+
+--
+-- Name: cert_info _cert_info_host_name_unique; Type: CONSTRAINT; Schema: public; Owner: kis
+--
+
+ALTER TABLE ONLY public.cert_info
+    ADD CONSTRAINT _cert_info_host_name_unique UNIQUE (host_name_id, serial_number);
+
+
+--
+-- Name: cert_info _cert_info_service_unique; Type: CONSTRAINT; Schema: public; Owner: kis
+--
+
+ALTER TABLE ONLY public.cert_info
+    ADD CONSTRAINT _cert_info_service_unique UNIQUE (service_id, serial_number);
+
+--
+-- Name: cert_info cert_info_pkey; Type: CONSTRAINT; Schema: public; Owner: kis
+--
+
+ALTER TABLE ONLY public.cert_info
+    ADD CONSTRAINT cert_info_pkey PRIMARY KEY (id);
+
+--
+-- Name: cert_info cert_info_company_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: kis
+--
+
+ALTER TABLE ONLY public.cert_info
+    ADD CONSTRAINT cert_info_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.company(id) ON DELETE CASCADE;
+
+
+--
+-- Name: cert_info cert_info_host_name_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: kis
+--
+
+ALTER TABLE ONLY public.cert_info
+    ADD CONSTRAINT cert_info_host_name_id_fkey FOREIGN KEY (host_name_id) REFERENCES public.host_name(id) ON DELETE CASCADE;
+
+
+--
+-- Name: cert_info cert_info_parent_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: kis
+--
+
+ALTER TABLE ONLY public.cert_info
+    ADD CONSTRAINT cert_info_parent_id_fkey FOREIGN KEY (parent_id) REFERENCES public.cert_info(id) ON DELETE CASCADE;
+
+
+--
+-- Name: cert_info cert_info_service_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: kis
+--
+
+ALTER TABLE ONLY public.cert_info
+    ADD CONSTRAINT cert_info_service_id_fkey FOREIGN KEY (service_id) REFERENCES public.service(id) ON DELETE CASCADE;
+
+--
+-- Name: source_cert_info_mapping source_cert_info_mapping_cert_info_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: kis
+--
+
+ALTER TABLE ONLY public.source_cert_info_mapping
+    ADD CONSTRAINT source_cert_info_mapping_cert_info_id_fkey FOREIGN KEY (cert_info_id) REFERENCES public.cert_info(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.company_domain_name_mapping RENAME CONSTRAINT _company_domain_name_mapping_unique  TO _company_domain_name_unique;
