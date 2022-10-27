@@ -22,11 +22,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 __version__ = 0.1
 
-import censys.ipv4
-import censys.certificates
 import os
 from collectors.apis.core import BaseApi
 from collectors.core import BaseUtils
+from censys.search import CensysHosts
+from censys.search import CensysCertificates
+from database.model import CommandStatus
 
 
 class CensysIpv4(BaseApi):
@@ -38,7 +39,7 @@ class CensysIpv4(BaseApi):
         self._api_uid = self._config.config.get(self._api_name, "api_uid")
         self._api_key = self._config.config.get(self._api_name, "api_key")
 
-    def collect_api(self, query: str, output_directory: str=None) -> None:
+    def collect_api(self, query: str, output_directory: str = None) -> None:
         """
         This method collects information from the Censys IPv4 API
         :param query: The query in Censys syntax to collect the desired information from Censys
@@ -49,29 +50,30 @@ class CensysIpv4(BaseApi):
         if not output_directory or not os.path.isdir(output_directory):
             raise NotADirectoryError("output directory '{}' does not exist".format(output_directory))
         print("[*] querying censys API")
-        api = censys.ipv4.CensysIPv4(api_id=self._api_uid, api_secret=self._api_key)
+        api = CensysHosts(api_id=self._api_uid, api_secret=self._api_key)
         try:
-            for overview in api.search(query, fields=["ip"]):
-                details = api.view(overview["ip"])
-                query_results.append(details)
+            details = api.view(query)
+            query_results.append(details)
+            BaseUtils.add_json_results(self._command, query_results)
         except Exception as ex:
+            self._command.status = CommandStatus.failed
             print("  [E] The following error occurred while searching the censys API: {}".format(ex))
-        BaseUtils.add_json_results(self._command, query_results)
         self.write_filesystem(query_results=query_results, item=query, output_directory=output_directory)
 
 
-class CensysCertificate(BaseApi):
+class CensysDomain(BaseApi):
     """
     This class collects information from Censys Certificate API
     """
     SOURCE = "censys"
+    PARSED_NAMES = "parsed.names"
 
     def __init__(self, **args):
-        super().__init__(filename_template="censys_cert_{}", api_name=CensysCertificate.SOURCE, **args)
+        super().__init__(filename_template="censys_cert_{}", api_name=CensysDomain.SOURCE, **args)
         self._api_uid = self._config.config.get(self._api_name, "api_uid")
         self._api_key = self._config.config.get(self._api_name, "api_key")
 
-    def collect_api(self, domain: str, output_directory: str=None) -> None:
+    def collect_api(self, domain: str, output_directory: str = None) -> None:
         """
         This method collects information from the Censys Certificate API
         :param domain: The query in Censys syntax to collect the desired information from Censys
@@ -80,12 +82,12 @@ class CensysCertificate(BaseApi):
         """
         query_results = []
         print("[*] querying censys API")
-        api = censys.certificates.CensysCertificates(api_id=self._api_uid, api_secret=self._api_key)
+        api = CensysCertificates(api_id=self._api_uid, api_secret=self._api_key)
         try:
-            for overview in api.search("parsed.names.raw:{}".format(domain), fields=["parsed.fingerprint_sha256"]):
-                details = api.view(overview["parsed.fingerprint_sha256"])
-                query_results.append({overview["parsed.fingerprint_sha256"]: details})
+            for overview in api.search(domain, fields=[CensysDomain.PARSED_NAMES]):
+                query_results.append(overview)
+            BaseUtils.add_json_results(self._command, query_results)
         except Exception as ex:
+            self._command.status = CommandStatus.failed
             print("[E]   the following error occurred while searching the censys API: {}".format(ex))
-        BaseUtils.add_json_results(self._command, query_results)
         self.write_filesystem(query_results=query_results, item=domain, output_directory=output_directory)

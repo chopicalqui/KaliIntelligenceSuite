@@ -28,7 +28,7 @@ import logging
 import os
 from collectors.os.modules.osint.core import BaseKisImportDomain
 from collectors.os.modules.core import DomainCollector
-from collectors.apis.censys import CensysCertificate
+from collectors.apis.censys import CensysDomain
 from collectors.core import CertType
 from collectors.os.core import PopenCommand
 from database.model import Command
@@ -47,7 +47,7 @@ class CollectorClass(BaseKisImportDomain, DomainCollector):
         super().__init__(priority=130,
                          timeout=0,
                          argument_name="--censys-domain",
-                         source=CensysCertificate.SOURCE,
+                         source=CensysDomain.SOURCE,
                          delay_min=1,
                          exec_user="kali",
                          **kwargs)
@@ -88,13 +88,11 @@ class CollectorClass(BaseKisImportDomain, DomainCollector):
                                source=source,
                                report_item=report_item,
                                process=process)
-        for cert_info in command.json_output:
-            for key, value in cert_info.items():
-                if "raw" in value and value["raw"].startswith("MII"):
-                    certificate = "-----BEGIN CERTIFICATE-----{0}{1}{0}-----END CERTIFICATE-----".format(os.linesep,
-                                                                                                         value["raw"])
-                    self.add_cert_info(session=session,
-                                       cert_info=CertInfo(pem=certificate, cert_type=CertType.identity),
-                                       command=command,
-                                       source=source,
-                                       report_item=report_item)
+        for result in command.json_output:
+            for host_name in result[CensysDomain.PARSED_NAMES]:
+                self.add_host_name(session=session,
+                                   command=command,
+                                   host_name=host_name,
+                                   source=source,
+                                   verify=True,
+                                   report_item=report_item)

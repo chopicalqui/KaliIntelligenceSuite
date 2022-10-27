@@ -58,7 +58,7 @@ from collectors.apis.core import ApiCollectionFailed
 from collectors.apis.shodan import ShodanHost
 from collectors.apis.shodan import ShodanNetwork
 from collectors.apis.censys import CensysIpv4
-from collectors.apis.censys import CensysCertificate
+from collectors.apis.censys import CensysDomain
 from collectors.apis.hunter import Hunter
 from collectors.apis.securitytrails import SecurityTrails
 from collectors.apis.haveibeenpwned import HaveIBeenPwnedBreachedAcccount
@@ -930,7 +930,7 @@ https://github.com/chopicalqui/KaliIntelligenceSuite/wiki/kismanage-Use-Cases
                    file_argument_name='--censys-domain-files',
                    api_metavar='DOMAIN',
                    api_name='censys.io',
-                   api_class=CensysCertificate)
+                   api_class=CensysDomain)
     parser.add_all(parser=parser_kiscollect_group,
                    api_argument_name='--hunter',
                    file_argument_name='--hunter-files',

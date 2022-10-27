@@ -25,18 +25,20 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 __version__ = 0.1
 
 import logging
-from collectors.os.modules.osint.core import BaseKisImportHost
-from collectors.os.modules.core import HostCollector
-from collectors.apis.censys import CensysIpv4
-from collectors.os.core import PopenCommand
-from collectors.core import JsonUtils
-from database.model import Command
+from view.core import ReportItem
 from database.model import Source
+from database.model import Command
+from database.model import PathType
+from database.model import IpSupport
 from database.model import ProtocolType
 from database.model import ServiceState
-from database.model import IpSupport
-from view.core import ReportItem
+from collectors.os.core import PopenCommand
+from collectors.os.modules.core import HostCollector
+from collectors.os.modules.osint.core import BaseKisImportHost
+from collectors.core import JsonUtils
+from collectors.apis.censys import CensysIpv4
 from sqlalchemy.orm.session import Session
+from urllib.parse import urlparse
 
 logger = logging.getLogger('censyshost')
 
@@ -92,68 +94,82 @@ class CollectorClass(BaseKisImportHost, HostCollector):
                                report_item=report_item,
                                process=process)
         for json_object in command.json_output:
-            if "metadata" in json_object:
-                os = JsonUtils.get_attribute_value(json_object, "metadata/os")
-                if os and not command.host.os_family:
-                    command.host.os_family = os
-            if "protocols" in json_object:
-                protocols_info = self._json_utils.get_json_attribute(json_object, "protocols")
-                if protocols_info:
-                    for protocol_info in protocols_info:
-                        service_info = JsonUtils.get_attribute_value(json_object, protocol_info)
-                        if service_info:
-                            domains = []
-                            port = int(protocol_info.split("/")[0])
-                            service = self.add_service(session=session,
-                                                       port=port,
-                                                       protocol_type=ProtocolType.tcp,
-                                                       state=ServiceState.Open,
-                                                       host=command.host,
-                                                       source=source,
-                                                       report_item=report_item)
-                            for tls_attribute in JsonUtils.find_attribute(service_info, "tls"):
-                                domains = JsonUtils.get_attribute_value(tls_attribute, "certificate/parsed/names")
-                                domains = domains if domains else []
-                                tmp = JsonUtils.get_attribute_value(tls_attribute,
-                                                                    "tls/certificate/parsed/extensions/"
-                                                                    "subject_alt_name/dns_names")
-                                domains = domains + (tmp if tmp else [])
-                                if domains:
-                                    service.nmap_tunnel = "ssl"
-                            for metadata_attribute in JsonUtils.find_attribute(service_info, "metadata"):
-                                product = JsonUtils.get_attribute_value(metadata_attribute, "product")
-                                version = JsonUtils.get_attribute_value(metadata_attribute, "version")
-                                manufacturer = JsonUtils.get_attribute_value(metadata_attribute, "manufacturer")
-                                if manufacturer and product:
-                                    service.nmap_product = "{} {}".format(manufacturer, product)
-                                elif manufacturer and not product:
-                                    service.nmap_product = manufacturer
-                                elif product:
-                                    service.nmap_product = product
-                                if version:
-                                    service.nmap_version = version
-                            html_title = JsonUtils.get_attribute_value(service_info, "get/title")
-                            if html_title:
-                                self.add_additional_info(session=session,
-                                                         command=command,
-                                                         name="HTTP title",
-                                                         values=[html_title],
-                                                         service=service,
-                                                         source=source,
-                                                         report_item=report_item)
-                            html_server = JsonUtils.get_attribute_value(service_info, "get/headers/server")
-                            if html_server:
-                                self.add_additional_info(session=session,
-                                                         command=command,
-                                                         name="HTTP server",
-                                                         values=[html_server],
-                                                         service=service,
-                                                         source=source,
-                                                         report_item=report_item)
-                            for item in domains:
-                                self.add_host_name(session=session,
-                                                   command=command,
-                                                   host_name=item,
-                                                   source=source,
-                                                   verify=True,
-                                                   report_item=report_item)
+            # TODO: asn
+            # asn = JsonUtils.get_attribute_value(json_object, "autonomous_system/asn")
+            network = JsonUtils.get_attribute_value(json_object, "autonomous_system/bgp_prefix")
+            host_names = JsonUtils.get_attribute_value(json_object, "dns/names", default_value=[])
+            host_names += JsonUtils.get_attribute_value(json_object, "dns/reverse_dns/names", default_value=[])
+            # Add network
+            if network and not self.add_network(session=session,
+                                                command=command,
+                                                network=network,
+                                                source=source,
+                                                report_item=report_item):
+                logger.debug("ignoring network '{}' due to invalid format.".format(network))
+            # Parse services
+            for item in json_object["services"]:
+                port = int(item["port"])
+                name = item["_decoded"]
+                protocol = ProtocolType[item["transport_protocol"].lower()]
+                has_tls = "tls" in item
+                service = self.add_service(session=session,
+                                           port=port,
+                                           protocol_type=protocol,
+                                           state=ServiceState.Open,
+                                           nmap_tunnel="ssl" if has_tls else None,
+                                           nmap_service_name=name,
+                                           host=command.host,
+                                           source=source,
+                                           report_item=report_item)
+                # JSON object does not contain raw certificate
+                if name == "http":
+                    uri = JsonUtils.get_attribute_value(item, "http/request/uri")
+                    status_code = JsonUtils.get_attribute_value(item, "http/response/status_code")
+                    if uri:
+                        path = urlparse(uri).path
+                        if path:
+                            self.add_path(session=session,
+                                          command=command,
+                                          service=service,
+                                          path=path,
+                                          path_type=PathType.http,
+                                          return_code=status_code,
+                                          source=source,
+                                          report_item=report_item)
+                    # Add redirect header
+                    for location in JsonUtils.get_attribute_value(item, "http/response/headers/Location"):
+                        self.add_url(session=session,
+                                     command=command,
+                                     url=location,
+                                     source=source,
+                                     report_item=report_item)
+                    server_headers = JsonUtils.get_attribute_value(item, "http/response/headers/Server")
+                    # Add additional information
+                    self.add_additional_info(session=session,
+                                             command=command,
+                                             name="HTTP server",
+                                             values=server_headers,
+                                             service=service,
+                                             source=source,
+                                             report_item=report_item)
+                    html_title = JsonUtils.get_attribute_value(item, "http/response/html_title")
+                    self.add_additional_info(session=session,
+                                             command=command,
+                                             name="HTTP title",
+                                             values=html_title,
+                                             service=service,
+                                             source=source,
+                                             report_item=report_item)
+                if has_tls:
+                    host_names += JsonUtils.get_attribute_value(item,
+                                                                "tls/certificates/leaf_data/names",
+                                                                default_value=[])
+            # Add host names
+            for host_name in set(host_names):
+                if not self.add_host_name(session=session,
+                                          command=command,
+                                          host_name=host_name,
+                                          source=source,
+                                          verify=True,
+                                          report_item=report_item):
+                    logger.debug("ignoring host name '{}' due to invalid format.".format(host_name))

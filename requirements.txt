@@ -2,7 +2,7 @@ configparser
 sqlalchemy
 psycopg2-binary
 shodan
-censys==1.1.1
+censys
 cryptography
 passgen
 openpyxl

@@ -105,7 +105,7 @@ class CollectorClass(BaseCollector, DomainCollector):
         for line in command.stdout_output:
             item = None
             match_dns_ip = self._re_dns_ip.match(line)
-            match_ns= self._re_ns.match(line)
+            match_ns = self._re_ns.match(line)
             if match_dns_ip:
                 domain = match_dns_ip.group("domain")
                 ipv4_address = match_dns_ip.group("ipv4_address")
