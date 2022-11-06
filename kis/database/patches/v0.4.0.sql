@@ -1,5 +1,6 @@
 ALTER TYPE public.scopetype ADD VALUE IF NOT EXISTS 'ignore';
 ALTER TYPE public.commandstatus ADD VALUE IF NOT EXISTS 'skipped';
+ALTER TYPE public.commandstatus ADD VALUE IF NOT EXISTSs 'too_many_requests';
 
 ALTER TABLE company_domain_name_mapping ADD COLUMN IF NOT EXISTS verified BOOLEAN;
 ALTER TABLE company_network_mapping ADD COLUMN IF NOT EXISTS verified BOOLEAN;
@@ -314,6 +315,11 @@ ALTER TABLE ONLY public.source_company_network_mapping
 DROP TABLE IF EXISTS public.cert_info CASCADE;
 DROP TYPE IF EXISTS public.asymmetricalgorithm;
 DROP TYPE IF EXISTS public.hashalgorithm;
+
+--
+-- After dropping cert_info, we delete all rows of table source_cert_info_mapping
+--
+DELETE FROM source_cert_info_mapping;
 
 CREATE TABLE public.cert_info (
     id integer NOT NULL,

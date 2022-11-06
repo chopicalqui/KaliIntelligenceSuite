@@ -2003,6 +2003,7 @@ class BaseCollector(config.Collector):
                                xml_file: str = None,
                                json_file: str = None,
                                output_path: str = None,
+                               input_dir: str = None,
                                input_file: str = None,
                                input_file_2: str = None,
                                generic_file_name: str = None,
@@ -2025,7 +2026,9 @@ class BaseCollector(config.Collector):
         :param host: Host object to which the command belongs
         :param host_name: Host object to which the command belongs
         :param output_path: Path to the commands's output directory
+        :param input_dir: Input directory containing files required by application
         :param input_file: File which contains all the information for the target application
+        :param input_file_2: File which contains all the information for the target application
         :return: The queried or newly created collector class
         """
         # todo: update for new collector
@@ -2050,6 +2053,7 @@ class BaseCollector(config.Collector):
                                               xml_file=xml_file,
                                               json_file=json_file,
                                               output_path=output_path,
+                                              input_dir=input_dir,
                                               input_file=input_file,
                                               input_file_2=input_file_2,
                                               binary_file=binary_file,

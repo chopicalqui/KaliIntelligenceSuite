@@ -380,7 +380,8 @@ class CollectorProducer(Thread):
                                  "intel collection time but might not be as comprehensive")
         ogroup.add_argument("--restart", choices=[CommandStatus.failed.name,
                                                   CommandStatus.terminated.name,
-                                                  CommandStatus.completed.name], nargs='+',
+                                                  CommandStatus.completed.name,
+                                                  CommandStatus.not_found.name], nargs='+',
                             help="per default, kiscollect continues the collection from the last interruption point, "
                                  "and ignores all previously failed or terminated commands. With this option the "
                                  "collection of commands with statuses failed, terminated, or completed can be "
@@ -690,10 +691,12 @@ class CollectorProducer(Thread):
                 console.notify_finished()
 
     def _verify_command(self, commands: List[Command]):
-        if commands and commands[0].os_command and \
-                not os.path.isfile(commands[0].os_command[0]):
-            raise FileNotFoundError(
-                "the command '{}' does not exist!".format(commands[0].os_command[0]))
+        """
+        This method verifies the given commands before their execution.
+        """
+        for item in commands:
+            if item.os_command and not os.path.isfile(item.os_command[0]):
+                item.status = CommandStatus.not_found
 
     def _create_ipv4_network_commands(self,
                                       session: Session,

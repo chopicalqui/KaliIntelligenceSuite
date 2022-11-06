@@ -299,10 +299,12 @@ class CommandStatus(enum.Enum):
     pending = 0
     collecting = 20
     terminated = 110
+    skipped = 120
     failed = 210
     not_found = 230
+    too_many_requests = 240
     completed = 1000
-    skipped = 120
+# sudo -u postgres psql kis -c "alter type public.commandstatus add value 'too_many_requests';"
 
 
 class CredentialType(enum.Enum):
@@ -2763,6 +2765,7 @@ class ExecutionInfoType(enum.Enum):
     # This type only contains the file name without the extension. The actual program (e.g., theharvester) then
     # adds the file extension (e.g., json).
     generic_file_name = enum.auto()
+    input_dir = enum.auto()
 
     @property
     def argument(self) -> str:

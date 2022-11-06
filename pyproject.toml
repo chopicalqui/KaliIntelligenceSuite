@@ -10,7 +10,6 @@ configparser = "^5.1.0"
 psycopg2-binary = "^2.9.2"
 shodan = "^1.25.0"
 censys = "^2.1.8"
-cryptography = "^36.0.0"
 passgen = "^1.1.1"
 openpyxl = "^3.0.9"
 psutil = "^5.8.0"
@@ -19,6 +18,7 @@ pysqlcipher3 = "^1.0.4"
 pandas = "^1.3.4"
 bs4 = "^0.0.1"
 SQLAlchemy = "^1.4.31"
+pyOpenSSL = "^22.1.0"
 
 [tool.poetry.dev-dependencies]
 

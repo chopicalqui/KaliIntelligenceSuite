@@ -368,6 +368,7 @@ class BaseUtils:
                     json_file: str = None,
                     binary_file: str = None,
                     output_path: str = None,
+                    input_dir: str = None,
                     input_file: str = None,
                     input_file_2: str = None,
                     working_directory: str = None,
@@ -387,7 +388,8 @@ class BaseUtils:
         :param binary_file: Path to the command's binary output file
         :param host: Host object to which the command belongs
         :param host_name: Host object to which the command belongs
-        :param output_path: Path to the commands's output directory
+        :param output_path: Path to the command's output directory
+        :param input_dir: Input directory containing files required by application
         :param input_file: File which contains all the information for the target application
         :param input_file_2: File which contains all the information for the target application
         :param generic_file_name: Path to the command's generic output file name. The command then adds the file extension to
@@ -499,6 +501,10 @@ class BaseUtils:
         elif not exec_user and ExecutionInfoType.username.name in command.execution_info:
             del command.execution_info[ExecutionInfoType.username.name]
         command.execution_info[ExecutionInfoType.command_id.name] = command.id
+        if input_dir:
+            if not os.path.isdir(input_dir):
+                raise NotADirectoryError("input directory '{}' does not exist".format(input_dir))
+            command.execution_info[ExecutionInfoType.input_dir.name] = input_dir
         if input_file:
             if not os.path.isfile(input_file):
                 raise FileNotFoundError("input file '{}' does not exist".format(input_file))

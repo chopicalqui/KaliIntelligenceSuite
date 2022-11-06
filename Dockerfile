@@ -1,4 +1,5 @@
 FROM kalilinux/kali-last-release as base
+
 ENV LD_LIBRARY_PATH=/usr/local/lib \
     PYTHONFAULTHANDLER=1 \
     PYTHONUNBUFFERED=1 \
@@ -9,10 +10,14 @@ ENV LD_LIBRARY_PATH=/usr/local/lib \
     PIP_DEFAULT_TIMEOUT=100 \
     PATH="/opt/kaliintelsuite/venv/bin:${PATH}" \
     VIRTUAL_ENV="/opt/kaliintelsuite/venv/"
+# Create kali user
+RUN mkdir /home/kali && \
+    useradd -d /home/kali kali && \
+    chown kali:kali /home/kali
 # Do base installation
 WORKDIR /opt/kaliintelsuite
 RUN apt update && \
-    apt install -y ca-certificates openssl apt-transport-https && \
+    apt install -y --no-install-recommends ca-certificates openssl apt-transport-https && \
     echo "deb https://http.kali.org/kali kali-rolling main non-free contrib" >> /etc/apt/sources.list && \
     apt update
 RUN apt install -y amass \
@@ -31,6 +36,7 @@ RUN apt install -y amass \
                    finger \
                    ftp \
                    gobuster \
+                   hashcat \
                    hydra \
                    ike-scan \
                    iputils-ping \
@@ -67,7 +73,10 @@ RUN apt install -y amass \
                    wapiti \
                    whatweb \
                    whois \
-                   wpscan
+                   wpscan \
+                   nuclei
+
+RUN update-ca-certificates --fresh
 
 
 # Setup container
@@ -95,6 +104,11 @@ RUN wget https://github.com/0xbharath/slurp/releases/download/1.1.0/slurp-1.1.0-
     chmod +x /tmp/slurp
 # Obtain SNMP default password wordlist
 RUN wget https://raw.githubusercontent.com/SECFORCE/sparta/master/wordlists/snmp-default.txt -O /tmp/snmp-default.txt
+# Clone latest Nuclei templates
+USER kali
+RUN mkdir -p /home/kali/.local/ && \
+    nuclei -ut -ud /home/kali/.local/nuclei-templates
+USER root
 # Setup and install Poetry
 RUN apt install -y python3-pip python2
 ENV POETRY_HOME="/opt/poetry" \
@@ -106,13 +120,8 @@ WORKDIR /opt/kaliintelsuite/
 RUN pip install "poetry==$POETRY_VERSION" && \
     ln -sT python2 /usr/bin/python && poetry install --no-root --no-dev
 
-
 # Setup and deploy Kali Intelligence Suite
 FROM base as final
-# Create kali user
-RUN mkdir /home/kali && \
-    useradd -d /home/kali kali && \
-    chown kali:kali /home/kali
 # Deploy Aquatone
 COPY --from=builder /tmp/aquatone /usr/local/bin/
 # Deploy Crobat
@@ -124,6 +133,9 @@ COPY --from=builder /tmp/routes-small.kite /usr/share/kiterunner/
 # Deploy Slurp
 COPY --from=builder /tmp/slurp /usr/local/bin/
 COPY --from=builder /tmp/slurp-1.1.0/permutations.json /usr/share/slurp/
+# Deploy Nuclei
+COPY --from=builder /home/kali/.local/nuclei-templates /home/kali/.local/nuclei-templates
+COPY --from=builder /home/kali/.config/nuclei/.nuclei-ignore /home/kali/.config/nuclei/.nuclei-ignore
 # Deploy Python3 virtual environment
 COPY --from=builder /opt/kaliintelsuite/.venv /opt/kaliintelsuite/venv/
 # Create KIS commands

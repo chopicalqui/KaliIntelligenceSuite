@@ -90,9 +90,19 @@ class BaseConfig:
     def config(self):
         return self._config
 
-    def get_config_str(self, section: str, name: str) -> str:
-        return self._config[section][name].format(repo_home=self._repo_home,
-                                                  script_home=self._script_home)
+    def get_config_str(self, section: str, name: str, apply_format_string = True) -> str:
+        if self._config.has_option(section, name):
+            result = self._config[section][name]
+            if apply_format_string:
+                result = result.format(repo_home=self._repo_home, script_home=self._script_home)
+        else:
+            raise ValueError("""the configuration file '{0}' seems outdated.
+
+copy the latest version from https://github.com/chopicalqui/KaliIntelligenceSuite/tree/main/kis/configs/{0} to:
+- /opt/kaliintelsuite/kis/configs (in case of native installation)
+- /var/lib/docker/volumes/kaliintelsuite_kis_config/_data/ (in case of linux docker)
+- \\\\wsl$\\docker-desktop-data\\version-pack-data\\community\\docker\\volumes\\docker_kis_config\\_data  (in case of windows docker)""".format(self._config_file))
+        return result
 
     def get_config_int(self, section: str, name: str) -> int:
         return self._config[section].getint(name)
@@ -289,6 +299,8 @@ class Collector(BaseConfig):
         self._path_amass = self.get_config_str("file_paths", "amass")
         self._path_crobat = self.get_config_str("file_paths", "crobat")
         self._path_kiterunner = self.get_config_str("file_paths", "kiterunner")
+
+        self._path_nuclei = self.get_config_str("file_paths", "nuclei")
         self._wordlist_gobuster_dir = self.get_config_str("default_wordlists", "gobuster_dir")
         self._wordlist_gobuster_dns = self.get_config_str("default_wordlists", "gobuster_dns")
         self._wordlist_kiterunner = self.get_config_str("default_wordlists", "kiterunner_file")
@@ -416,14 +428,14 @@ class DomainConfig(BaseConfig):
     def __init__(self):
         super().__init__("domain.config")
         self.environments = {}
-        self.cert_stores = json.loads(self.config.get("openssl", "capath"))
-        raw_config = json.loads(self.config.get("general", "environment_wordlist"))
+        self.cert_stores = json.loads(self.get_config_str("openssl", "capath", apply_format_string=False))
+        raw_config = json.loads(self.get_config_str("general", "environment_wordlist", apply_format_string=False))
         for key, values in raw_config.items():
             self.environments[key] = []
             for item in values:
                 self.environments[key].append(re.compile(item, re.IGNORECASE))
         self.x509_store = crypto.X509Store()
-        for item in json.loads(self.config.get("openssl", "capath")):
+        for item in json.loads(self.get_config_str("openssl", "capath", apply_format_string=False)):
             if os.path.isdir(item):
                 self.x509_store.load_locations(capath=item, cafile=None)
 

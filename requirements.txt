@@ -3,7 +3,6 @@ sqlalchemy
 psycopg2-binary
 shodan
 censys
-cryptography
 passgen
 openpyxl
 psutil
@@ -12,3 +11,4 @@ pysqlcipher3
 pandas
 bs4
 pyOpenSSL
+

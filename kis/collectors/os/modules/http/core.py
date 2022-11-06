@@ -219,7 +219,7 @@ class BaseHttpGoBuster(BaseHttpCollector):
                     os_command.extend(['-U', user])
                 if password:
                     os_command.extend(['-P', password])
-                os_command += ['-u', service.get_urlparse().geturl()]
+                os_command += ['-u', url.geturl()]
                 collector = self._get_or_create_command(session, os_command, collector_name, service=service)
                 collectors.append(collector)
         return collectors

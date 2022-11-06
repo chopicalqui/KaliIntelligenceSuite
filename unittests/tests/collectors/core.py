@@ -28,6 +28,7 @@ from typing import Dict
 from database.utils import Engine
 from database.model import Command
 from database.model import Source
+from database.model import VhostChoice
 from view.core import ReportItem
 from collectors.os.modules.core import BaseCollector
 from collectors.os.collector import CollectorProducer
@@ -55,6 +56,8 @@ class CollectorProducerTestSuite:
         self._engine = engine
         self._arguments = arguments
         self._vhost = arguments["vhost"] if "vhost" in arguments else None
+        if self._vhost and not isinstance(self._vhost, VhostChoice):
+            raise TypeError("vhost argument must be of type VhostChoice.")
 
     def create_collector_instance(self,
                                   arg_parse_module: ArgParserModule = None,

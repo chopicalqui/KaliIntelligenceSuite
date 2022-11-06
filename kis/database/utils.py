@@ -267,6 +267,7 @@ class Engine:
                         result = True
                         print("patch successfully applied.")
                         print()
+                        print("we suggest running kiscollect with all collector arguments together with option -A now.")
                     except:
                         print("applying the patch failed.", file=sys.stderr)
                         print(file=sys.stderr)
@@ -1523,6 +1524,11 @@ class Setup:
         for wordlist, path in collector_config.config.items("default_wordlists"):
             self._check_exists(collector_config.get_config_str("default_wordlists", wordlist),
                                throw_exception=throw_exception)
+        # check nuclei setup
+        self._print("", throw_exception=throw_exception)
+        self._print("check nuclei setup", throw_exception=throw_exception)
+        self._check_exists(collector_config.get_config_str("nuclei", "template_dir"), throw_exception=throw_exception)
+        self._check_exists("/home/kali/.config/nuclei/.nuclei-ignore", throw_exception=throw_exception)
         # check API
         self._print("", throw_exception=throw_exception)
         self._print("check API settings (see sections in: {})".format(api_config.full_path),
