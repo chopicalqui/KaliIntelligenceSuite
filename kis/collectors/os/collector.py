@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 __version__ = 0.1
 
 import enum
+import random
 import importlib
 import os
 import pkgutil
@@ -674,9 +675,12 @@ class CollectorProducer(Thread):
                             if collector.name in self._remaining_collectors:
                                 index = self._remaining_collectors.index(collector.name)
                                 self._remaining_collectors = self._remaining_collectors[index:]
-                        # We add new command IDs to the queue
-                        for key, value in uniq_command_ids.items():
-                            self._command_queue.put(value)
+                        # We add new command IDs in a randomized order to the queue
+                        keys = list(uniq_command_ids.keys())
+                        while len(keys) > 0:
+                            key = random.choice(keys)
+                            keys.remove(key)
+                            self._command_queue.put(uniq_command_ids[key])
                         self._command_queue.join()
                 except Exception as ex:
                     traceback.print_exc(file=sys.stderr)
