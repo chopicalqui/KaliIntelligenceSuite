@@ -42,18 +42,17 @@ class TestCommand(BaseDataModelTestCase):
 
     def _test_check_constraint(self,
                                session,
-                               ex_message: str = "this case has not been implemented",
+                               ex_message: str = 'new row for relation "command" violates check constraint "_command_mutex_constraint"',
                                **kwargs):
-        try:
-            result = self._model(**kwargs)
-            session.add(result)
+        command = Command(os_command=["sleep", "10"],
+                          collector_name=self.create_collector_name(session))
+        for name, value in kwargs.items():
+            setattr(command, name, value)
+        with self.assertRaises(Exception) as context:
+            session.add(command)
             session.commit()
-        except Exception as ex:
-            self.assertIn(ex_message, str(ex))
-            session.rollback()
-            return
-        if ex_message:
-            self.assertIsNone(result)
+        self.assertIn(ex_message, str(context.exception))
+        session.rollback()
 
     def test_unique_constraint(self):
         self.init_db()
@@ -91,53 +90,141 @@ class TestCommand(BaseDataModelTestCase):
         self.init_db()
         # todo: update for new collector
         with self._engine.session_scope() as session:
-            collector_name = self.create_collector_name(session)
-            service = self.create_service(session)
-            self._test_not_null_constraint(session, os_command=["sleep", "10"], collector_name=None, service=service)
-            self._test_not_null_constraint(session, os_command=None, collector_name=collector_name, service=service)
+            host_name = self.create_hostname(session,
+                                             workspace_str=self._workspaces[0],
+                                             host_name="www.unittest.com")
+            self._test_not_null_constraint(session,
+                                           os_command=["sleep", "10"],
+                                           collector_name=None, host_name=host_name)
+            self._test_not_null_constraint(session,
+                                           os_command=None,
+                                           collector_name=self.create_collector_name(session),
+                                           host_name=host_name)
 
-    def test_check_constraint(self):
+    def test_database_function_exception(self):
         self.init_db()
         # todo: update for new collector
         with self._engine.session_scope() as session:
-            host_name = self.create_hostname(session, workspace_str=self._workspaces[0], host_name="www.unittest.com")
-            service_host = self.create_service(session, address="10.10.10.10", workspace_str=self._workspaces[0])
-            service_host_name = self.create_service(session,
-                                                    workspace_str=self._workspaces[0],
-                                                    host_name_str="www.test.com")
-            host = self.create_host(session, address="10.10.10.11", workspace_str=self._workspaces[0])
-            ipv4_network = self.create_network(session, workspace_str=self._workspaces[0])
-            collector_name = self.create_collector_name(session)
-            # This checks will all result in the database error "this case has not been implemented" raised by the
+            # These checks will all result in the database error "this case has not been implemented" raised by the
             # following database trigger: pre_command_changes
+            # In the following case database function pre_command_changes throws a different exception.
             self._test_check_constraint(session,
-                                        os_command=["sleep", "10"],
-                                        collector_name=collector_name,
-                                        workspace_id=host.workspace_id)
+                                        collector_name=self.create_collector_name(session),
+                                        ex_message="this case has not been implemented")
+
+    def test_check_constraint_host(self):
+        self.init_db()
+        # todo: update for new collector
+        with self._engine.session_scope() as session:
+            # Test all combinations with host
+            # Does not throw an exception, which is the correct behaviour
+            # self._test_check_constraint(session,
+            #                             collector_name=self.create_collector_name(session),
+            #                             host=host,
+            #                             service=service)
             self._test_check_constraint(session,
-                                        os_command=["sleep", "10"],
-                                        collector_name=collector_name,
-                                        service=service_host,
-                                        ipv4_network=ipv4_network,
-                                        ex_message=None)
+                                        collector_name=self.create_collector_name(session),
+                                        host=self.create_host(session,
+                                                              address="10.10.10.11",
+                                                              workspace_str=self._workspaces[0]),
+                                        host_name=self.create_hostname(session,
+                                                                       workspace_str=self._workspaces[0],
+                                                                       host_name="www.unittest.com"))
             self._test_check_constraint(session,
-                                        os_command=["sleep", "10"],
-                                        collector_name=collector_name,
-                                        service=service_host_name,
-                                        ipv4_network=ipv4_network,
-                                        ex_message=None)
+                                        collector_name=self.create_collector_name(session),
+                                        host=self.create_host(session,
+                                                              address="10.10.10.11",
+                                                              workspace_str=self._workspaces[0]),
+                                        ipv4_network=self.create_network(session, workspace_str=self._workspaces[0]))
             self._test_check_constraint(session,
-                                        os_command=["sleep", "10"],
-                                        collector_name=collector_name,
-                                        host=host,
-                                        ipv4_network=ipv4_network,
-                                        ex_message=None)
+                                        collector_name=self.create_collector_name(session),
+                                        host=self.create_host(session,
+                                                              address="10.10.10.11",
+                                                              workspace_str=self._workspaces[0]),
+                                        email=self.create_email(session=session,
+                                                                workspace_str=self._workspaces[0]))
             self._test_check_constraint(session,
-                                        os_command=["sleep", "10"],
-                                        collector_name=collector_name,
-                                        host_name=host_name,
-                                        ipv4_network=ipv4_network,
-                                        ex_message=None)
+                                        collector_name=self.create_collector_name(session),
+                                        host=self.create_host(session,
+                                                              address="10.10.10.11",
+                                                              workspace_str=self._workspaces[0]),
+                                        company=self.create_company(session=session,
+                                                                    workspace_str=self._workspaces[0]))
+
+    def test_check_constraint_service(self):
+        self.init_db()
+        # todo: update for new collector
+        with self._engine.session_scope() as session:
+            # Does not throw an exception, which is the correct behaviour
+            # self._test_check_constraint(session,
+            #                             collector_name=self.create_collector_name(session),
+            #                             service=service,
+            #                             host_name=self.create_hostname(session,
+            #                                                            workspace_str=self._workspaces[0],
+            #                                                            host_name="www.unittest.com"))
+            self._test_check_constraint(session,
+                                        collector_name=self.create_collector_name(session),
+                                        service=self.create_service(session,
+                                                                    address="10.10.10.10",
+                                                                    workspace_str=self._workspaces[0]),
+                                        ipv4_network=self.create_network(session, workspace_str=self._workspaces[0]))
+            self._test_check_constraint(session,
+                                        collector_name=self.create_collector_name(session),
+                                        service=self.create_service(session,
+                                                                    address="10.10.10.10",
+                                                                    workspace_str=self._workspaces[0]),
+                                        email=self.create_email(session=session, workspace_str=self._workspaces[0]))
+            self._test_check_constraint(session,
+                                        collector_name=self.create_collector_name(session),
+                                        service=self.create_service(session,
+                                                                    address="10.10.10.10",
+                                                                    workspace_str=self._workspaces[0]),
+                                        company=self.create_company(session=session, workspace_str=self._workspaces[0]))
+
+    def test_check_constraint_host_name(self):
+        self.init_db()
+        # todo: update for new collector
+        with self._engine.session_scope() as session:
+            self._test_check_constraint(session,
+                                        collector_name=self.create_collector_name(session),
+                                        host_name=self.create_hostname(session,
+                                                                       workspace_str=self._workspaces[0],
+                                                                       host_name="www.unittest.com"),
+                                        ipv4_network=self.create_network(session, workspace_str=self._workspaces[0]))
+            self._test_check_constraint(session,
+                                        collector_name=self.create_collector_name(session),
+                                        host_name=self.create_hostname(session,
+                                                                       workspace_str=self._workspaces[0],
+                                                                       host_name="www.unittest.com"),
+                                        email=self.create_email(session=session, workspace_str=self._workspaces[0]))
+            self._test_check_constraint(session,
+                                        collector_name=self.create_collector_name(session),
+                                        host_name=self.create_hostname(session,
+                                                                       workspace_str=self._workspaces[0],
+                                                                       host_name="www.unittest.com"),
+                                        company=self.create_company(session=session, workspace_str=self._workspaces[0]))
+
+    def test_check_constraint_network(self):
+        self.init_db()
+        # todo: update for new collector
+        with self._engine.session_scope() as session:
+            self._test_check_constraint(session,
+                                        collector_name=self.create_collector_name(session),
+                                        ipv4_network=self.create_network(session, workspace_str=self._workspaces[0]),
+                                        email=self.create_email(session=session, workspace_str=self._workspaces[0]))
+            self._test_check_constraint(session,
+                                        collector_name=self.create_collector_name(session),
+                                        ipv4_network=self.create_network(session, workspace_str=self._workspaces[0]),
+                                        company=self.create_company(session=session, workspace_str=self._workspaces[0]))
+
+    def test_check_constraint_email(self):
+        self.init_db()
+        # todo: update for new collector
+        with self._engine.session_scope() as session:
+            self._test_check_constraint(session,
+                                        collector_name=self.create_collector_name(session),
+                                        email=self.create_email(session=session, workspace_str=self._workspaces[0]),
+                                        company=self.create_company(session=session, workspace_str=self._workspaces[0]))
 
     def test_success_service_host(self):
         self.init_db()

@@ -100,7 +100,7 @@ class CertInfoExtraction(BaseExtraServiceInfoExtraction):
                 self._domain_utils.add_cert_info(session=self._session,
                                                  cert_info=CertInfo(pem=content, cert_type=CertType.identity),
                                                  source=self._source,
-                                                 command=self._command,
+                                                 # command=self._command, # we cannot use command here as it would assign a host_name and a service to the certificate.
                                                  service=self._service,
                                                  report_item=self._report_item)
 

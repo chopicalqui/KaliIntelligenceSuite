@@ -1275,41 +1275,47 @@ class BaseUtils:
         :return: The newly added path object
         """
         result = None
-        url_object = urlparse(url)
-        host_name = self.add_domain_name(session=session,
-                                         workspace=workspace,
-                                         item=url_object.hostname,
-                                         verify=verify,
-                                         report_item=report_item,
-                                         source=source)
-        if not host_name:
-            logger.warning("ignoring host name in line: {}".format(url_object.hostname))
-        else:
-            port = url_object.port
-            if not port:
-                if url_object.scheme == "http":
-                    port = 80
-                elif url_object.scheme == "https":
-                    port = 443
-                else:
-                    raise NotImplementedError("URL scheme not http(s) is not implemented.")
-            service = self.add_service(session=session,
-                                       port=port,
-                                       protocol_type=ProtocolType.tcp,
-                                       state=ServiceState.Open,
-                                       host_name=host_name,
-                                       nmap_tunnel="ssl" if url_object.scheme == "https" else None,
-                                       source=source,
-                                       report_item=report_item)
-            if service:
-                result = self.add_url_path(session=session,
-                                           service=service,
-                                           url_path=url,
-                                           status_code=status_code,
-                                           size_bytes=size_bytes,
-                                           source=source,
-                                           report_item=report_item,
-                                           add_all=add_all)
+        try:
+            url_object = urlparse(url)
+            host_name = self.add_domain_name(session=session,
+                                             workspace=workspace,
+                                             item=url_object.hostname,
+                                             verify=verify,
+                                             report_item=report_item,
+                                             source=source)
+            if not host_name:
+                logger.warning("ignoring host name in line: {}".format(url_object.hostname))
+            else:
+                port = url_object.port
+                if not port:
+                    if url_object.scheme == "http":
+                        port = 80
+                    elif url_object.scheme == "https":
+                        port = 443
+                    elif url_object.scheme == "ldap":
+                        port = 389
+                    else:
+                        logger.warning("URL scheme '{}' not http(s) is not implemented.".format(url_object.scheme))
+                if port:
+                    service = self.add_service(session=session,
+                                               port=port,
+                                               protocol_type=ProtocolType.tcp,
+                                               state=ServiceState.Open,
+                                               host_name=host_name,
+                                               nmap_tunnel="ssl" if url_object.scheme == "https" else None,
+                                               source=source,
+                                               report_item=report_item)
+                    if service:
+                        result = self.add_url_path(session=session,
+                                                   service=service,
+                                                   url_path=url,
+                                                   status_code=status_code,
+                                                   size_bytes=size_bytes,
+                                                   source=source,
+                                                   report_item=report_item,
+                                                   add_all=add_all)
+        except Exception as ex:
+            logger.exception(ex)
         return result
 
     @staticmethod
@@ -1389,17 +1395,24 @@ class BaseUtils:
             raise ValueError("at least one of the parameters is mandatory: cipher_suite, iana_name, openssl_cipher, or "
                              "gnutls_name")
         if not cipher_suite:
+            if iana_name:
+                logger.warning("cipher suite '{}' not found.".format(iana_name))
+            elif openssl_name:
+                logger.warning("cipher suite '{}' not found.".format(openssl_name))
+            elif gnutls_name:
+                logger.warning("cipher suite '{}' not found.".format(gnutls_name))
             return None
-        rvalue = session.query(TlsInfoCipherSuiteMapping)\
+        rvalue = session.query(TlsInfoCipherSuiteMapping) \
             .filter_by(tls_info_id=tls_info.id,
-                       cipher_suite_id=cipher_suite.id,
-                       kex_algorithm_details=kex_algorithm_details).one_or_none()
+                       cipher_suite_id=cipher_suite.id).one_or_none()
         if not rvalue:
             rvalue = TlsInfoCipherSuiteMapping(tls_info=tls_info,
                                                cipher_suite=cipher_suite,
                                                kex_algorithm_details=kex_algorithm_details)
             session.add(rvalue)
             session.flush()
+        if kex_algorithm_details and not rvalue.kex_algorithm_details:
+            rvalue.kex_algorithm_details = kex_algorithm_details
         if prefered:
             rvalue.prefered = prefered
         if order:
@@ -1413,6 +1426,9 @@ class BaseUtils:
     def add_cert_chain(self,
                        session: Session,
                        chain: List[CertInfo],
+                       service: Service = None,
+                       host_name: HostName = None,
+                       company: Company = None,
                        command: Command = None,
                        source: Source = None,
                        report_item: ReportItem = None) -> List[CertInfo]:
@@ -1420,6 +1436,9 @@ class BaseUtils:
         This method adds certificate information to the given service
         :param session: The database session used for addition the URL
         :param chain: List of certificates.
+        :param service: The service to which the URL belongs
+        :param host_name: The host name to which the URL belongs
+        :param company: The company to which the URL belongs
         :param source: The source object from which the URL originates
         :param report_item: Item that can be used for pushing information into the view
         :param command: The command to which the file should be attached
@@ -1431,6 +1450,9 @@ class BaseUtils:
             # Make sure the certificate is already in the database
             cert_info = self.add_cert_info(session=session,
                                            cert_info=item,
+                                           service=service,
+                                           host_name=host_name,
+                                           company=company,
                                            command=command,
                                            source=source)
             result.append(cert_info)
@@ -1473,13 +1495,13 @@ class BaseUtils:
             raise ValueError("cert info must either be assigned to a service, host name, or company")
         if service:
             result = session.query(CertInfo).filter_by(service_id=service.id,
-                                                       _serial_number=cert_info.serial_number).one_or_none()
+                                                       _sha256value=cert_info.sha256value).one_or_none()
         elif host_name:
             result = session.query(CertInfo).filter_by(host_name_id=host_name.id,
-                                                       _serial_number=cert_info.serial_number).one_or_none()
+                                                       _sha256value=cert_info.sha256value).one_or_none()
         elif company:
             result = session.query(CertInfo).filter_by(company_id=company.id,
-                                                       _serial_number=cert_info.serial_number).one_or_none()
+                                                       _sha256value=cert_info.sha256value).one_or_none()
         else:
             raise ValueError("cert info must have a service, host name, or company")
         if not result:

@@ -244,10 +244,10 @@ class Engine:
         versions = ["0.3.0", "0.4.0"]
         versions = [Version(item) for item in versions]
         result = False
-        current_kis_version = self.get_current_kis_database_model_version()
+        latest_kis_version = self.get_current_kis_database_model_version()
         database_version = self.get_deployed_database_model_version()\
             if not test_deployed_version else Version(test_deployed_version)
-        if database_version < current_kis_version:
+        if database_version < latest_kis_version:
             if ask_user:
                 user_input = None
                 while user_input not in ["yes", "no"]:
@@ -261,19 +261,26 @@ class Engine:
                 user_input = "yes"
             if user_input == "yes":
                 try:
-                    index = versions.index(current_kis_version)
+                    # Determine the correct patch version to start with
+                    if database_version in versions:
+                        index = versions.index(database_version) + 1
+                    elif database_version < versions[0]:
+                        index = 0
+                    else:
+                        raise ValueError("version '{}' not found in patch list".format(database_version))
                     try:
                         self._patch_database(versions[index:])
                         result = True
                         print("patch successfully applied.")
                         print()
                         print("we suggest running kiscollect with all collector arguments together with option -A now.")
-                    except:
+                    except Exception as ex:
                         print("applying the patch failed.", file=sys.stderr)
+                        print(str(ex), file=sys.stderr)
                         print(file=sys.stderr)
                         result = False
-                except ValueError:
-                    print("version '{}' not found in patch list".format(current_kis_version), file=sys.stderr)
+                except ValueError as ex:
+                    print(ex, file=sys.stderr)
                     print(file=sys.stderr)
                     result = False
             else:
@@ -327,19 +334,19 @@ class Engine:
         version
         :param ask_user: If true, then the user is asked whether he wants to upgrade.
         """
-        current_kis_version = self.get_current_kis_database_model_version(test_version)
+        latest_kis_version = self.get_current_kis_database_model_version(test_version)
         database_version = self.get_deployed_database_model_version() \
             if not test_deployed_version else Version(test_deployed_version)
         # Check if KIS database was initialized.
         if not database_version:
             raise DatabaseUninitializationError()
-        if database_version < current_kis_version:
+        if database_version < latest_kis_version:
             if appy_patches:
                 if not self.patch_database(ask_user, test_deployed_version=test_deployed_version):
                     raise DatabaseVersionMismatchError(reason=DatabaseVersionMismatchEnum.model_outdated)
             else:
                 raise DatabaseVersionMismatchError(reason=DatabaseVersionMismatchEnum.model_outdated)
-        elif database_version > current_kis_version:
+        elif database_version > latest_kis_version:
             raise DatabaseVersionMismatchError(reason=DatabaseVersionMismatchEnum.model_newer)
 
     def print_version_information(self):

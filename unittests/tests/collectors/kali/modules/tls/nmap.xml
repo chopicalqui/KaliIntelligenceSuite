@@ -1,0 +1,298 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE nmaprun>
+<?xml-stylesheet href="file:///usr/bin/../share/nmap/nmap.xsl" type="text/xsl"?>
+<!-- Nmap 7.93 scan initiated Fri Dec  2 11:33:39 2022 as: nmap -p 443 -sV -&#45;script ssl-enum-ciphers,ssl-dh-params,ssl-cert -oA /opt/kaliintelsuite/unittests/tests/collectors/kali/modules/tls/nmap.xml www.google.com -->
+<nmaprun scanner="nmap" args="nmap -p 443 -sV -&#45;script ssl-enum-ciphers,ssl-dh-params,ssl-cert -oA /opt/kaliintelsuite/unittests/tests/collectors/kali/modules/tls/nmap.xml www.google.com" start="1669998819" startstr="Fri Dec  2 11:33:39 2022" version="7.93" xmloutputversion="1.05">
+<scaninfo type="syn" protocol="tcp" numservices="1" services="443"/>
+<verbose level="0"/>
+<debugging level="0"/>
+<hosthint><status state="up" reason="unknown-response" reason_ttl="0"/>
+<address addr="172.217.168.68" addrtype="ipv4"/>
+<hostnames>
+<hostname name="www.google.com" type="user"/>
+</hostnames>
+</hosthint>
+<host starttime="1669998819" endtime="1669998884"><status state="up" reason="echo-reply" reason_ttl="113"/>
+<address addr="192.168.1.1" addrtype="ipv4"/>
+<hostnames>
+<hostname name="www.google.com" type="user"/>
+<hostname name="zrh04s15-in-f4.1e100.net" type="PTR"/>
+</hostnames>
+<ports><port protocol="tcp" portid="443"><state state="open" reason="syn-ack" reason_ttl="118"/><service name="https" product="gws" servicefp="SF-Port443-TCP:V=7.93%T=SSL%I=7%D=12/2%Time=638A28EF%P=x86_64-pc-linux-gnu%r(GetRequest,268E,&quot;HTTP/1\.0\x20200\x20OK\r\nDate:\x20Fri,\x2002\x20Dec\x202022\x2016:33:51\x20GMT\r\nExpires:\x20-1\r\nCache-Control:\x20private,\x20max-age=0\r\nContent-Type:\x20text/html;\x20charset=ISO-8859-1\r\nCross-Origin-Opener-Policy-Report-Only:\x20same-origin-allow-popups;\x20report-to=\&quot;gws\&quot;\r\nReport-To:\x20{\&quot;group\&quot;:\&quot;gws\&quot;,\&quot;max_age\&quot;:2592000,\&quot;endpoints\&quot;:\[{\&quot;url\&quot;:\&quot;https://csp\.withgoogle\.com/csp/report-to/gws/other\&quot;}\]}\r\nP3P:\x20CP=\&quot;This\x20is\x20not\x20a\x20P3P\x20policy!\x20See\x20g\.co/p3phelp\x20for\x20more\x20info\.\&quot;\r\nServer:\x20gws\r\nX-XSS-Protection:\x200\r\nX-Frame-Options:\x20SAMEORIGIN\r\nSet-Cookie:\x20SOCS=CAAaBgiAgKWcBg;\x20expires=Mon,\x2001-Jan-2024\x2016:33:51\x20GMT;\x20path=/;\x20domain=\.google\.com;\x20Secure;\x20SameSite=lax\r\nSet-Cookie:\x20AEC=AakniGMJhdm9r_NXriDwMquZQIe_tp0_oW8HKYkN5tdZFvyFgMUdRstyOw;\x20expires=Wed,\x2031-May-2023\x2016:33:51\x20GMT;\x20path=/;\x20domain=\.google\.com;\x20Secure;\x20HttpOnly;\x20SameSite=lax\r\nSet-Cookie:\x20__Secure-ENID=8\.SE=XEQRH42GfvlONaEeyUoKSwcAQfgwPr3NEUV8EJB9gowsVJi14Xd7vl3vu1G0kPaqqLixD_PbDAJQwQSUuU4PFjfl9&quot;);" tunnel="ssl" method="probed" conf="10"/><script id="fingerprint-strings" output="&#xa;  GetRequest: &#xa;    HTTP/1.0 200 OK&#xa;    Date: Fri, 02 Dec 2022 16:33:51 GMT&#xa;    Expires: -1&#xa;    Cache-Control: private, max-age=0&#xa;    Content-Type: text/html; charset=ISO-8859-1&#xa;    Cross-Origin-Opener-Policy-Report-Only: same-origin-allow-popups; report-to=&quot;gws&quot;&#xa;    Report-To: {&quot;group&quot;:&quot;gws&quot;,&quot;max_age&quot;:2592000,&quot;endpoints&quot;:[{&quot;url&quot;:&quot;https://csp.withgoogle.com/csp/report-to/gws/other&quot;}]}&#xa;    P3P: CP=&quot;This is not a P3P policy! See g.co/p3phelp for more info.&quot;&#xa;    Server: gws&#xa;    X-XSS-Protection: 0&#xa;    X-Frame-Options: SAMEORIGIN&#xa;    Set-Cookie: SOCS=CAAaBgiAgKWcBg; expires=Mon, 01-Jan-2024 16:33:51 GMT; path=/; domain=.google.com; Secure; SameSite=lax&#xa;    Set-Cookie: AEC=AakniGMJhdm9r_NXriDwMquZQIe_tp0_oW8HKYkN5tdZFvyFgMUdRstyOw; expires=Wed, 31-May-2023 16:33:51 GMT; path=/; domain=.google.com; Secure; HttpOnly; SameSite=lax&#xa;    Set-Cookie: __Secure-ENID=8.SE=XEQRH42GfvlONaEeyUoKSwcAQfgwPr3NEUV8EJB9gowsVJi14Xd7vl3vu1G0kPaqqLixD_PbDAJQwQSUuU4PFjfl9"><elem key="GetRequest">&#xa;    HTTP/1.0 200 OK&#xa;    Date: Fri, 02 Dec 2022 16:33:51 GMT&#xa;    Expires: -1&#xa;    Cache-Control: private, max-age=0&#xa;    Content-Type: text/html; charset=ISO-8859-1&#xa;    Cross-Origin-Opener-Policy-Report-Only: same-origin-allow-popups; report-to=&quot;gws&quot;&#xa;    Report-To: {&quot;group&quot;:&quot;gws&quot;,&quot;max_age&quot;:2592000,&quot;endpoints&quot;:[{&quot;url&quot;:&quot;https://csp.withgoogle.com/csp/report-to/gws/other&quot;}]}&#xa;    P3P: CP=&quot;This is not a P3P policy! See g.co/p3phelp for more info.&quot;&#xa;    Server: gws&#xa;    X-XSS-Protection: 0&#xa;    X-Frame-Options: SAMEORIGIN&#xa;    Set-Cookie: SOCS=CAAaBgiAgKWcBg; expires=Mon, 01-Jan-2024 16:33:51 GMT; path=/; domain=.google.com; Secure; SameSite=lax&#xa;    Set-Cookie: AEC=AakniGMJhdm9r_NXriDwMquZQIe_tp0_oW8HKYkN5tdZFvyFgMUdRstyOw; expires=Wed, 31-May-2023 16:33:51 GMT; path=/; domain=.google.com; Secure; HttpOnly; SameSite=lax&#xa;    Set-Cookie: __Secure-ENID=8.SE=XEQRH42GfvlONaEeyUoKSwcAQfgwPr3NEUV8EJB9gowsVJi14Xd7vl3vu1G0kPaqqLixD_PbDAJQwQSUuU4PFjfl9</elem>
+</script><script id="ssl-enum-ciphers" output="&#xa;  TLSv1.0: &#xa;    ciphers: &#xa;      TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA (ecdh_x25519) - A&#xa;      TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA (ecdh_x25519) - A&#xa;      TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA (ecdh_x25519) - A&#xa;      TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA (ecdh_x25519) - A&#xa;      TLS_RSA_WITH_AES_128_CBC_SHA (rsa 2048) - A&#xa;      TLS_RSA_WITH_AES_256_CBC_SHA (rsa 2048) - A&#xa;      TLS_RSA_WITH_3DES_EDE_CBC_SHA (rsa 2048) - C&#xa;    compressors: &#xa;      NULL&#xa;    cipher preference: server&#xa;    warnings: &#xa;      64-bit block cipher 3DES vulnerable to SWEET32 attack&#xa;  TLSv1.1: &#xa;    ciphers: &#xa;      TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA (ecdh_x25519) - A&#xa;      TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA (ecdh_x25519) - A&#xa;      TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA (ecdh_x25519) - A&#xa;      TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA (ecdh_x25519) - A&#xa;      TLS_RSA_WITH_AES_128_CBC_SHA (rsa 2048) - A&#xa;      TLS_RSA_WITH_AES_256_CBC_SHA (rsa 2048) - A&#xa;      TLS_RSA_WITH_3DES_EDE_CBC_SHA (rsa 2048) - C&#xa;    compressors: &#xa;      NULL&#xa;    cipher preference: server&#xa;    warnings: &#xa;      64-bit block cipher 3DES vulnerable to SWEET32 attack&#xa;  TLSv1.2: &#xa;    ciphers: &#xa;      TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA (ecdh_x25519) - A&#xa;      TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256 (ecdh_x25519) - A&#xa;      TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA (ecdh_x25519) - A&#xa;      TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 (ecdh_x25519) - A&#xa;      TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256 (ecdh_x25519) - A&#xa;      TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA (ecdh_x25519) - A&#xa;      TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256 (ecdh_x25519) - A&#xa;      TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA (ecdh_x25519) - A&#xa;      TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 (ecdh_x25519) - A&#xa;      TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256 (ecdh_x25519) - A&#xa;      TLS_RSA_WITH_3DES_EDE_CBC_SHA (rsa 2048) - C&#xa;      TLS_RSA_WITH_AES_128_CBC_SHA (rsa 2048) - A&#xa;      TLS_RSA_WITH_AES_128_GCM_SHA256 (rsa 2048) - A&#xa;      TLS_RSA_WITH_AES_256_CBC_SHA (rsa 2048) - A&#xa;      TLS_RSA_WITH_AES_256_GCM_SHA384 (rsa 2048) - A&#xa;    compressors: &#xa;      NULL&#xa;    cipher preference: client&#xa;    warnings: &#xa;      64-bit block cipher 3DES vulnerable to SWEET32 attack&#xa;  TLSv1.3: &#xa;    ciphers: &#xa;      TLS_AKE_WITH_AES_128_GCM_SHA256 (ecdh_x25519) - A&#xa;      TLS_AKE_WITH_AES_256_GCM_SHA384 (ecdh_x25519) - A&#xa;      TLS_AKE_WITH_CHACHA20_POLY1305_SHA256 (ecdh_x25519) - A&#xa;    cipher preference: client&#xa;  least strength: C"><table key="TLSv1.0">
+<table key="ciphers">
+<table>
+<elem key="strength">A</elem>
+<elem key="kex_info">ecdh_x25519</elem>
+<elem key="name">TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA</elem>
+</table>
+<table>
+<elem key="strength">A</elem>
+<elem key="kex_info">ecdh_x25519</elem>
+<elem key="name">TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA</elem>
+</table>
+<table>
+<elem key="strength">A</elem>
+<elem key="kex_info">ecdh_x25519</elem>
+<elem key="name">TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA</elem>
+</table>
+<table>
+<elem key="strength">A</elem>
+<elem key="kex_info">ecdh_x25519</elem>
+<elem key="name">TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA</elem>
+</table>
+<table>
+<elem key="strength">A</elem>
+<elem key="kex_info">rsa 2048</elem>
+<elem key="name">TLS_RSA_WITH_AES_128_CBC_SHA</elem>
+</table>
+<table>
+<elem key="strength">A</elem>
+<elem key="kex_info">rsa 2048</elem>
+<elem key="name">TLS_RSA_WITH_AES_256_CBC_SHA</elem>
+</table>
+<table>
+<elem key="strength">C</elem>
+<elem key="kex_info">rsa 2048</elem>
+<elem key="name">TLS_RSA_WITH_3DES_EDE_CBC_SHA</elem>
+</table>
+</table>
+<table key="compressors">
+<elem>NULL</elem>
+</table>
+<elem key="cipher preference">server</elem>
+<table key="warnings">
+<elem>64-bit block cipher 3DES vulnerable to SWEET32 attack</elem>
+</table>
+</table>
+<table key="TLSv1.1">
+<table key="ciphers">
+<table>
+<elem key="strength">A</elem>
+<elem key="kex_info">ecdh_x25519</elem>
+<elem key="name">TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA</elem>
+</table>
+<table>
+<elem key="strength">A</elem>
+<elem key="kex_info">ecdh_x25519</elem>
+<elem key="name">TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA</elem>
+</table>
+<table>
+<elem key="strength">A</elem>
+<elem key="kex_info">ecdh_x25519</elem>
+<elem key="name">TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA</elem>
+</table>
+<table>
+<elem key="strength">A</elem>
+<elem key="kex_info">ecdh_x25519</elem>
+<elem key="name">TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA</elem>
+</table>
+<table>
+<elem key="strength">A</elem>
+<elem key="kex_info">rsa 2048</elem>
+<elem key="name">TLS_RSA_WITH_AES_128_CBC_SHA</elem>
+</table>
+<table>
+<elem key="strength">A</elem>
+<elem key="kex_info">rsa 2048</elem>
+<elem key="name">TLS_RSA_WITH_AES_256_CBC_SHA</elem>
+</table>
+<table>
+<elem key="strength">C</elem>
+<elem key="kex_info">rsa 2048</elem>
+<elem key="name">TLS_RSA_WITH_3DES_EDE_CBC_SHA</elem>
+</table>
+</table>
+<table key="compressors">
+<elem>NULL</elem>
+</table>
+<elem key="cipher preference">server</elem>
+<table key="warnings">
+<elem>64-bit block cipher 3DES vulnerable to SWEET32 attack</elem>
+</table>
+</table>
+<table key="TLSv1.2">
+<table key="ciphers">
+<table>
+<elem key="strength">A</elem>
+<elem key="kex_info">ecdh_x25519</elem>
+<elem key="name">TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA</elem>
+</table>
+<table>
+<elem key="strength">A</elem>
+<elem key="kex_info">ecdh_x25519</elem>
+<elem key="name">TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256</elem>
+</table>
+<table>
+<elem key="strength">A</elem>
+<elem key="kex_info">ecdh_x25519</elem>
+<elem key="name">TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA</elem>
+</table>
+<table>
+<elem key="strength">A</elem>
+<elem key="kex_info">ecdh_x25519</elem>
+<elem key="name">TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384</elem>
+</table>
+<table>
+<elem key="strength">A</elem>
+<elem key="kex_info">ecdh_x25519</elem>
+<elem key="name">TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256</elem>
+</table>
+<table>
+<elem key="strength">A</elem>
+<elem key="kex_info">ecdh_x25519</elem>
+<elem key="name">TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA</elem>
+</table>
+<table>
+<elem key="strength">A</elem>
+<elem key="kex_info">ecdh_x25519</elem>
+<elem key="name">TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256</elem>
+</table>
+<table>
+<elem key="strength">A</elem>
+<elem key="kex_info">ecdh_x25519</elem>
+<elem key="name">TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA</elem>
+</table>
+<table>
+<elem key="strength">A</elem>
+<elem key="kex_info">ecdh_x25519</elem>
+<elem key="name">TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384</elem>
+</table>
+<table>
+<elem key="strength">A</elem>
+<elem key="kex_info">ecdh_x25519</elem>
+<elem key="name">TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256</elem>
+</table>
+<table>
+<elem key="strength">C</elem>
+<elem key="kex_info">rsa 2048</elem>
+<elem key="name">TLS_RSA_WITH_3DES_EDE_CBC_SHA</elem>
+</table>
+<table>
+<elem key="strength">A</elem>
+<elem key="kex_info">rsa 2048</elem>
+<elem key="name">TLS_RSA_WITH_AES_128_CBC_SHA</elem>
+</table>
+<table>
+<elem key="strength">A</elem>
+<elem key="kex_info">rsa 2048</elem>
+<elem key="name">TLS_RSA_WITH_AES_128_GCM_SHA256</elem>
+</table>
+<table>
+<elem key="strength">A</elem>
+<elem key="kex_info">rsa 2048</elem>
+<elem key="name">TLS_RSA_WITH_AES_256_CBC_SHA</elem>
+</table>
+<table>
+<elem key="strength">A</elem>
+<elem key="kex_info">rsa 2048</elem>
+<elem key="name">TLS_RSA_WITH_AES_256_GCM_SHA384</elem>
+</table>
+</table>
+<table key="compressors">
+<elem>NULL</elem>
+</table>
+<elem key="cipher preference">client</elem>
+<table key="warnings">
+<elem>64-bit block cipher 3DES vulnerable to SWEET32 attack</elem>
+</table>
+</table>
+<table key="TLSv1.3">
+<table key="ciphers">
+<table>
+<elem key="strength">A</elem>
+<elem key="kex_info">ecdh_x25519</elem>
+<elem key="name">TLS_AKE_WITH_AES_128_GCM_SHA256</elem>
+</table>
+<table>
+<elem key="strength">A</elem>
+<elem key="kex_info">ecdh_x25519</elem>
+<elem key="name">TLS_AKE_WITH_AES_256_GCM_SHA384</elem>
+</table>
+<table>
+<elem key="strength">A</elem>
+<elem key="kex_info">ecdh_x25519</elem>
+<elem key="name">TLS_AKE_WITH_CHACHA20_POLY1305_SHA256</elem>
+</table>
+</table>
+<elem key="cipher preference">client</elem>
+</table>
+<elem key="least strength">C</elem>
+</script><script id="ssl-cert" output="Subject: commonName=www.google.com&#xa;Subject Alternative Name: DNS:www.google.com&#xa;Issuer: commonName=GTS CA 1C3/organizationName=Google Trust Services LLC/countryName=US&#xa;Public Key type: ec&#xa;Public Key bits: 256&#xa;Signature Algorithm: sha256WithRSAEncryption&#xa;Not valid before: 2022-11-02T13:45:40&#xa;Not valid after:  2023-01-25T13:45:39&#xa;MD5:   0225c1365d9b4ad0f641db2c95f9a3f8&#xa;SHA-1: 78c875671110cc4ef67aae7c0954a1f744d818e0"><table key="subject">
+<elem key="commonName">www.google.com</elem>
+</table>
+<table key="issuer">
+<elem key="commonName">GTS CA 1C3</elem>
+<elem key="countryName">US</elem>
+<elem key="organizationName">Google Trust Services LLC</elem>
+</table>
+<table key="pubkey">
+<elem key="type">ec</elem>
+<elem key="bits">256</elem>
+<table key="ecdhparams">
+<table key="curve_params">
+<elem key="ec_curve_type">namedcurve</elem>
+<elem key="curve">prime256v1</elem>
+</table>
+</table>
+</table>
+<table key="extensions">
+<table>
+<elem key="name">X509v3 Key Usage</elem>
+<elem key="value">Digital Signature</elem>
+<elem key="critical">true</elem>
+</table>
+<table>
+<elem key="name">X509v3 Extended Key Usage</elem>
+<elem key="value">TLS Web Server Authentication</elem>
+</table>
+<table>
+<elem key="name">X509v3 Basic Constraints</elem>
+<elem key="value">CA:FALSE</elem>
+<elem key="critical">true</elem>
+</table>
+<table>
+<elem key="name">X509v3 Subject Key Identifier</elem>
+<elem key="value">C8:BD:F4:B8:B9:D7:95:E2:76:0C:EB:2B:96:F9:72:48:1D:13:24:5A</elem>
+</table>
+<table>
+<elem key="name">X509v3 Authority Key Identifier</elem>
+<elem key="value">8A:74:7F:AF:85:CD:EE:95:CD:3D:9C:D0:E2:46:14:F3:71:35:1D:27</elem>
+</table>
+<table>
+<elem key="name">Authority Information Access</elem>
+<elem key="value">OCSP - URI:http://ocsp.pki.goog/gts1c3&#xa;CA Issuers - URI:http://pki.goog/repo/certs/gts1c3.der</elem>
+</table>
+<table>
+<elem key="name">X509v3 Subject Alternative Name</elem>
+<elem key="value">DNS:www.google.com</elem>
+</table>
+<table>
+<elem key="name">X509v3 Certificate Policies</elem>
+<elem key="value">Policy: 2.23.140.1.2.1&#xa;Policy: 1.3.6.1.4.1.11129.2.5.3</elem>
+</table>
+<table>
+<elem key="name">X509v3 CRL Distribution Points</elem>
+<elem key="value">Full Name:&#xa;  URI:http://crls.pki.goog/gts1c3/QOvJ0N1sT2A.crl</elem>
+</table>
+<table>
+<elem key="name">CT Precertificate SCTs</elem>
+<elem key="value">Signed Certificate Timestamp:&#xa;    Version   : v1 (0x0)&#xa;    Log ID    : B3:73:77:07:E1:84:50:F8:63:86:D6:05:A9:DC:11:09:&#xa;                4A:79:2D:B1:67:0C:0B:87:DC:F0:03:0E:79:36:A5:9A&#xa;    Timestamp : Nov  2 14:45:42.013 2022 GMT&#xa;    Extensions: none&#xa;    Signature : ecdsa-with-SHA256&#xa;                30:44:02:20:40:B1:78:F2:D4:20:D7:93:4D:C7:42:29:&#xa;                EC:B0:EE:02:D6:A5:2F:95:7B:FE:8D:0E:C7:D7:5A:BE:&#xa;                0E:51:DC:8B:02:20:7B:3D:7B:D2:31:60:29:C7:6A:C3:&#xa;                E6:15:D6:EB:3E:FF:40:55:E4:F8:E6:E0:40:BB:AB:16:&#xa;                DC:6D:31:43:6C:4F&#xa;Signed Certificate Timestamp:&#xa;    Version   : v1 (0x0)&#xa;    Log ID    : E8:3E:D0:DA:3E:F5:06:35:32:E7:57:28:BC:89:6B:C9:&#xa;                03:D3:CB:D1:11:6B:EC:EB:69:E1:77:7D:6D:06:BD:6E&#xa;    Timestamp : Nov  2 14:45:41.896 2022 GMT&#xa;    Extensions: none&#xa;    Signature : ecdsa-with-SHA256&#xa;                30:46:02:21:00:8B:2A:3D:B5:59:44:2E:FE:E8:33:04:&#xa;                F1:6F:B4:44:62:D2:8A:E2:AB:7C:B0:23:DE:B0:F4:93:&#xa;                2E:4B:6D:5A:CB:02:21:00:B0:37:71:26:26:0B:D7:52:&#xa;                A2:E2:D7:35:3F:D3:4A:A9:2C:50:E6:96:ED:F2:34:11:&#xa;                2E:05:68:05:7A:E7:97:4E</elem>
+</table>
+</table>
+<elem key="sig_algo">sha256WithRSAEncryption</elem>
+<table key="validity">
+<elem key="notBefore">2022-11-02T13:45:40</elem>
+<elem key="notAfter">2023-01-25T13:45:39</elem>
+</table>
+<elem key="md5">0225c1365d9b4ad0f641db2c95f9a3f8</elem>
+<elem key="sha1">78c875671110cc4ef67aae7c0954a1f744d818e0</elem>
+<elem key="pem">-&#45;&#45;&#45;&#45;BEGIN CERTIFICATE-&#45;&#45;&#45;&#45;&#xa;MIIEiDCCA3CgAwIBAgIRANkk7p2WCytxEp4N9HOkiccwDQYJKoZIhvcNAQELBQAw&#xa;RjELMAkGA1UEBhMCVVMxIjAgBgNVBAoTGUdvb2dsZSBUcnVzdCBTZXJ2aWNlcyBM&#xa;TEMxEzARBgNVBAMTCkdUUyBDQSAxQzMwHhcNMjIxMTAyMTM0NTQwWhcNMjMwMTI1&#xa;MTM0NTM5WjAZMRcwFQYDVQQDEw53d3cuZ29vZ2xlLmNvbTBZMBMGByqGSM49AgEG&#xa;CCqGSM49AwEHA0IABJp6qyvmSG3cUYNCVyTUf3+VvzH37N0x+b1lepdTKqMSE7+Q&#xa;O/XpPtHTpYyaeapDSgfzvL8kct1MQI7TVUNOe4OjggJnMIICYzAOBgNVHQ8BAf8E&#xa;BAMCB4AwEwYDVR0lBAwwCgYIKwYBBQUHAwEwDAYDVR0TAQH/BAIwADAdBgNVHQ4E&#xa;FgQUyL30uLnXleJ2DOsrlvlySB0TJFowHwYDVR0jBBgwFoAUinR/r4XN7pXNPZzQ&#xa;4kYU83E1HScwagYIKwYBBQUHAQEEXjBcMCcGCCsGAQUFBzABhhtodHRwOi8vb2Nz&#xa;cC5wa2kuZ29vZy9ndHMxYzMwMQYIKwYBBQUHMAKGJWh0dHA6Ly9wa2kuZ29vZy9y&#xa;ZXBvL2NlcnRzL2d0czFjMy5kZXIwGQYDVR0RBBIwEIIOd3d3Lmdvb2dsZS5jb20w&#xa;IQYDVR0gBBowGDAIBgZngQwBAgEwDAYKKwYBBAHWeQIFAzA8BgNVHR8ENTAzMDGg&#xa;L6AthitodHRwOi8vY3Jscy5wa2kuZ29vZy9ndHMxYzMvUU92SjBOMXNUMkEuY3Js&#xa;MIIBBAYKKwYBBAHWeQIEAgSB9QSB8gDwAHUAs3N3B+GEUPhjhtYFqdwRCUp5LbFn&#xa;DAuH3PADDnk2pZoAAAGEOM4Z/QAABAMARjBEAiBAsXjy1CDXk03HQinssO4C1qUv&#xa;lXv+jQ7H11q+DlHciwIgez170jFgKcdqw+YV1us+/0BV5Pjm4EC7qxbcbTFDbE8A&#xa;dwDoPtDaPvUGNTLnVyi8iWvJA9PL0RFr7Otp4Xd9bQa9bgAAAYQ4zhmIAAAEAwBI&#xa;MEYCIQCLKj21WUQu/ugzBPFvtERi0oriq3ywI96w9JMuS21aywIhALA3cSYmC9dS&#xa;ouLXNT/TSqksUOaW7fI0ES4FaAV655dOMA0GCSqGSIb3DQEBCwUAA4IBAQBdQKWo&#xa;Tj9XwQhjTJ0NNHq0m3uNeThPyUm3m1MA0GaUxUcw9sL/jGfVudJO9sl+UHKaCnJF&#xa;+OvcihUHWDN3ZAK6HkLKR8LMMf/+yELscmlsZsIPueeHUMd41LArgte3xs2PLsZ3&#xa;MZzxnygtss1Uwtgsy5MTRr0TPjso46GiedD1zAG3ZvK6lSoHcQ58lZpiqcH/h5Ur&#xa;TwkkLpGN1HJb7P1r7e4j7GlpGoAdcMfZ8SOYMf2QpYEeU4VoioYa7hff8YX3fEg6&#xa;k+gy3Iu0wztllJL7jD704zuhCoQVhBv75/cP/tzjW6JflZx32FyPDLH7IbhXHIZj&#xa;mdqKxH/ZNR+HW5px&#xa;-&#45;&#45;&#45;&#45;END CERTIFICATE-&#45;&#45;&#45;&#45;&#xa;</elem>
+</script><script id="http-server-header" output="gws"><elem>gws</elem>
+</script></port>
+</ports>
+<times srtt="3807" rttvar="3761" to="100000"/>
+</host>
+<runstats><finished time="1669998884" timestr="Fri Dec  2 11:34:44 2022" summary="Nmap done at Fri Dec  2 11:34:44 2022; 1 IP address (1 host up) scanned in 64.97 seconds" elapsed="64.97" exit="success"/><hosts up="1" down="0" total="1"/>
+</runstats>
+</nmaprun>

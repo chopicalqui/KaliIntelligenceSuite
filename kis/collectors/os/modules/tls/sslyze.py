@@ -33,6 +33,7 @@ from collectors.os.modules.core import HostNameServiceCollector
 from collectors.os.modules.tls.core import BaseTlsCollector
 from collectors.os.modules.rdp.core import RdpServiceDescriptor
 from collectors.os.modules.ldap.core import LdapServiceDescriptor
+from collectors.os.modules.pgsql.core import PostgresSqlServiceDescriptor
 from collectors.os.modules.ftp.core import FtpServiceDescriptor
 from collectors.os.modules.email.core import Pop3ServiceDescriptor
 from collectors.os.modules.email.core import ImapServiceDescriptor
@@ -134,6 +135,8 @@ class CollectorClass(BaseTlsCollector, ServiceCollector, HostNameServiceCollecto
                 os_command.append("--starttls=smtp")
             elif Pop3ServiceDescriptor().match_nmap_service_name(service):
                 os_command.append("--starttls=pop3")
+            elif PostgresSqlServiceDescriptor().match_nmap_service_name(service):
+                os_command.append("--starttls=postgres")
             os_command.extend(['--json_out', ExecutionInfoType.json_output_file.argument,
                                "{}:{}".format(service.address, service.port)])
             collector = self._get_or_create_command(session,

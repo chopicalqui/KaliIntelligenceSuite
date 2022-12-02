@@ -189,28 +189,6 @@ class BaseKisImport(BaseCollector):
             protocol_type = ProtocolType.udp
         else:
             raise NotImplementedError("Case for protocol '{}' not implemented".format(protocol_type))
-        if "ssl" in data and isinstance(data["ssl"], dict):
-            ssl_item = data["ssl"]
-            tls_tunnel = "ssl"
-            certificate_chain = self._json_utils.get_attribute_value(ssl_item, "chain", default_value=[])
-            cert_count = len(certificate_chain)
-            chain = []
-            for i in range(0, cert_count):
-                if i == 0:
-                    cert_type = CertType.identity
-                elif i == (cert_count - 1):
-                    cert_type = CertType.root
-                else:
-                    cert_type = CertType.intermediate
-                chain.append(self.add_cert_info(session=session,
-                                                cert_info=CertInfo(pem=certificate_chain[i], cert_type=cert_type),
-                                                command=command,
-                                                source=source,
-                                                report_item=report_item))
-            self.add_cert_chain(session=session,
-                                chain=chain,
-                                command=command,
-                                source=source)
         if "http" in data and isinstance(data["http"], dict):
             nmap_service_name = "https" if tls_tunnel == "ssl" else "http"
         elif "ftp" in data and isinstance(data["ftp"], dict):
@@ -282,6 +260,26 @@ class BaseKisImport(BaseCollector):
                                   path_type=PathType.http,
                                   source=source,
                                   report_item=report_item)
+
+            if "ssl" in data and isinstance(data["ssl"], dict):
+                ssl_item = data["ssl"]
+                tls_tunnel = "ssl"
+                certificate_chain = self._json_utils.get_attribute_value(ssl_item, "chain", default_value=[])
+                cert_count = len(certificate_chain)
+                chain = []
+                for i in range(0, cert_count):
+                    if i == 0:
+                        cert_type = CertType.identity
+                    elif i == (cert_count - 1):
+                        cert_type = CertType.root
+                    else:
+                        cert_type = CertType.intermediate
+                    chain.append(CertInfo(pem=certificate_chain[i], cert_type=cert_type))
+                self.add_cert_chain(session=session,
+                                    chain=chain,
+                                    service=service,
+                                    command=command,
+                                    source=source)
             additional_vuln_info = []
             for key, value in vulns.items():
                 # format: CVE,CVSSv3,CVSSv2,Plugin ID,Summary

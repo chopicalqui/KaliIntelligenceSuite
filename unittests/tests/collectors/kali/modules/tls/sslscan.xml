@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<document title="SSLScan Results" version="2.0.15-static" web="http://github.com/rbsec/sslscan">
+ <ssltest host="www.google.com" sniname="www.google.com" port="443">
+  <protocol type="ssl" version="2" enabled="0" />
+  <protocol type="ssl" version="3" enabled="0" />
+  <protocol type="tls" version="1.0" enabled="1" />
+  <protocol type="tls" version="1.1" enabled="1" />
+  <protocol type="tls" version="1.2" enabled="1" />
+  <protocol type="tls" version="1.3" enabled="1" />
+  <fallback supported="1" />
+  <renegotiation supported="1" secure="1" />
+  <compression supported="0" />
+  <heartbleed sslversion="TLSv1.3" vulnerable="0" />
+  <heartbleed sslversion="TLSv1.2" vulnerable="0" />
+  <heartbleed sslversion="TLSv1.1" vulnerable="0" />
+  <heartbleed sslversion="TLSv1.0" vulnerable="0" />
+  <cipher status="preferred" sslversion="TLSv1.3" bits="128" cipher="TLS_AES_128_GCM_SHA256" id="0x1301" strength="acceptable" curve="25519" ecdhebits="253" />
+  <cipher status="accepted" sslversion="TLSv1.3" bits="256" cipher="TLS_AES_256_GCM_SHA384" id="0x1302" strength="acceptable" curve="25519" ecdhebits="253" />
+  <cipher status="accepted" sslversion="TLSv1.3" bits="256" cipher="TLS_CHACHA20_POLY1305_SHA256" id="0x1303" strength="acceptable" curve="25519" ecdhebits="253" />
+  <cipher status="preferred" sslversion="TLSv1.2" bits="256" cipher="ECDHE-ECDSA-CHACHA20-POLY1305" id="0xCCA9" strength="strong" curve="25519" ecdhebits="253" />
+  <cipher status="accepted" sslversion="TLSv1.2" bits="128" cipher="ECDHE-ECDSA-AES128-GCM-SHA256" id="0xC02B" strength="strong" curve="25519" ecdhebits="253" />
+  <cipher status="accepted" sslversion="TLSv1.2" bits="256" cipher="ECDHE-ECDSA-AES256-GCM-SHA384" id="0xC02C" strength="strong" curve="25519" ecdhebits="253" />
+  <cipher status="accepted" sslversion="TLSv1.2" bits="128" cipher="ECDHE-ECDSA-AES128-SHA" id="0xC009" strength="acceptable" curve="25519" ecdhebits="253" />
+  <cipher status="accepted" sslversion="TLSv1.2" bits="256" cipher="ECDHE-ECDSA-AES256-SHA" id="0xC00A" strength="acceptable" curve="25519" ecdhebits="253" />
+  <cipher status="accepted" sslversion="TLSv1.2" bits="256" cipher="ECDHE-RSA-CHACHA20-POLY1305" id="0xCCA8" strength="strong" curve="25519" ecdhebits="253" />
+  <cipher status="accepted" sslversion="TLSv1.2" bits="128" cipher="ECDHE-RSA-AES128-GCM-SHA256" id="0xC02F" strength="strong" curve="25519" ecdhebits="253" />
+  <cipher status="accepted" sslversion="TLSv1.2" bits="256" cipher="ECDHE-RSA-AES256-GCM-SHA384" id="0xC030" strength="strong" curve="25519" ecdhebits="253" />
+  <cipher status="accepted" sslversion="TLSv1.2" bits="128" cipher="ECDHE-RSA-AES128-SHA" id="0xC013" strength="acceptable" curve="25519" ecdhebits="253" />
+  <cipher status="accepted" sslversion="TLSv1.2" bits="256" cipher="ECDHE-RSA-AES256-SHA" id="0xC014" strength="acceptable" curve="25519" ecdhebits="253" />
+  <cipher status="accepted" sslversion="TLSv1.2" bits="128" cipher="AES128-GCM-SHA256" id="0x009C" strength="acceptable" />
+  <cipher status="accepted" sslversion="TLSv1.2" bits="256" cipher="AES256-GCM-SHA384" id="0x009D" strength="acceptable" />
+  <cipher status="accepted" sslversion="TLSv1.2" bits="128" cipher="AES128-SHA" id="0x002F" strength="acceptable" />
+  <cipher status="accepted" sslversion="TLSv1.2" bits="256" cipher="AES256-SHA" id="0x0035" strength="acceptable" />
+  <cipher status="accepted" sslversion="TLSv1.2" bits="112" cipher="DES-CBC3-SHA" id="0x000A" strength="medium" />
+  <cipher status="preferred" sslversion="TLSv1.1" bits="128" cipher="ECDHE-ECDSA-AES128-SHA" id="0xC009" strength="acceptable" curve="25519" ecdhebits="253" />
+  <cipher status="accepted" sslversion="TLSv1.1" bits="256" cipher="ECDHE-ECDSA-AES256-SHA" id="0xC00A" strength="acceptable" curve="25519" ecdhebits="253" />
+  <cipher status="accepted" sslversion="TLSv1.1" bits="128" cipher="ECDHE-RSA-AES128-SHA" id="0xC013" strength="acceptable" curve="25519" ecdhebits="253" />
+  <cipher status="accepted" sslversion="TLSv1.1" bits="256" cipher="ECDHE-RSA-AES256-SHA" id="0xC014" strength="acceptable" curve="25519" ecdhebits="253" />
+  <cipher status="accepted" sslversion="TLSv1.1" bits="128" cipher="AES128-SHA" id="0x002F" strength="acceptable" />
+  <cipher status="accepted" sslversion="TLSv1.1" bits="256" cipher="AES256-SHA" id="0x0035" strength="acceptable" />
+  <cipher status="accepted" sslversion="TLSv1.1" bits="112" cipher="DES-CBC3-SHA" id="0x000A" strength="medium" />
+  <cipher status="preferred" sslversion="TLSv1.0" bits="128" cipher="ECDHE-ECDSA-AES128-SHA" id="0xC009" strength="acceptable" curve="25519" ecdhebits="253" />
+  <cipher status="accepted" sslversion="TLSv1.0" bits="256" cipher="ECDHE-ECDSA-AES256-SHA" id="0xC00A" strength="acceptable" curve="25519" ecdhebits="253" />
+  <cipher status="accepted" sslversion="TLSv1.0" bits="128" cipher="ECDHE-RSA-AES128-SHA" id="0xC013" strength="acceptable" curve="25519" ecdhebits="253" />
+  <cipher status="accepted" sslversion="TLSv1.0" bits="256" cipher="ECDHE-RSA-AES256-SHA" id="0xC014" strength="acceptable" curve="25519" ecdhebits="253" />
+  <cipher status="accepted" sslversion="TLSv1.0" bits="128" cipher="AES128-SHA" id="0x002F" strength="acceptable" />
+  <cipher status="accepted" sslversion="TLSv1.0" bits="256" cipher="AES256-SHA" id="0x0035" strength="acceptable" />
+  <cipher status="accepted" sslversion="TLSv1.0" bits="112" cipher="DES-CBC3-SHA" id="0x000A" strength="medium" />
+  <group sslversion="TLSv1.3" bits="128" name="secp256r1 (NIST P-256)" id="0x0017" />
+  <group sslversion="TLSv1.3" bits="128" name="x25519" id="0x001d" />
+  <group sslversion="TLSv1.2" bits="128" name="secp256r1 (NIST P-256)" id="0x0017" />
+  <group sslversion="TLSv1.2" bits="128" name="x25519" id="0x001d" />
+ <certificates>
+  <certificate type="full">
+   <certificate-blob>
+-----BEGIN CERTIFICATE-----
+MIIEiDCCA3CgAwIBAgIRANkk7p2WCytxEp4N9HOkiccwDQYJKoZIhvcNAQELBQAw
+RjELMAkGA1UEBhMCVVMxIjAgBgNVBAoTGUdvb2dsZSBUcnVzdCBTZXJ2aWNlcyBM
+TEMxEzARBgNVBAMTCkdUUyBDQSAxQzMwHhcNMjIxMTAyMTM0NTQwWhcNMjMwMTI1
+MTM0NTM5WjAZMRcwFQYDVQQDEw53d3cuZ29vZ2xlLmNvbTBZMBMGByqGSM49AgEG
+CCqGSM49AwEHA0IABJp6qyvmSG3cUYNCVyTUf3+VvzH37N0x+b1lepdTKqMSE7+Q
+O/XpPtHTpYyaeapDSgfzvL8kct1MQI7TVUNOe4OjggJnMIICYzAOBgNVHQ8BAf8E
+BAMCB4AwEwYDVR0lBAwwCgYIKwYBBQUHAwEwDAYDVR0TAQH/BAIwADAdBgNVHQ4E
+FgQUyL30uLnXleJ2DOsrlvlySB0TJFowHwYDVR0jBBgwFoAUinR/r4XN7pXNPZzQ
+4kYU83E1HScwagYIKwYBBQUHAQEEXjBcMCcGCCsGAQUFBzABhhtodHRwOi8vb2Nz
+cC5wa2kuZ29vZy9ndHMxYzMwMQYIKwYBBQUHMAKGJWh0dHA6Ly9wa2kuZ29vZy9y
+ZXBvL2NlcnRzL2d0czFjMy5kZXIwGQYDVR0RBBIwEIIOd3d3Lmdvb2dsZS5jb20w
+IQYDVR0gBBowGDAIBgZngQwBAgEwDAYKKwYBBAHWeQIFAzA8BgNVHR8ENTAzMDGg
+L6AthitodHRwOi8vY3Jscy5wa2kuZ29vZy9ndHMxYzMvUU92SjBOMXNUMkEuY3Js
+MIIBBAYKKwYBBAHWeQIEAgSB9QSB8gDwAHUAs3N3B+GEUPhjhtYFqdwRCUp5LbFn
+DAuH3PADDnk2pZoAAAGEOM4Z/QAABAMARjBEAiBAsXjy1CDXk03HQinssO4C1qUv
+lXv+jQ7H11q+DlHciwIgez170jFgKcdqw+YV1us+/0BV5Pjm4EC7qxbcbTFDbE8A
+dwDoPtDaPvUGNTLnVyi8iWvJA9PL0RFr7Otp4Xd9bQa9bgAAAYQ4zhmIAAAEAwBI
+MEYCIQCLKj21WUQu/ugzBPFvtERi0oriq3ywI96w9JMuS21aywIhALA3cSYmC9dS
+ouLXNT/TSqksUOaW7fI0ES4FaAV655dOMA0GCSqGSIb3DQEBCwUAA4IBAQBdQKWo
+Tj9XwQhjTJ0NNHq0m3uNeThPyUm3m1MA0GaUxUcw9sL/jGfVudJO9sl+UHKaCnJF
++OvcihUHWDN3ZAK6HkLKR8LMMf/+yELscmlsZsIPueeHUMd41LArgte3xs2PLsZ3
+MZzxnygtss1Uwtgsy5MTRr0TPjso46GiedD1zAG3ZvK6lSoHcQ58lZpiqcH/h5Ur
+TwkkLpGN1HJb7P1r7e4j7GlpGoAdcMfZ8SOYMf2QpYEeU4VoioYa7hff8YX3fEg6
+k+gy3Iu0wztllJL7jD704zuhCoQVhBv75/cP/tzjW6JflZx32FyPDLH7IbhXHIZj
+mdqKxH/ZNR+HW5px
+-----END CERTIFICATE-----
+   </certificate-blob>
+   <version>2</version>
+   <serial>d9:24:ee:9d:96:0b:2b:71:12:9e:0d:f4:73:a4:89:c7</serial>
+   <signature-algorithm>    Signature Algorithm: sha256WithRSAEncryption
+</signature-algorithm>
+   <issuer><![CDATA[/C=US/O=Google Trust Services LLC/CN=GTS CA 1C3]]></issuer>
+   <not-valid-before>Nov  2 13:45:40 2022 GMT</not-valid-before>
+   <not-valid-after>Jan 25 13:45:39 2023 GMT</not-valid-after>
+   <subject><![CDATA[/CN=www.google.com]]></subject>
+   <pk-algorithm>NULL</pk-algorithm>
+   <pk error="false" type="EC">
+    Public-Key: (256 bit)
+    pub:
+        04:9a:7a:ab:2b:e6:48:6d:dc:51:83:42:57:24:d4:
+        7f:7f:95:bf:31:f7:ec:dd:31:f9:bd:65:7a:97:53:
+        2a:a3:12:13:bf:90:3b:f5:e9:3e:d1:d3:a5:8c:9a:
+        79:aa:43:4a:07:f3:bc:bf:24:72:dd:4c:40:8e:d3:
+        55:43:4e:7b:83
+    ASN1 OID: prime256v1
+    NIST CURVE: P-256
+   </pk>
+   <X509v3-Extensions>
+    <extension name="X509v3 Key Usage" level="critical"><![CDATA[Digital Signature]]></extension>
+    <extension name="X509v3 Extended Key Usage"><![CDATA[TLS Web Server Authentication]]></extension>
+    <extension name="X509v3 Basic Constraints" level="critical"><![CDATA[CA:FALSE]]></extension>
+    <extension name="X509v3 Subject Key Identifier"><![CDATA[C8:BD:F4:B8:B9:D7:95:E2:76:0C:EB:2B:96:F9:72:48:1D:13:24:5A]]></extension>
+    <extension name="X509v3 Authority Key Identifier"><![CDATA[keyid:8A:74:7F:AF:85:CD:EE:95:CD:3D:9C:D0:E2:46:14:F3:71:35:1D:27
+]]></extension>
+    <extension name="Authority Information Access"><![CDATA[OCSP - URI:http://ocsp.pki.goog/gts1c3
+CA Issuers - URI:http://pki.goog/repo/certs/gts1c3.der
+]]></extension>
+    <extension name="X509v3 Subject Alternative Name"><![CDATA[DNS:www.google.com]]></extension>
+    <extension name="X509v3 Certificate Policies"><![CDATA[Policy: 2.23.140.1.2.1
+Policy: 1.3.6.1.4.1.11129.2.5.3
+]]></extension>
+    <extension name="X509v3 CRL Distribution Points"><![CDATA[
+Full Name:
+  URI:http://crls.pki.goog/gts1c3/QOvJ0N1sT2A.crl
+]]></extension>
+    <extension name="CT Precertificate SCTs"><![CDATA[Signed Certificate Timestamp:
+    Version   : v1 (0x0)
+    Log ID    : B3:73:77:07:E1:84:50:F8:63:86:D6:05:A9:DC:11:09:
+                4A:79:2D:B1:67:0C:0B:87:DC:F0:03:0E:79:36:A5:9A
+    Timestamp : Nov  2 14:45:42.013 2022 GMT
+    Extensions: none
+    Signature : ecdsa-with-SHA256
+                30:44:02:20:40:B1:78:F2:D4:20:D7:93:4D:C7:42:29:
+                EC:B0:EE:02:D6:A5:2F:95:7B:FE:8D:0E:C7:D7:5A:BE:
+                0E:51:DC:8B:02:20:7B:3D:7B:D2:31:60:29:C7:6A:C3:
+                E6:15:D6:EB:3E:FF:40:55:E4:F8:E6:E0:40:BB:AB:16:
+                DC:6D:31:43:6C:4F
+Signed Certificate Timestamp:
+    Version   : v1 (0x0)
+    Log ID    : E8:3E:D0:DA:3E:F5:06:35:32:E7:57:28:BC:89:6B:C9:
+                03:D3:CB:D1:11:6B:EC:EB:69:E1:77:7D:6D:06:BD:6E
+    Timestamp : Nov  2 14:45:41.896 2022 GMT
+    Extensions: none
+    Signature : ecdsa-with-SHA256
+                30:46:02:21:00:8B:2A:3D:B5:59:44:2E:FE:E8:33:04:
+                F1:6F:B4:44:62:D2:8A:E2:AB:7C:B0:23:DE:B0:F4:93:
+                2E:4B:6D:5A:CB:02:21:00:B0:37:71:26:26:0B:D7:52:
+                A2:E2:D7:35:3F:D3:4A:A9:2C:50:E6:96:ED:F2:34:11:
+                2E:05:68:05:7A:E7:97:4E]]></extension>
+   </X509v3-Extensions>
+  </certificate>
+  <certificate type="short">
+   <signature-algorithm>sha256WithRSAEncryption</signature-algorithm>
+   <pk error="false" type="EC" curve_name="prime256v1" bits="128" />
+   <subject><![CDATA[www.google.com]]></subject>
+   <altnames><![CDATA[DNS:www.google.com]]></altnames>
+   <issuer><![CDATA[GTS CA 1C3]]></issuer>
+   <self-signed>false</self-signed>
+   <not-valid-before>Nov  2 13:45:40 2022 GMT</not-valid-before>
+   <not-yet-valid>false</not-yet-valid>
+   <not-valid-after>Jan 25 13:45:39 2023 GMT</not-valid-after>
+   <expired>false</expired>
+  </certificate>
+ </certificates>
+ </ssltest>
+</document>

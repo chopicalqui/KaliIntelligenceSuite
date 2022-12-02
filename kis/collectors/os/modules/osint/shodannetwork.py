@@ -123,6 +123,7 @@ class CollectorClass(BaseKisImportNetwork):
                 for object in json_object["matches"]:
                     ipv4_address = self._json_utils.get_attribute_value(object, "ip_str")
                     host_names = self._json_utils.get_attribute_value(object, "hostnames")
+                    company = self._json_utils.get_attribute_value(object, "isp")
                     self._add_host_names(session=session,
                                          host_names=host_names,
                                          command=command,
@@ -132,6 +133,13 @@ class CollectorClass(BaseKisImportNetwork):
                     host = self.add_host(session=session,
                                          command=command,
                                          address=ipv4_address,
+                                         source=source,
+                                         report_item=report_item)
+                    if company:
+                        self.add_company(session=session,
+                                         workspace=command.workspace,
+                                         name=company,
+                                         verify=True,
                                          source=source,
                                          report_item=report_item)
                     self.parse_shodan_data(session=session,

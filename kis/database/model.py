@@ -2853,12 +2853,12 @@ class Command(DeclarativeBase):
                                        'collector_name_id',
                                        'service_id',
                                        'host_name_id', name='_command_service_host_name_unique'),
-                      CheckConstraint('(case when not service_id is null and not host_id is null and host_name_id is null and network_id is null and email_id is null and company_id is null then 1 else 0 end'
-                                      '+case when not service_id is null and host_id is null and not host_name_id is null and network_id is null and email_id is null and company_id is null then 1 else 0 end'
-                                      '+case when service_id is null and not host_id is null and host_name_id is null and network_id is null and email_id is null and company_id is null then 1 else 0 end'
-                                      '+case when service_id is null and host_id is null and not host_name_id is null and network_id is null and email_id is null and company_id is null then 1 else 0 end'
-                                      '+case when service_id is null and host_id is null and host_name_id is null and not network_id is null and email_id is null and company_id is null then 1 else 0 end'
-                                      '+case when service_id is null and host_id is null and host_name_id is null and network_id is null and not email_id is null and company_id is null then 1 else 0 end'
+                      CheckConstraint('(case when service_id is not null and host_id is not null and host_name_id is null and network_id is null and email_id is null and company_id is null then 1 else 0 end'
+                                      '+case when service_id is not null and host_id is null and host_name_id is not null and network_id is null and email_id is null and company_id is null then 1 else 0 end'
+                                      '+case when service_id is null and host_id is not null and host_name_id is null and network_id is null and email_id is null and company_id is null then 1 else 0 end'
+                                      '+case when service_id is null and host_id is null and host_name_id is not null and network_id is null and email_id is null and company_id is null then 1 else 0 end'
+                                      '+case when service_id is null and host_id is null and host_name_id is null and network_id is not null and email_id is null and company_id is null then 1 else 0 end'
+                                      '+case when service_id is null and host_id is null and host_name_id is null and network_id is null and email_id is not null and company_id is null then 1 else 0 end'
                                       '+case when service_id is null and host_id is null and host_name_id is null and network_id is null and email_id is null and company_id is not null then 1 else 0 end) = 1',
                                       name='_command_mutex_constraint'),)
 
@@ -3778,7 +3778,7 @@ class CertInfo(DeclarativeBase):
     __tablename__ = "cert_info"
     id = Column(Integer, primary_key=True)
     _pem = Column("pem", Text, nullable=False, unique=False)
-    _serial_number = Column("serial_number", Text, nullable=False, unique=False)
+    _sha256value = Column("sha256value", Text, nullable=False, unique=False)
     cert_type = Column(Enum(CertType), nullable=False, unique=False)
     parent_id = Column(Integer, ForeignKey("cert_info.id", ondelete='cascade'), nullable=True, unique=False)
     creation_date = Column(DateTime, nullable=False, default=datetime.utcnow())
@@ -3790,9 +3790,9 @@ class CertInfo(DeclarativeBase):
     company = relationship("Company", backref=backref("cert_info", cascade='delete, delete-orphan'))
     host_name = relationship("HostName", backref=backref("cert_info", cascade='delete, delete-orphan'))
     parent = relationship("CertInfo", remote_side=[id], backref=backref("children", cascade='delete, delete-orphan'))
-    __table_args__ = (UniqueConstraint('service_id', 'serial_number', name='_cert_info_service_unique'),
-                      UniqueConstraint('company_id', 'serial_number', name='_cert_info_company_unique'),
-                      UniqueConstraint('host_name_id', 'serial_number', name='_cert_info_host_name_unique'),
+    __table_args__ = (UniqueConstraint('service_id', 'sha256value', name='_cert_info_service_unique'),
+                      UniqueConstraint('company_id', 'sha256value', name='_cert_info_company_unique'),
+                      UniqueConstraint('host_name_id', 'sha256value', name='_cert_info_host_name_unique'),
                       CheckConstraint(
                           '(case when not service_id is null and company_id is null and host_name_id is null then 1 else 0 end'
                           '+case when service_id is null and not company_id is null and host_name_id is null then 1 else 0 end'
@@ -3845,13 +3845,17 @@ class CertInfo(DeclarativeBase):
             ", {:s}={:s}".format(name.decode(), value.decode()) for name, value in item.get_components()).strip(", ")
 
     @property
+    def sha256value(self):
+        return hashlib.sha256(self._pem.encode()).hexdigest()
+
+    @property
     def pem(self):
         return self._pem
 
     @pem.setter
     def pem(self, value):
         self._pem = value.strip()
-        self._serial_number = self.serial_number
+        self._sha256value = self.sha256value
 
     @property
     def cert(self):
@@ -4235,8 +4239,7 @@ class TlsInfoCipherSuiteMapping(DeclarativeBase):
                                             overlaps="tls_info"),
                             overlaps="tls_info")
     __table_args__ = (UniqueConstraint('tls_info_id',
-                                       'cipher_suite_id',
-                                       'kex_algorithm_details', name='_tls_info_cipher_suite_mapping_unique'),)
+                                       'cipher_suite_id', name='_tls_info_cipher_suite_mapping_unique'),)
 
     @property
     def kex_algorithm_bits(self) -> int:

@@ -37,7 +37,7 @@ class RmiServiceDescriptor(ServiceDescriptorBase):
     def __init__(self):
         super().__init__(default_tcp_ports=[1098, 1099],
                          default_udp_ports=[],
-                         nmap_tcp_service_names=["^rmiregistry$"],
+                         nmap_tcp_service_names=["^rmiregistry$", "^java-rmi$"],
                          nmap_udp_service_names=[],
                          nessus_tcp_service_names=[])
 

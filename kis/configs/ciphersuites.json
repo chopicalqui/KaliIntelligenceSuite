@@ -4222,11 +4222,11 @@
                 "hex_byte_1": "0xC1",
                 "hex_byte_2": "0x02",
                 "protocol_version": "TLS",
-                "kex_algorithm": "GOSTR341112",
-                "auth_algorithm": "256",
+                "kex_algorithm": "VKO GOSTR3410 2012 256",
+                "auth_algorithm": "IMIT",
                 "enc_algorithm": "28147 CNT",
-                "hash_algorithm": "IMIT",
-                "security": "secure",
+                "hash_algorithm": "GOST R 34.11-2012",
+                "security": "insecure",
                 "tls_version": [
                     "TLS1.0",
                     "TLS1.1",
@@ -4245,7 +4245,7 @@
                 "auth_algorithm": "256",
                 "enc_algorithm": "KUZNYECHIK CTR",
                 "hash_algorithm": "OMAC",
-                "security": "secure",
+                "security": "insecure",
                 "tls_version": [
                     "TLS1.0",
                     "TLS1.1",
@@ -4260,11 +4260,11 @@
                 "hex_byte_1": "0xC1",
                 "hex_byte_2": "0x01",
                 "protocol_version": "TLS",
-                "kex_algorithm": "GOSTR341112",
-                "auth_algorithm": "256",
+                "kex_algorithm": "VKO GOSTR3410 2012 256",
+                "auth_algorithm": "OMAC",
                 "enc_algorithm": "MAGMA CTR",
-                "hash_algorithm": "OMAC",
-                "security": "secure",
+                "hash_algorithm": "GOST R 34.11-2012",
+                "security": "insecure",
                 "tls_version": [
                     "TLS1.0",
                     "TLS1.1",
@@ -5966,11 +5966,11 @@
                 "hex_byte_1": "0xC0",
                 "hex_byte_2": "0xB4",
                 "protocol_version": "TLS",
-                "kex_algorithm": "SHA256",
+                "kex_algorithm": "-",
                 "auth_algorithm": "SHA256",
-                "enc_algorithm": "",
-                "hash_algorithm": "",
-                "security": "recommended",
+                "enc_algorithm": "NULL",
+                "hash_algorithm": "SHA256",
+                "security": "insecure",
                 "tls_version": [
                     "TLS1.3"
                 ]
@@ -5983,11 +5983,11 @@
                 "hex_byte_1": "0xC0",
                 "hex_byte_2": "0xB5",
                 "protocol_version": "TLS",
-                "kex_algorithm": "SHA384",
+                "kex_algorithm": "-",
                 "auth_algorithm": "SHA384",
-                "enc_algorithm": "",
-                "hash_algorithm": "",
-                "security": "recommended",
+                "enc_algorithm": "NULL",
+                "hash_algorithm": "SHA384",
+                "security": "insecure",
                 "tls_version": [
                     "TLS1.3"
                 ]

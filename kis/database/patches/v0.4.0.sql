@@ -1,6 +1,6 @@
 ALTER TYPE public.scopetype ADD VALUE IF NOT EXISTS 'ignore';
 ALTER TYPE public.commandstatus ADD VALUE IF NOT EXISTS 'skipped';
-ALTER TYPE public.commandstatus ADD VALUE IF NOT EXISTSs 'too_many_requests';
+ALTER TYPE public.commandstatus ADD VALUE IF NOT EXISTS 'too_many_requests';
 
 ALTER TABLE company_domain_name_mapping ADD COLUMN IF NOT EXISTS verified BOOLEAN;
 ALTER TABLE company_network_mapping ADD COLUMN IF NOT EXISTS verified BOOLEAN;
@@ -10,6 +10,12 @@ UPDATE company_network_mapping SET verified=FALSE;
 UPDATE company_domain_name_mapping SET verified=FALSE;
 ALTER TABLE company_domain_name_mapping ALTER COLUMN verified SET NOT NULL;
 ALTER TABLE company_network_mapping ALTER COLUMN verified SET NOT NULL;
+
+-- We update the unique constained of table tls_info_cipher_suite_mapping
+DELETE FROM public.tls_info_cipher_suite_mapping;
+ALTER TABLE ONLY public.tls_info_cipher_suite_mapping DROP CONSTRAINT _tls_info_cipher_suite_mapping_unique;
+ALTER TABLE ONLY public.tls_info_cipher_suite_mapping
+    ADD CONSTRAINT _tls_info_cipher_suite_mapping_unique UNIQUE (tls_info_id, cipher_suite_id);
 
 CREATE OR REPLACE FUNCTION post_update_host_names_after_domain_name_scope_changes()
         RETURNS TRIGGER AS $$
@@ -324,7 +330,7 @@ DELETE FROM source_cert_info_mapping;
 CREATE TABLE public.cert_info (
     id integer NOT NULL,
     pem text NOT NULL,
-    serial_number text NOT NULL,
+    sha256value text NOT NULL,
     cert_type public.certtype NOT NULL,
     parent_id integer,
     creation_date timestamp without time zone NOT NULL,
@@ -388,7 +394,7 @@ SELECT pg_catalog.setval('public.cert_info_id_seq', 1, false);
 --
 
 ALTER TABLE ONLY public.cert_info
-    ADD CONSTRAINT _cert_info_company_unique UNIQUE (company_id, serial_number);
+    ADD CONSTRAINT _cert_info_company_unique UNIQUE (company_id, sha256value);
 
 
 --
@@ -396,7 +402,7 @@ ALTER TABLE ONLY public.cert_info
 --
 
 ALTER TABLE ONLY public.cert_info
-    ADD CONSTRAINT _cert_info_host_name_unique UNIQUE (host_name_id, serial_number);
+    ADD CONSTRAINT _cert_info_host_name_unique UNIQUE (host_name_id, sha256value);
 
 
 --
@@ -404,7 +410,7 @@ ALTER TABLE ONLY public.cert_info
 --
 
 ALTER TABLE ONLY public.cert_info
-    ADD CONSTRAINT _cert_info_service_unique UNIQUE (service_id, serial_number);
+    ADD CONSTRAINT _cert_info_service_unique UNIQUE (service_id, sha256value);
 
 --
 -- Name: cert_info cert_info_pkey; Type: CONSTRAINT; Schema: public; Owner: kis

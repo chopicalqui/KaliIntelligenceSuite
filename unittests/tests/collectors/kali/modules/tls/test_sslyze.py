@@ -41,63 +41,64 @@ from collectors.os.modules.tls.sslyze import CollectorClass as SslyzeCollector
 
 
 # * TLS 1.0 Cipher Suites:
-#     Attempted to connect using 80 cipher suites.
+#      Attempted to connect using 80 cipher suites.
 #
-#     The server accepted the following 5 cipher suites:
-#        TLS_RSA_WITH_AES_256_CBC_SHA                      256
-#        TLS_RSA_WITH_AES_128_CBC_SHA                      128
-#        TLS_RSA_WITH_3DES_EDE_CBC_SHA                     168
-#        TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA                256       ECDH: prime256v1 (256 bits)
-#        TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA                128       ECDH: prime256v1 (256 bits)
+#      The server accepted the following 5 cipher suites:
+#         TLS_RSA_WITH_AES_256_CBC_SHA                      256
+#         TLS_RSA_WITH_AES_128_CBC_SHA                      128
+#         TLS_RSA_WITH_3DES_EDE_CBC_SHA                     168
+#         TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA                256       ECDH: prime256v1 (256 bits)
+#         TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA                128       ECDH: prime256v1 (256 bits)
 #
-#     The group of cipher suites supported by the server has the following properties:
-#       Forward Secrecy                    OK - Supported
-#       Legacy RC4 Algorithm               OK - Not Supported
-#
-#
-# * TLS 1.1 Cipher Suites:
-#     Attempted to connect using 80 cipher suites.
-#
-#     The server accepted the following 5 cipher suites:
-#        TLS_RSA_WITH_AES_256_CBC_SHA                      256
-#        TLS_RSA_WITH_AES_128_CBC_SHA                      128
-#        TLS_RSA_WITH_3DES_EDE_CBC_SHA                     168
-#        TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA                256       ECDH: prime256v1 (256 bits)
-#        TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA                128       ECDH: prime256v1 (256 bits)
-#
-#     The group of cipher suites supported by the server has the following properties:
-#       Forward Secrecy                    OK - Supported
-#       Legacy RC4 Algorithm               OK - Not Supported
+#      The group of cipher suites supported by the server has the following properties:
+#        Forward Secrecy                    OK - Supported
+#        Legacy RC4 Algorithm               OK - Not Supported
 #
 #
-# * TLS 1.2 Cipher Suites:
-#     Attempted to connect using 156 cipher suites.
+#  * TLS 1.1 Cipher Suites:
+#      Attempted to connect using 80 cipher suites.
 #
-#     The server accepted the following 11 cipher suites:
-#        TLS_RSA_WITH_AES_256_GCM_SHA384                   256
-#        TLS_RSA_WITH_AES_256_CBC_SHA                      256
-#        TLS_RSA_WITH_AES_128_GCM_SHA256                   128
-#        TLS_RSA_WITH_AES_128_CBC_SHA                      128
-#        TLS_RSA_WITH_3DES_EDE_CBC_SHA                     168
-#        TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256       256       ECDH: X25519 (253 bits)
-#        TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384             256       ECDH: prime256v1 (256 bits)
-#        TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA                256       ECDH: prime256v1 (256 bits)
-#        TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256             128       ECDH: prime256v1 (256 bits)
-#        TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA                128       ECDH: prime256v1 (256 bits)
-#        TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256     256       ECDH: X25519 (253 bits)
+#      The server accepted the following 5 cipher suites:
+#         TLS_RSA_WITH_AES_256_CBC_SHA                      256
+#         TLS_RSA_WITH_AES_128_CBC_SHA                      128
+#         TLS_RSA_WITH_3DES_EDE_CBC_SHA                     168
+#         TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA                256       ECDH: prime256v1 (256 bits)
+#         TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA                128       ECDH: prime256v1 (256 bits)
 #
-#     The group of cipher suites supported by the server has the following properties:
-#       Forward Secrecy                    OK - Supported
-#       Legacy RC4 Algorithm               OK - Not Supported
+#      The group of cipher suites supported by the server has the following properties:
+#        Forward Secrecy                    OK - Supported
+#        Legacy RC4 Algorithm               OK - Not Supported
 #
 #
-# * TLS 1.3 Cipher Suites:
-#     Attempted to connect using 5 cipher suites.
+#  * TLS 1.2 Cipher Suites:
+#      Attempted to connect using 156 cipher suites.
 #
-#     The server accepted the following 3 cipher suites:
-#        TLS_CHACHA20_POLY1305_SHA256                      256       ECDH: X25519 (253 bits)
-#        TLS_AES_256_GCM_SHA384                            256       ECDH: X25519 (253 bits)
-#        TLS_AES_128_GCM_SHA256                            128       ECDH: X25519 (253 bits)
+#      The server accepted the following 11 cipher suites:
+#         TLS_RSA_WITH_AES_256_GCM_SHA384                   256
+#         TLS_RSA_WITH_AES_256_CBC_SHA                      256
+#         TLS_RSA_WITH_AES_128_GCM_SHA256                   128
+#         TLS_RSA_WITH_AES_128_CBC_SHA                      128
+#         TLS_RSA_WITH_3DES_EDE_CBC_SHA                     168
+#         TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256       256       ECDH: X25519 (253 bits)
+#         TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384             256       ECDH: prime256v1 (256 bits)
+#         TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA                256       ECDH: prime256v1 (256 bits)
+#         TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256             128       ECDH: prime256v1 (256 bits)
+#         TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA                128       ECDH: prime256v1 (256 bits)
+#         TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256     256       ECDH: X25519 (253 bits)
+#
+#      The group of cipher suites supported by the server has the following properties:
+#        Forward Secrecy                    OK - Supported
+#        Legacy RC4 Algorithm               OK - Not Supported
+#
+#
+#  * TLS 1.3 Cipher Suites:
+#      Attempted to connect using 5 cipher suites.
+#
+#      The server accepted the following 3 cipher suites:
+#         TLS_CHACHA20_POLY1305_SHA256                      256       ECDH: X25519 (253 bits)
+#         TLS_AES_256_GCM_SHA384                            256       ECDH: X25519 (253 bits)
+#         TLS_AES_128_GCM_SHA256                            128       ECDH: X25519 (253 bits)
+
 
 
 class SslyzeCollectorTestCase(BaseNmapCollectorTestCase):
@@ -158,7 +159,7 @@ class SslyzeCollectorTestCase(BaseNmapCollectorTestCase):
             results = session.query(CertInfo).all()
             self.assertEqual(4, len(results))
             results = session.query(CertInfo)\
-                .filter_by(_serial_number="ef:d0:fa:ba:cd:58:19:88:0a:00:00:00:01:2e:07:79").one()
+                .filter_by(_sha256value="0c082a970441febe18646ee33cd0f502a84d641179924c967bafb3024713365c").one()
             self.assertEqual(3, len(results.chain))
             # TlsInfo
             results = session.query(TlsInfo).all()
@@ -178,84 +179,56 @@ class SslyzeCollectorTestCase(BaseNmapCollectorTestCase):
             self.assertIsNone(result)
             # Test TLSv1.0
             result = session.query(TlsInfo).filter_by(version=TlsVersion.tls10).one()
-            expected_result = ["TLS_RSA_WITH_AES_256_CBC_SHA",
-                               "TLS_RSA_WITH_AES_128_CBC_SHA",
-                               "TLS_RSA_WITH_3DES_EDE_CBC_SHA",
-                               "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA",
-                               "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA"]
+            expected_result = ["TLS_RSA_WITH_AES_256_CBC_SHA (None)",
+                               "TLS_RSA_WITH_AES_128_CBC_SHA (None)",
+                               "TLS_RSA_WITH_3DES_EDE_CBC_SHA (None)",
+                               "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA (p_256)",
+                               "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA (p_256)"]
             expected_result.sort()
-            result = [item.iana_name for item in result.cipher_suites]
+            result = ["{} ({})".format(item.cipher_suite.iana_name,
+                                       item.kex_algorithm_details.name if item.kex_algorithm_details else "None")
+                      for item in result.cipher_suite_mappings]
             result.sort()
             self.assertListEqual(expected_result, result)
             # Test TLSv1.1
             result = session.query(TlsInfo).filter_by(version=TlsVersion.tls11).one()
-            result = [item.iana_name for item in result.cipher_suites]
+            expected_result = ["TLS_RSA_WITH_AES_256_CBC_SHA (None)",
+                               "TLS_RSA_WITH_AES_128_CBC_SHA (None)",
+                               "TLS_RSA_WITH_3DES_EDE_CBC_SHA (None)",
+                               "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA (p_256)",
+                               "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA (p_256)"]
+            expected_result.sort()
+            result = ["{} ({})".format(item.cipher_suite.iana_name,
+                                       item.kex_algorithm_details.name if item.kex_algorithm_details else "None")
+                      for item in result.cipher_suite_mappings]
             result.sort()
             self.assertListEqual(expected_result, result)
             # Test TLSv1.2
             result = session.query(TlsInfo).filter_by(version=TlsVersion.tls12).one()
-            expected_result = ["TLS_RSA_WITH_AES_256_GCM_SHA384",
-                               "TLS_RSA_WITH_AES_256_CBC_SHA",
-                               "TLS_RSA_WITH_AES_128_GCM_SHA256",
-                               "TLS_RSA_WITH_AES_128_CBC_SHA",
-                               "TLS_RSA_WITH_3DES_EDE_CBC_SHA",
-                               "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256",
-                               "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
-                               "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA",
-                               "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
-                               "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA",
-                               "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256"]
+            expected_result = ["TLS_RSA_WITH_AES_256_GCM_SHA384 (None)",
+                               "TLS_RSA_WITH_AES_256_CBC_SHA (None)",
+                               "TLS_RSA_WITH_AES_128_GCM_SHA256 (None)",
+                               "TLS_RSA_WITH_AES_128_CBC_SHA (None)",
+                               "TLS_RSA_WITH_3DES_EDE_CBC_SHA (None)",
+                               "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256 (ecdh_x25519)",
+                               "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 (p_256)",
+                               "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA (p_256)",
+                               "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256 (p_256)",
+                               "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA (p_256)",
+                               "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256 (ecdh_x25519)"]
             expected_result.sort()
-            result = [item.iana_name for item in result.cipher_suites]
+            result = ["{} ({})".format(item.cipher_suite.iana_name,
+                                       item.kex_algorithm_details.name if item.kex_algorithm_details else "None")
+                      for item in result.cipher_suite_mappings]
             result.sort()
             self.assertListEqual(expected_result, result)
             # Test TLSv1.3
             result = session.query(TlsInfo).filter_by(version=TlsVersion.tls13).one()
-            expected_result = ["TLS_CHACHA20_POLY1305_SHA256",
-                               "TLS_AES_256_GCM_SHA384",
-                               "TLS_AES_128_GCM_SHA256"]
+            expected_result = ["TLS_AES_128_GCM_SHA256 (ecdh_x25519)",
+                               "TLS_AES_256_GCM_SHA384 (ecdh_x25519)",
+                               "TLS_CHACHA20_POLY1305_SHA256 (ecdh_x25519)"]
             expected_result.sort()
-            result = [item.iana_name for item in result.cipher_suites]
+            result = ["{} ({})".format(item.cipher_suite.iana_name,
+                                       item.kex_algorithm_details.name if item.kex_algorithm_details else "None")
+                      for item in result.cipher_suite_mappings]
             result.sort()
-            self.assertListEqual(expected_result, result)
-            # TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256       256       ECDH: X25519 (253 bits)
-            result = session.query(TlsInfoCipherSuiteMapping) \
-                .join((TlsInfo, TlsInfoCipherSuiteMapping.tls_info)) \
-                .join((CipherSuite, TlsInfoCipherSuiteMapping.cipher_suite)) \
-                .filter(TlsInfo.version == TlsVersion.tls12,
-                        CipherSuite.iana_name == "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256").one()
-            # TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384             256       ECDH: prime256v1 (256 bits)
-            result = session.query(TlsInfoCipherSuiteMapping) \
-                .join((TlsInfo, TlsInfoCipherSuiteMapping.tls_info)) \
-                .join((CipherSuite, TlsInfoCipherSuiteMapping.cipher_suite)) \
-                .filter(TlsInfo.version == TlsVersion.tls12,
-                        CipherSuite.iana_name == "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384").one()
-            self.assertEqual(KeyExchangeAlgorithm.p_256, result.kex_algorithm_details)
-            # TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA                256       ECDH: prime256v1 (256 bits)
-            result = session.query(TlsInfoCipherSuiteMapping) \
-                .join((TlsInfo, TlsInfoCipherSuiteMapping.tls_info)) \
-                .join((CipherSuite, TlsInfoCipherSuiteMapping.cipher_suite)) \
-                .filter(TlsInfo.version == TlsVersion.tls12,
-                        CipherSuite.iana_name == "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA").one()
-            self.assertEqual(KeyExchangeAlgorithm.p_256, result.kex_algorithm_details)
-            # TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256             128       ECDH: prime256v1 (256 bits)
-            result = session.query(TlsInfoCipherSuiteMapping) \
-                .join((TlsInfo, TlsInfoCipherSuiteMapping.tls_info)) \
-                .join((CipherSuite, TlsInfoCipherSuiteMapping.cipher_suite)) \
-                .filter(TlsInfo.version == TlsVersion.tls12,
-                        CipherSuite.iana_name == "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256").one()
-            self.assertEqual(KeyExchangeAlgorithm.p_256, result.kex_algorithm_details)
-            # TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA                128       ECDH: prime256v1 (256 bits)
-            result = session.query(TlsInfoCipherSuiteMapping) \
-                .join((TlsInfo, TlsInfoCipherSuiteMapping.tls_info)) \
-                .join((CipherSuite, TlsInfoCipherSuiteMapping.cipher_suite)) \
-                .filter(TlsInfo.version == TlsVersion.tls12,
-                        CipherSuite.iana_name == "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA").one()
-            self.assertEqual(KeyExchangeAlgorithm.p_256, result.kex_algorithm_details)
-            # TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256                256       ECDH: X25519 (253 bits)
-            result = session.query(TlsInfoCipherSuiteMapping) \
-                .join((TlsInfo, TlsInfoCipherSuiteMapping.tls_info)) \
-                .join((CipherSuite, TlsInfoCipherSuiteMapping.cipher_suite)) \
-                .filter(TlsInfo.version == TlsVersion.tls12,
-                        CipherSuite.iana_name == "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256").one()
-            self.assertEqual(KeyExchangeAlgorithm.ecdh_x25519, result.kex_algorithm_details)

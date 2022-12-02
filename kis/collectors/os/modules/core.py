@@ -1329,6 +1329,9 @@ class BaseCollector(config.Collector):
     def add_cert_chain(self,
                        session: Session,
                        chain: List[CertInfo],
+                       service: Service = None,
+                       host_name: HostName = None,
+                       company: Company = None,
                        command: Command = None,
                        source: Source = None,
                        report_item: ReportItem = None):
@@ -1336,6 +1339,9 @@ class BaseCollector(config.Collector):
         This method adds certificate information to the given service
         :param session: The database session used for addition the URL
         :param chain: List of certificates.
+        :param service: The service to which the URL belongs
+        :param host_name: The host name to which the URL belongs
+        :param company: The company to which the URL belongs
         :param source: The source object from which the URL originates
         :param report_item: Item that can be used for pushing information into the view
         :param command: The command to which the file should be attached
@@ -1343,23 +1349,32 @@ class BaseCollector(config.Collector):
         """
         if report_item:
             report_item.listener = self._listeners
-        result = self._domain_utils.add_cert_chain(session=session,
-                                                   chain=chain,
-                                                   command=command,
-                                                   source=source,
-                                                   report_item=report_item)
+        self._domain_utils.add_cert_chain(session=session,
+                                          chain=chain,
+                                          service=service,
+                                          host_name=host_name,
+                                          company=company,
+                                          command=command,
+                                          source=source,
+                                          report_item=report_item)
 
     def add_cert_info(self,
                       session: Session,
                       cert_info: CertInfo,
                       command: Command,
                       source: Source = None,
+                      service: Service = None,
+                      host_name: HostName = None,
+                      company: Company = None,
                       report_item: ReportItem = None) -> CertInfo:
         """
         This method adds certificate information to the given service
         :param session: The database session used for addition the URL
         :param cert_info: Contains basic information about the cert like PEM, cert_type and serial number
         :param source: The source object from which the URL originates
+        :param service: The service to which the URL belongs
+        :param host_name: The host name to which the URL belongs
+        :param company: The company to which the URL belongs
         :param report_item: Item that can be used for pushing information into the view
         :param command: The command to which the file should be attached
         :return:
@@ -1369,9 +1384,9 @@ class BaseCollector(config.Collector):
         result = self._domain_utils.add_cert_info(session=session,
                                                   cert_info=cert_info,
                                                   source=source,
-                                                  service=command.service,
-                                                  host_name=command.host_name,
-                                                  company=command.company,
+                                                  service=service if service else command.service,
+                                                  host_name=host_name if host_name else command.host_name,
+                                                  company=company if company else command.company,
                                                   command=command,
                                                   report_item=report_item)
         return result
@@ -2494,7 +2509,7 @@ class BaseMsfConsole(BaseCollector):
                          **kwargs)
         self._ip_support = ip_support
 
-    def _create_commands(self,
+    def  _create_commands(self,
                          session: Session,
                          service: Service,
                          collector_name: CollectorName,
