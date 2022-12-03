@@ -135,10 +135,10 @@ class TestDomain(BaseTestKisCommand):
         with self._engine.session_scope() as session:
             result = session.query(DomainName).filter_by(name="unittest1.com").one()
             self.assertEqual(ScopeType.strict, result.scope)
-            self.assertFalse(result.host_names[0]._in_scope)
+            self.assertTrue(result.host_names[0]._in_scope)
             result = session.query(DomainName).filter_by(name="unittest2.com").one()
             self.assertEqual(ScopeType.strict, result.scope)
             self.assertFalse(result.host_names[0]._in_scope)
             result = session.query(DomainName).filter_by(name="unittest3.com").one()
-            self.assertEqual(ScopeType.strict, result.scope)
+            self.assertEqual(ScopeType.all, result.scope)
             self.assertTrue(result.host_names[0]._in_scope)
