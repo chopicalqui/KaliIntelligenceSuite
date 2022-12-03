@@ -84,8 +84,10 @@ class Workspace(ManagerCommandBase):
         """
         This method adds the subclasses specific command line arguments.
         """
+        choices = [item.name.replace("_", "-") for item in CloneType]
+        choices.remove(CloneType.host_hostname_mappings.name.replace("_", "-"))
         parser = sub_parser.add_parser(self.name, help=__doc__.strip())
-        parser.add_argument('WORKSPACE', type=str)
+        parser.add_argument('WORKSPACE', type=str, nargs="+")
         parser_group = parser.add_mutually_exclusive_group(required=True)
         parser_group.add_argument('-a', '--add',
                                   action="store_true",
@@ -98,8 +100,9 @@ class Workspace(ManagerCommandBase):
                                   type=str,
                                   help="the source workspace that shall be cloned")
         parser.add_argument('-t', '--tables',
+                            nargs="*",
                             type=str,
-                            default=[item.name.replace("_", "-") for item in CloneType],
+                            default=choices,
                             choices=[item.name.replace("_", "-") for item in CloneType],
                             help="list of tables that shall be cloned into the new workspace")
         parser.add_argument('-s', '--source',
@@ -111,11 +114,14 @@ class Workspace(ManagerCommandBase):
         Executes the given subcommand.
         """
         if args.add:
-            self._domain_utils.add_workspace(session, args.WORKSPACE)
+            for item in args.WORKSPACE:
+                self._domain_utils.add_workspace(session, item)
         elif args.delete:
-            self._domain_utils.delete_workspace(session, args.WORKSPACE)
+            for item in args.WORKSPACE:
+                self._domain_utils.delete_workspace(session, item)
         elif args.clone:
             clone_types = [CloneType[item.replace("-", "_")] for item in args.tables]
-            engine.clone_workspace(source_workspace_str=args.clone,
-                                   destination_workspace_str=args.WORKSPACE,
-                                   clone_types=clone_types)
+            for item in args.WORKSPACE:
+                engine.clone_workspace(source_workspace_str=args.clone,
+                                       destination_workspace_str=item,
+                                       clone_types=clone_types)

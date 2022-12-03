@@ -109,6 +109,7 @@ class CloneType(enum.Enum):
     credential = enum.auto()
     path = enum.auto()
     email = enum.auto()
+    host_hostname_mappings = enum.auto()
 
 
 class Engine:
@@ -1228,8 +1229,10 @@ class Engine:
         """
         This method clones the given workspace
         """
+        from collectors.core import IpUtils
         from collectors.core import BaseUtils
         utils = BaseUtils()
+        ip_utils = IpUtils()
         creation_date = datetime.utcnow()
         # todo: update if data model was updated
         with self.session_scope() as session:
@@ -1240,7 +1243,7 @@ class Engine:
                     len(destination_workspace.files) > 0 or \
                     len(destination_workspace.domain_names) > 0 or \
                     len(destination_workspace.companies) > 0:
-                raise ValueError("target workspace is not empty.")
+                raise ValueError("target workspace '{}' is not empty.".format(destination_workspace_str))
             # Clone networks (and their sources)
             scope_type = self._get_clone_scope(in_scope_type=CloneType.network_is,
                                                out_of_scope_type=CloneType.network_ofs,
@@ -1407,6 +1410,17 @@ class Engine:
                                                                                           "email": email1,
                                                                                           "creation_date": creation_date,
                                                                                           "last_modified": None})
+                                    # Clone host name host mappings
+                                    if CloneType.host_hostname_mappings in clone_types:
+                                        for mapping in host_name.host_host_name_mappings:
+                                            new_host = ip_utils.add_host(session=session,
+                                                                         address=mapping.host.address,
+                                                                         workspace=destination_workspace)
+                                            new_mapping = utils.add_host_host_name_mapping(session=session,
+                                                                                           host=new_host,
+                                                                                           host_name=host_name1,
+                                                                                           mapping_type=mapping.type)
+                                            new_mapping.sources.extend(mapping.sources)
             # Clone company names (and their sources)
             scope_type = self._get_clone_scope(in_scope_type=CloneType.company_is,
                                                out_of_scope_type=CloneType.company_ofs,

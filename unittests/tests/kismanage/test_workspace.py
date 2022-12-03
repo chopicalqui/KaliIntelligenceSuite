@@ -25,8 +25,10 @@ __version__ = 0.1
 from database.model import Workspace
 from database.model import Network
 from database.model import Host
+from database.model import Company
 from database.model import PathType
 from database.model import DomainName
+from database.model import HostName
 from database.model import Email
 from database.model import Path
 from database.model import Service
@@ -35,6 +37,7 @@ from database.model import ProtocolType
 from database.model import ServiceState
 from database.model import CredentialType
 from database.utils import CloneType
+from database.utils import DnsResourceRecordType
 from unittests.tests.core import KisCommandEnum
 from unittests.tests.core import BaseTestKisCommand
 
@@ -77,31 +80,19 @@ class TestWorkspace(BaseTestKisCommand):
 
     def test_clone_workspace_ignore(self):
         self.init_db()
+        clone_choices = " ".join([item.name.replace("_", "-") for item in CloneType])
         # Setup the database
         # todo: update if data model was updated
-        with self._engine.session_scope() as session:
-            workspace = self._ip_utils.add_workspace(session=session, name=self._workspaces[0])
-            self._ip_utils.add_workspace(session=session, name=self._workspaces[1])
-            # Add network
-            self._ip_utils.add_network(session=session,
-                                       workspace=workspace,
-                                       network="192.168.0.0/24",
-                                       scope=ScopeType.ignore)
-            # Add domain
-            self._domain_utils.add_domain_name(session=session,
-                                               workspace=workspace,
-                                               item="test1.local",
-                                               scope=ScopeType.ignore,
-                                               verify=False)
-            # Add company
-            self._ip_utils.add_company(session=session,
-                                       workspace=workspace,
-                                       name="Test1 LLC",
-                                       verify=False,
-                                       in_scope=False)
-        self._engine.clone_workspace(source_workspace_str=self._workspaces[0],
-                                     destination_workspace_str=self._workspaces[1],
-                                     clone_types=[item for item in CloneType])
+        self.execute(subcommand="workspace", arguments="-a {ws}".format(ws=self._workspaces[0]))
+        self.execute(subcommand="workspace", arguments="-a {ws}".format(ws=self._workspaces[1]))
+        self.execute(subcommand="network", arguments="-w {ws} -a 192.168.0.0/24".format(ws=self._workspaces[0]))
+        self.execute(subcommand="domain", arguments="-w {ws} -a test1.local -s ignore".format(ws=self._workspaces[0]))
+        self.execute(subcommand="company",
+                     arguments="-w {ws} -a \"Test1 LLC\" -s outside".format(ws=self._workspaces[0]))
+        self.execute(subcommand="workspace",
+                     arguments="-t {type} --clone {source} {new}".format(source=self._workspaces[0],
+                                                                         new=self._workspaces[1],
+                                                                         type=clone_choices))
         # Test the database
         with self._engine.session_scope() as session:
             # Test network 192.168.0.0/24
@@ -123,27 +114,16 @@ class TestWorkspace(BaseTestKisCommand):
         self.init_db()
         # Setup the database
         # todo: update if data model was updated
-        with self._engine.session_scope() as session:
-            workspace = self._ip_utils.add_workspace(session=session, name=self._workspaces[0])
-            self._ip_utils.add_workspace(session=session, name=self._workspaces[1])
-            # Add network
-            self._ip_utils.add_network(session=session,
-                                       workspace=workspace,
-                                       network="192.168.0.0/24")
-            # Add domain
-            self._domain_utils.add_domain_name(session=session,
-                                               workspace=workspace,
-                                               item="test1.local",
-                                               verify=False)
-            # Add company
-            self._ip_utils.add_company(session=session,
-                                       workspace=workspace,
-                                       name="Test1 LLC",
-                                       verify=False,
-                                       in_scope=False)
-        self._engine.clone_workspace(source_workspace_str=self._workspaces[0],
-                                     destination_workspace_str=self._workspaces[1],
-                                     clone_types=[CloneType.network_is, CloneType.domain_name_is, CloneType.company_is])
+        self.execute(subcommand="workspace", arguments="-a {ws}".format(ws=self._workspaces[0]))
+        self.execute(subcommand="workspace", arguments="-a {ws}".format(ws=self._workspaces[1]))
+        self.execute(subcommand="network", arguments="-w {ws} -a 192.168.0.0/24 -s exclude".format(ws=self._workspaces[0]))
+        self.execute(subcommand="domain", arguments="-w {ws} -a test1.local -s exclude".format(ws=self._workspaces[0]))
+        self.execute(subcommand="company",
+                     arguments="-w {ws} -a \"Test1 LLC\" -s outside".format(ws=self._workspaces[0]))
+        self.execute(subcommand="workspace",
+                     arguments="-t {type} --clone {source} {new}".format(source=self._workspaces[0],
+                                                                         new=self._workspaces[1],
+                                                                         type="network-is domain-name-is company-is"))
         # Test the database
         with self._engine.session_scope() as session:
             # Test network 192.168.0.0/24
@@ -164,27 +144,16 @@ class TestWorkspace(BaseTestKisCommand):
         self.init_db()
         # Setup the database
         # todo: update if data model was updated
-        with self._engine.session_scope() as session:
-            workspace = self._ip_utils.add_workspace(session=session, name=self._workspaces[0])
-            self._ip_utils.add_workspace(session=session, name=self._workspaces[1])
-            # Add network
-            self._ip_utils.add_network(session=session,
-                                       workspace=workspace,
-                                       network="192.168.0.0/24")
-            # Add domain
-            self._domain_utils.add_domain_name(session=session,
-                                               workspace=workspace,
-                                               item="test1.local",
-                                               verify=False)
-            # Add company
-            self._ip_utils.add_company(session=session,
-                                       workspace=workspace,
-                                       name="Test1 LLC",
-                                       verify=False,
-                                       in_scope=False)
-        self._engine.clone_workspace(source_workspace_str=self._workspaces[0],
-                                     destination_workspace_str=self._workspaces[1],
-                                     clone_types=[CloneType.network_ofs, CloneType.domain_name_ofs, CloneType.company_ofs])
+        self.execute(subcommand="workspace", arguments="-a {ws}".format(ws=self._workspaces[0]))
+        self.execute(subcommand="workspace", arguments="-a {ws}".format(ws=self._workspaces[1]))
+        self.execute(subcommand="network", arguments="-w {ws} -a 192.168.0.0/24 -s exclude".format(ws=self._workspaces[0]))
+        self.execute(subcommand="domain", arguments="-w {ws} -a test1.local -s exclude".format(ws=self._workspaces[0]))
+        self.execute(subcommand="company",
+                     arguments="-w {ws} -a \"Test1 LLC\" -s outside".format(ws=self._workspaces[0]))
+        self.execute(subcommand="workspace",
+                     arguments="-t {type} --clone {source} {new}".format(source=self._workspaces[0],
+                                                                         new=self._workspaces[1],
+                                                                         type="network-ofs domain-name-ofs company-ofs"))
         # Test the database
         with self._engine.session_scope() as session:
             # Test network 192.168.0.0/24
@@ -558,3 +527,80 @@ class TestWorkspace(BaseTestKisCommand):
             self.assertEqual("company", company.sources_str)
             company = self.query_company(session=session, workspace_str=self._workspaces[1], name="test3 llc")
             self.assertIsNone(company)
+
+    def test_clone_workspace_for_nw_segregation(self):
+        self.init_db()
+        # Setup the database
+        # todo: update if data model was updated
+        self.execute(subcommand="workspace", arguments="-a ws1 ws2 ws3")
+        self.execute(subcommand="domain", arguments="-w ws1 -a test.local --source 'ad'")
+        self.execute(subcommand="hostname", arguments="-w ws1 --source 'ad' -a dc.test.local fs1.test.local ws1.test.local")
+        self.execute(subcommand="network", arguments="-w ws1 --source 'excel' -a 192.168.0.0/24 192.168.10.0/24 192.168.20.0/24")
+        self.execute(subcommand="host", arguments="-w ws1 --source dnshost -a 192.168.0.1 192.168.10.1 192.168.20.1")
+        self.execute(subcommand="company", arguments="-w ws1 --source zoneinfo -a zone1 zone2 zone3")
+        self.execute(subcommand="company", arguments="-w ws1 --source zoneinfo zone1 --network 192.168.0.0/24 --verified")
+        self.execute(subcommand="company", arguments="-w ws1 --source zoneinfo zone2 --network 192.168.10.0/24 --verified")
+        self.execute(subcommand="company", arguments="-w ws1 --source zoneinfo zone3 --network 192.168.20.0/24 --verified")
+        # Simulate the DNS resolution
+        with self._engine.session_scope() as session:
+            self.create_host_host_name_mapping(session=session,
+                                               workspace_str="ws1",
+                                               host_name_str="dc.test.local",
+                                               ipv4_address="192.168.0.1",
+                                               mapping_type=DnsResourceRecordType.a,
+                                               source_str="dnshost")
+            self.create_host_host_name_mapping(session=session,
+                                               workspace_str="ws1",
+                                               host_name_str="fs1.test.local",
+                                               ipv4_address="192.168.10.1",
+                                               mapping_type=DnsResourceRecordType.a,
+                                               source_str="dnshost")
+            self.create_host_host_name_mapping(session=session,
+                                               workspace_str="ws1",
+                                               host_name_str="ws1.test.local",
+                                               ipv4_address="192.168.20.1",
+                                               mapping_type=DnsResourceRecordType.a,
+                                               source_str="dnshost")
+        self.execute(subcommand="workspace", arguments="--clone ws1 ws2 ws3 -t network-is network-ofs host-is host-ofs service domain-name-is domain-name-ofs host-name-is host-name-ofs company-is company-ofs credential path email host-hostname-mappings")
+        self.execute(subcommand="workspace", arguments="-d ws1")
+        with self._engine.session_scope() as session:
+            for ws in ["ws2", "ws3"]:
+                # Check cloned domain and name information
+                host_names = session.query(HostName) \
+                    .join(DomainName, HostName.domain_name) \
+                    .join(Workspace, DomainName.workspace) \
+                    .filter(Workspace.name == ws).all()
+                self.assertEqual(4, len(host_names))
+                for host_name in host_names:
+                    self.assertTrue(host_name._in_scope)
+                    self.assertEqual("test.local", host_name.domain_name.name)
+                    self.assertEqual(ScopeType.all, host_name.domain_name.scope)
+                    self.assertListEqual(["ad"], [item.name for item in host_name.sources])
+                    # Make sure that also the mapping between host names and hosts has been cloned
+                    if host_name.name:
+                        self.assertEqual(1, len(host_name.host_host_name_mappings))
+                        self.assertListEqual(["dnshost"],
+                                             [item.name for item in host_name.host_host_name_mappings[0].sources])
+                # Check cloned network and host information
+                hosts = session.query(Host) \
+                    .join(Network, Host.ipv4_network) \
+                    .join(Workspace, Network.workspace) \
+                    .filter(Workspace.name == ws).all()
+                self.assertEqual(3, len(hosts))
+                for host in hosts:
+                    self.assertTrue(host.in_scope)
+                    self.assertEqual(ScopeType.all, host.ipv4_network.scope)
+                    self.assertListEqual(["dnshost"], [item.name for item in host.sources])
+                    self.assertListEqual(["excel"], [item.name for item in host.ipv4_network.sources])
+                # Check cloned company information
+                companies = session.query(Company) \
+                    .join(Workspace, Company.workspace) \
+                    .filter(Workspace.name == ws).all()
+                self.assertEqual(3, len(companies))
+                for company in companies:
+                    self.assertFalse(company.in_scope)
+                    self.assertListEqual(["zoneinfo"], [item.name for item in company.sources])
+                    # Make sure that mappings between companies and networks have been cloned
+                    self.assertEqual(1, len(company.company_network_mappings))
+                    self.assertTrue(company.company_network_mappings[0].verified)
+                    self.assertListEqual(["zoneinfo"], [item.name for item in company.company_network_mappings[0].sources])
