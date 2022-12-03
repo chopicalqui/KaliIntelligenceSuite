@@ -131,8 +131,12 @@ class BaseCommand(Thread):
         self._lock = Lock()
         self._pwd = None
         # Pass relevant environment variables to subprocesses
-        self._env = {'PATH': os.environ["PATH"],
-                     'HOME': os.environ["HOME"]}
+        self._env = {'PATH': os.environ["PATH"]}
+        if username:
+            if username == "root":
+                self._env['HOME'] = "/root"
+            elif username == "kali":
+                self._env['HOME'] = "/home/kali"
         if BaseConfig.ENV_PORT in os.environ:
             self._env[BaseConfig.ENV_PORT] = os.environ[BaseConfig.ENV_PORT]
         if BaseConfig.ENV_HOST in os.environ:
@@ -349,7 +353,8 @@ class PopenCommand(BaseCommand):
         with self._lock:
             try:
                 env = dict(self._env)
-                env['HOME'] = self._cwd
+                # Following line was removed because of Nucleai
+                # env['HOME'] = self._cwd
                 self._start_time = datetime.utcnow()
                 self._proc = subprocess.Popen(self.command,
                                               stdout=self._stdout,
@@ -454,7 +459,7 @@ class PopenCommandOpenSsl(PopenCommand):
                                               preexec_fn=self._demote)
                 self._stderr_list = [item.decode("utf-8").strip() for item in iter(self._proc.stderr.readline, b'')]
                 self._stdout_list = [item.decode("utf-8").strip() for item in iter(self._proc.stdout.readline, b'')]
-                self._proc.communicate(b"x")
+                self._proc.stdin.write(b"x\n")
                 self._proc.wait(self._timeout)
             except subprocess.TimeoutExpired:
                 self._killed = True
