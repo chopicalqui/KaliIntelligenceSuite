@@ -524,9 +524,10 @@ class BaseUtils:
         :param name: The name of the company that should be added
         :return:
         """
-        source = session.query(Source).filter_by(name=name).one_or_none()
+        local_name = name.strip()
+        source = session.query(Source).filter_by(name=local_name).one_or_none()
         if not source:
-            source = Source(name=name)
+            source = Source(name=local_name)
             session.add(source)
             session.flush()
         return source
@@ -591,6 +592,34 @@ class BaseUtils:
                         paths.append(tmp)
         return paths
 
+    @staticmethod
+    def get_company(session: Session,
+                    workspace: Workspace,
+                    name: str) -> Host:
+        """
+        This method shall be used to obtain a host object via the given IPv4/IPv6 address from the database
+        :param session: Database session used to add the email address
+        :param workspace: The workspace to which the network shall be added
+        :param name: The company's name
+        :return: Database object
+        """
+        return session.query(Company).filter_by(name=name.strip().lower(), workspace_id=workspace.id).one_or_none()
+
+    @staticmethod
+    def delete_company(session: Session,
+                       workspace: Workspace,
+                       name: str) -> None:
+        """
+        This method shall be used to delete a host object via the given IPv4/IPv6 address in the database
+        :param session: Database session used to add the email address
+        :param workspace: The workspace to which the network shall be added
+        :param name: The company's name
+        :return: Database object
+        """
+        result = IpUtils.get_company(session=session, workspace=workspace, name=name)
+        if result:
+            session.delete(result)
+
     def add_company(self,
                     session: Session,
                     workspace: Workspace,
@@ -615,13 +644,11 @@ class BaseUtils:
         :return:
         """
         rvalue = None
-        name = name.strip().lower()
-        if not verify or (verify and self.is_verified_company_name(name)):
-            rvalue = session.query(Company) \
-                .filter_by(name=name,
-                           workspace_id=workspace.id).one_or_none()
+        local_name = name.strip().lower()
+        if not verify or (verify and self.is_verified_company_name(local_name)):
+            rvalue = self.get_company(session=session, workspace=workspace, name=local_name)
             if not rvalue:
-                rvalue = Company(name=name, workspace=workspace)
+                rvalue = Company(name=local_name, workspace=workspace)
                 session.add(rvalue)
                 session.flush()
             if network:
@@ -635,11 +662,11 @@ class BaseUtils:
                     source.companies.append(rvalue)
                 if report_item:
                     if network:
-                        message = "potentially new company for network {}: {}".format(network.network, name)
+                        message = "potentially new company for network {}: {}".format(network.network, local_name)
                     elif domain_name:
-                        message = "potentially new company for domain {}: {}".format(domain_name.name, name)
+                        message = "potentially new company for domain {}: {}".format(domain_name.name, local_name)
                     else:
-                        message = "potentially new company: {}".format(name)
+                        message = "potentially new company: {}".format(local_name)
                     report_item.details = message
                     report_item.report_type = "COMPANY"
                     report_item.notify()
@@ -1640,7 +1667,7 @@ class BaseUtils:
         result = None
         if host_name is None:
             return result
-        elements = re.sub("^\*\.", "", host_name).lower().strip(".")
+        elements = re.sub("^\*\.", "", host_name).strip().lower().strip(".")
         if not elements:
             return None
         elements = elements.split(".")
@@ -2110,7 +2137,7 @@ class BaseUtils:
         :param workspace: The workspace to which the network shall be added
         :param name: Company that should be returned from the database
         """
-        name_lower = name.lower()
+        name_lower = name.strip().lower()
         return session.query(Company).join(Workspace).filter(Company.name == name_lower,
                                                              Workspace.name == workspace.name).one_or_none()
 
@@ -2484,11 +2511,12 @@ class IpUtils(BaseUtils):
         :return: Database object
         """
         result = None
-        if IpUtils.is_valid_cidr_range(network):
-            result = session.query(Network).join(Workspace).filter(Network.network == network,
+        local_network = network.strip()
+        if IpUtils.is_valid_cidr_range(local_network):
+            result = session.query(Network).join(Workspace).filter(Network.network == local_network,
                                                                    Workspace.name == workspace.name).one_or_none()
             if not result:
-                result = Network(network=network, workspace=workspace, scope=scope)
+                result = Network(network=local_network, workspace=workspace, scope=scope)
                 session.add(result)
                 session.flush()
             elif scope is not None:
@@ -2497,12 +2525,12 @@ class IpUtils(BaseUtils):
                 if source:
                     result.sources.append(source)
                 if report_item:
-                    report_item.details = "potentially new IP network: {}".format(network)
+                    report_item.details = "potentially new IP network: {}".format(local_network)
                     report_item.report_type = "NETWORK"
                     report_item.notify()
         else:
             logger.info("IpUtils.add_network: the following IP network is not valid "
-                        "and therefore is not added: {}".format(network))
+                        "and therefore is not added: {}".format(local_network))
         return result
 
     @staticmethod
@@ -2516,9 +2544,10 @@ class IpUtils(BaseUtils):
         :param network: Network that should be returned from the database
         """
         result = None
-        if IpUtils.is_valid_cidr_range(network) or IpUtils.is_valid_address(network):
-            result = session.query(Network).join(Workspace).filter(Network.network == network,
-                                                                   Workspace.name == workspace.name).one_or_none()
+        local_network = network.strip()
+        if IpUtils.is_valid_cidr_range(local_network) or IpUtils.is_valid_address(local_network):
+            result = session.query(Network).join(Workspace).filter(Network.network == local_network,
+                                                                   Workspace.name == workspace.name.strip()).one_or_none()
         return result
 
     @staticmethod
@@ -2595,14 +2624,15 @@ class IpUtils(BaseUtils):
         :return: Database object
         """
         rvalue = None
-        is_valid = IpUtils.is_valid_address(address)
-        if not is_valid and "/" in address:
-            address = address.split("/")[0]
-            is_valid = IpUtils.is_valid_address(address)
-        if address and is_valid:
-            rvalue = session.query(Host).filter_by(address=address, workspace_id=workspace.id).one_or_none()
+        local_address = address.strip()
+        is_valid = IpUtils.is_valid_address(local_address)
+        if not is_valid and "/" in local_address:
+            local_address = local_address.split("/")[0]
+            is_valid = IpUtils.is_valid_address(local_address)
+        if local_address and is_valid:
+            rvalue = session.query(Host).filter_by(address=local_address, workspace_id=workspace.id).one_or_none()
             if not rvalue:
-                rvalue = Host(address=address, workspace=workspace, in_scope=in_scope)
+                rvalue = Host(address=local_address, workspace=workspace, in_scope=in_scope)
                 session.add(rvalue)
                 session.flush()
             if in_scope is not None:
@@ -2610,12 +2640,12 @@ class IpUtils(BaseUtils):
             if source:
                 rvalue.sources.append(source)
             if rvalue and report_item:
-                report_item.details = "potentially new host: {}".format(address)
+                report_item.details = "potentially new host: {}".format(local_address)
                 report_item.report_type = "IP"
                 report_item.notify()
         else:
             logger.info("IpUtils.add_host: the following IP address is not valid "
-                        "and therefore is not added: {}".format(address))
+                        "and therefore is not added: {}".format(local_address))
         return rvalue
 
     @staticmethod
@@ -2629,7 +2659,7 @@ class IpUtils(BaseUtils):
         :param address: IPv4/IPv6 address whose host object should be returned from the database
         :return: Database object
         """
-        return session.query(Host).filter_by(address=address, workspace_id=workspace.id).one_or_none()
+        return session.query(Host).filter_by(address=address.strip(), workspace_id=workspace.id).one_or_none()
 
     @staticmethod
     def delete_host(session: Session,
@@ -2642,7 +2672,7 @@ class IpUtils(BaseUtils):
         :param address: IPv4 address whose host object should be deleted
         :return: Database object
         """
-        result = IpUtils.get_host(session=session, workspace=workspace, address=address)
+        result = IpUtils.get_host(session=session, workspace=workspace, address=address.strip())
         if result:
             session.delete(result)
 

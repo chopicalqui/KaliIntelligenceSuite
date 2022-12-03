@@ -21,6 +21,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 __db_version__ = "0.4.0"
 __kis_version__ = "0.4.0"
 
+import inspect
+import importlib
+import os.path
+import pkgutil
 import sys
 import grp
 import passgen
@@ -45,6 +49,49 @@ Session = sessionmaker()
 from database.model import *
 
 logger = logging.getLogger('database')
+
+
+class LoadedClass:
+    "This class holds information about a dynamically loaded class."
+
+    def __init__(self, loaded_class, package_name: str = None):
+        self.item = loaded_class
+        self.package_name = package_name
+        self.instance = None
+
+    def create_instance(self, **kwargs) -> None:
+        """
+        This method creates an instance of the loaded class using the given arguments.
+        :param kwargs: The constructor arguments to initialize the class.
+        """
+        self.instance = self.item(**kwargs)
+        return self.instance
+
+    @staticmethod
+    def load_classes(module: str, base_class) -> list:
+        """
+        This method loads all classes within the given module path and that are derived from the given base class.
+        :param module: The module path (e.g., database.report.*) of the classes that shall be loaded.
+        :param base_class: The base class from which the classes are derived in order to be loaded.
+        :return: List of LoadedClass objects.
+        """
+        result = []
+        base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        if module.strip().endswith(".*"):
+            module_clean = module.strip(".*")
+            module_dir = os.path.join(base_dir, os.sep.join(module_clean.split(".")))
+            if os.path.isdir(module_dir):
+                for importer, package_name, _ in pkgutil.iter_modules([module_dir]):
+                    if package_name not in ["core"]:
+                        import_string = module_clean + "." + package_name
+                        for name, obj in inspect.getmembers(importlib.import_module(import_string)):
+                            if inspect.isclass(obj) and issubclass(obj, base_class) and name != base_class.__name__:
+                                result.append(LoadedClass(loaded_class=obj, package_name=package_name))
+            else:
+                raise NotADirectoryError("module {} does not exist.".format(module))
+        else:
+            raise NotImplementedError()
+        return result
 
 
 class CloneType(enum.Enum):
