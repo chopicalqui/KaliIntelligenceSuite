@@ -26,7 +26,7 @@ import os
 from collectors.apis.core import BaseApi
 from collectors.core import BaseUtils
 from censys.search import CensysHosts
-from censys.search import CensysCertificates
+from censys.search import CensysCerts
 from database.model import CommandStatus
 
 
@@ -82,7 +82,7 @@ class CensysDomain(BaseApi):
         """
         query_results = []
         print("[*] querying censys API")
-        api = CensysCertificates(api_id=self._api_uid, api_secret=self._api_key)
+        api = CensysCerts(api_id=self._api_uid, api_secret=self._api_key)
         try:
             for overview in api.search(domain, fields=[CensysDomain.PARSED_NAMES]):
                 query_results.append(overview)

@@ -107,6 +107,9 @@ copy the latest version from https://github.com/chopicalqui/KaliIntelligenceSuit
     def get_config_int(self, section: str, name: str) -> int:
         return self._config[section].getint(name)
 
+    def get_config_bool(self, section: str, name: str) -> bool:
+        return self._config[section].getboolean(name)
+
     def write(self) -> None:
         with open(self.full_path, "w") as file:
             self._config.write(file)\
@@ -201,7 +204,7 @@ class Database(BaseConfig):
                 raise ValueError("the password file '{}' should only contain one line.".format(password_file))
             result = content[0].strip()
         else:
-            result = self.get_config_str("production", "password")
+            result = self.get_config_str("production", "password", apply_format_string=False)
         return result
 
     @password.setter
@@ -326,6 +329,7 @@ class Collector(BaseConfig):
         self._webserver_sap = self.get_config_str("default_wordlists", "webserver_sap")
         self._webserver_weblogic = self.get_config_str("default_wordlists", "webserver_weblogic")
         self._webserver_websphere = self.get_config_str("default_wordlists", "webserver_websphere")
+        self._nmap_privileged = self.get_config_bool("nmap", "privileged")
         self._legal_entities = json.loads(self.get_config_str("company", "entities"))
         self._re_legal_entities = "\s(({}))(([\s\.])|($))".format(")|(".join(self._legal_entities))
         self._irrelevant_http_files = json.loads(self.get_config_str("http", "irrelevant_files"))

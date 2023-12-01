@@ -2761,13 +2761,20 @@ class BaseNmap(BaseCollector):
         collectors = []
         address = service.address
         if address:
+            # UDP scans require root privileges on Windows.
+            if not self._nmap_privileged and service.protocol == ProtocolType.udp:
+                return collectors
             xml_file = self.create_xml_file_path(service=service)
-            scan_type = "-sS" if service.protocol == ProtocolType.tcp else "-sU"
+            if service.protocol == ProtocolType.tcp:
+                scan_type = "-sS" if self._nmap_privileged else "-sT"
+            else:
+                scan_type = "-sU"
             if nse_script_arguments:
                 nse_arguments = ["--script-args={}".format(",".join(nse_script_arguments))]
             else:
                 nse_arguments = []
             os_command = [self._path_nmap,
+                          "--privileged" if self._nmap_privileged else "--unprivileged",
                           "-Pn",
                           "-T2",
                           scan_type,

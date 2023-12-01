@@ -95,12 +95,14 @@ class CollectorClass(BaseHttpCollector, ServiceCollector, HostNameServiceCollect
         number_threads = 1 if self._delay.sleep_active() else 25
         template_dir = self.get_config_str("nuclei", "template_dir")
         args = self.get_config_str("nuclei", "additional_arguments")
+        text_file = self.create_text_file_path(service=service)
         if url:
             headers = []
             os_command = [command,
                           '-t', ExecutionInfoType.input_dir.argument,
                           '-fhr',  # follow redirects on the same hosts
                           '-c', number_threads,  # maximum number of templates to be executed in parallel (default 25)
+                          '-je', '-o', ExecutionInfoType.binary_output_file.argument,
                           '-u', url.geturl()]
             if self._delay.sleep_active():
                 os_command += ['-rl', 1]  # maximum number of requests to send per second
@@ -125,6 +127,7 @@ class CollectorClass(BaseHttpCollector, ServiceCollector, HostNameServiceCollect
                                                     os_command,
                                                     collector_name,
                                                     service=service,
+                                                    binary_file=text_file,
                                                     input_dir=template_dir)
             collectors.append(collector)
         return collectors

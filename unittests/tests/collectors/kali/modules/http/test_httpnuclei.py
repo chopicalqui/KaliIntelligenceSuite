@@ -42,7 +42,7 @@ from database.model import DnsResourceRecordType
 from database.model import VHostNameMapping
 
 
-class BaseVhostGobusterCollectorTestCase(BaseKaliHttpCollectorTestCase):
+class HttpNucleiCollectorTestCase(BaseKaliHttpCollectorTestCase):
     """
     This class implements all unittestss for the given collector
     """

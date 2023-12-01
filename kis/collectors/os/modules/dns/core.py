@@ -137,6 +137,8 @@ class BaseDnsHost(BaseDnsCollector):
         code etc.
         """
         command.hide = True
+        if command.return_code > 0:
+            self._set_execution_failed(session, command)
         for line in command.stdout_output:
             ipv4_match = self._re_ipv4.match(line)
             ipv6_match = self._re_ipv6.match(line)

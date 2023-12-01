@@ -1,4 +1,5 @@
 FROM kalilinux/kali-last-release as base
+#TODO: https://hadolint.github.io/hadolint/
 
 ENV LD_LIBRARY_PATH=/usr/local/lib \
     PYTHONFAULTHANDLER=1 \
@@ -54,7 +55,7 @@ RUN apt install -y amass \
                    passing-the-hash \
                    proxychains4 \
                    python3-minimal \
-                   postgresql-client-14 \
+                   postgresql-client-common \
                    rpcbind \
                    sidguesser \
                    smbclient \
@@ -74,7 +75,9 @@ RUN apt install -y amass \
                    whatweb \
                    whois \
                    wpscan \
+                   libsqlcipher-dev \
                    nuclei
+# libsqlcipher-dev had to be installed because wheel could not be compiled for pysqlcipher3.
 
 RUN update-ca-certificates --fresh
 

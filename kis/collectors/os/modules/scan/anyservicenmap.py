@@ -78,14 +78,20 @@ class CollectorClass(BaseNmap, ServiceCollector):
         """
         collectors = []
         if service.state == ServiceState.Open:
+            # UDP scans require root privileges on Windows.
+            if not self._nmap_privileged and service.protocol == ProtocolType.udp:
+                return collectors
             xml_file = self.create_xml_file_path(service=service)
             if service.protocol == ProtocolType.tcp:
-                nmap_options = self._nmap_config.nmap_tcp_options
+                nmap_options = self._nmap_config.nmap_tcp_options if self._nmap_privileged else ["-sT"]
                 nse_scripts = self._nmap_config.tcp_nse_scripts
             else:
                 nmap_options = self._nmap_config.nmap_udp_options
                 nse_scripts = self._nmap_config.udp_nse_scripts
-            os_command = [self._path_nmap, "-p", service.port, "-Pn"]
+            os_command = [self._path_nmap,
+                          "--privileged" if self._nmap_privileged else "--unprivileged",
+                          "-p", service.port,
+                          "-Pn"]
             if service.host.version == 6:
                 os_command.append("-6")
             os_command += self._nmap_config.nmap_general_settings
