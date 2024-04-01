@@ -226,7 +226,7 @@ class BaseUtils:
         if not host or not host_name:
             raise ValueError("host and host name are mandatory")
         mapping = session.query(HostHostNameMapping) \
-            .filter_by(host_id=host.id, host_name_id=host_name.id).one_or_none()
+            .filter_by(host=host, host_name=host_name).one_or_none()
         if not mapping:
             mapping = HostHostNameMapping(host=host, host_name=host_name, type=mapping_type)
             session.add(mapping)
@@ -242,7 +242,6 @@ class BaseUtils:
                                                                                              source_info)
             report_item.report_type = "GENERIC"
             report_item.notify()
-        session.flush()
         return mapping
 
     @staticmethod
@@ -264,8 +263,8 @@ class BaseUtils:
         if not source_host_name or not resolved_host_name:
             raise ValueError("source and resolved host names are mandatory")
         mapping = session.query(HostNameHostNameMapping) \
-            .filter_by(source_host_name_id=source_host_name.id,
-                       resolved_host_name_id=resolved_host_name.id).one_or_none()
+            .filter_by(source_host_name=source_host_name,
+                       resolved_host_name=resolved_host_name).one_or_none()
         if not mapping:
             mapping = HostNameHostNameMapping(source_host_name=source_host_name, resolved_host_name=resolved_host_name)
             session.add(mapping)
@@ -280,7 +279,6 @@ class BaseUtils:
                                                                                         source_info)
             report_item.report_type = "GENERIC"
             report_item.notify()
-        session.flush()
         return mapping
 
     @staticmethod
@@ -311,8 +309,8 @@ class BaseUtils:
             raise ValueError("either host name or host must be specified")
         elif host_name:
             mapping = session.query(VHostNameMapping) \
-                .filter_by(service_id=service.id,
-                           host_name_id=host_name.id).one_or_none()
+                .filter_by(service=service,
+                           host_name=host_name).one_or_none()
             if not mapping:
                 mapping = VHostNameMapping(service=service, host_name=host_name)
                 session.add(mapping)
@@ -322,8 +320,8 @@ class BaseUtils:
                 report_item.notify()
         else:
             mapping = session.query(VHostNameMapping) \
-                .filter_by(service_id=service.id,
-                           host_id=host.id).one_or_none()
+                .filter_by(service=service,
+                           host=host).one_or_none()
             if not mapping:
                 mapping = VHostNameMapping(service=service, host=host)
                 session.add(mapping)
@@ -337,7 +335,6 @@ class BaseUtils:
             mapping.size_bytes = size_bytes
         if source:
             mapping.sources.append(source)
-        session.flush()
         return mapping
 
     @staticmethod
@@ -349,7 +346,6 @@ class BaseUtils:
         if not result:
             result = CollectorName(name=name, type=type, priority=priority)
             session.add(result)
-            session.flush()
         else:
             result.priority = priority
         return result
@@ -414,7 +410,7 @@ class BaseUtils:
             command = session.query(Command) \
                 .join((Service, Command.service)) \
                 .filter(Command.os_command.op('=')(tmp),
-                        Command.collector_name_id == collector_name.id,
+                        Command.collector_name == collector_name,
                         Service.id == service.id).one_or_none()
             if not command:
                 command = Command(os_command=tmp,
@@ -426,7 +422,7 @@ class BaseUtils:
             command = session.query(Command) \
                 .join((Host, Command.host)) \
                 .filter(Command.os_command.op('=')(tmp),
-                        Command.collector_name_id == collector_name.id,
+                        Command.collector_name == collector_name,
                         Host.id == host.id).one_or_none()
             if not command:
                 command = Command(os_command=tmp,
@@ -438,7 +434,7 @@ class BaseUtils:
             command = session.query(Command) \
                 .join((HostName, Command.host_name)) \
                 .filter(Command.os_command.op('=')(tmp),
-                        Command.collector_name_id == collector_name.id,
+                        Command.collector_name == collector_name,
                         HostName.id == host_name.id).one_or_none()
             if not command:
                 command = Command(os_command=tmp,
@@ -450,7 +446,7 @@ class BaseUtils:
             command = session.query(Command) \
                 .join((Network, Command.ipv4_network)) \
                 .filter(Command.os_command.op('=')(tmp),
-                        Command.collector_name_id == collector_name.id,
+                        Command.collector_name == collector_name,
                         Network.id == network.id).one_or_none()
             if not command:
                 command = Command(os_command=tmp,
@@ -462,7 +458,7 @@ class BaseUtils:
             command = session.query(Command) \
                 .join((Email, Command.email)) \
                 .filter(Command.os_command.op('=')(tmp),
-                        Command.collector_name_id == collector_name.id,
+                        Command.collector_name == collector_name,
                         Email.id == email.id).one_or_none()
             if not command:
                 command = Command(os_command=tmp,
@@ -474,7 +470,7 @@ class BaseUtils:
             command = session.query(Command) \
                 .join((Company, Command.company)) \
                 .filter(Command.os_command.op('=')(tmp),
-                        Command.collector_name_id == collector_name.id,
+                        Command.collector_name == collector_name,
                         Company.id == company.id).one_or_none()
             if not command:
                 command = Command(os_command=tmp,
@@ -529,7 +525,6 @@ class BaseUtils:
         if not source:
             source = Source(name=local_name)
             session.add(source)
-            session.flush()
         return source
 
     def add_service_method(self,
@@ -548,11 +543,10 @@ class BaseUtils:
         :return:
         """
         name = name.strip()
-        service_method = session.query(ServiceMethod).filter_by(name=name, service_id=service.id).one_or_none()
+        service_method = session.query(ServiceMethod).filter_by(name=name, service=service).one_or_none()
         if not service_method:
             service_method = ServiceMethod(name=name, service=service)
             session.add(service_method)
-            session.flush()
         if source:
             source.service_methods.append(service_method)
         if report_item:
@@ -603,7 +597,7 @@ class BaseUtils:
         :param name: The company's name
         :return: Database object
         """
-        return session.query(Company).filter_by(name=name.strip().lower(), workspace_id=workspace.id).one_or_none()
+        return session.query(Company).filter_by(name=name.strip().lower(), workspace=workspace).one_or_none()
 
     @staticmethod
     def delete_company(session: Session,
@@ -650,7 +644,6 @@ class BaseUtils:
             if not rvalue:
                 rvalue = Company(name=local_name, workspace=workspace)
                 session.add(rvalue)
-                session.flush()
             if network:
                 network.companies.append(rvalue)
             if domain_name:
@@ -679,11 +672,10 @@ class BaseUtils:
                                         source: Source = None,
                                         verified: bool = None) -> CompanyDomainNameMapping:
         result = session.query(CompanyDomainNameMapping) \
-            .filter_by(domain_name_id=host_name.domain_name.id, company_id=company.id).one_or_none()
+            .filter_by(domain_name=host_name.domain_name, company=company).one_or_none()
         if not result:
             result = CompanyDomainNameMapping(company=company, domain_name=host_name.domain_name, verified=verified)
             session.add(result)
-            session.flush()
         elif verified is not None:
             result.verified = verified
         if source:
@@ -697,11 +689,10 @@ class BaseUtils:
                                     source: Source = None,
                                     verified: bool = None) -> CompanyNetworkMapping:
         result = session.query(CompanyNetworkMapping) \
-            .filter_by(network_id=network.id, company_id=company.id).one_or_none()
+            .filter_by(network=network, company=company).one_or_none()
         if not result:
             result = CompanyNetworkMapping(company=company, network=network, verified=verified)
             session.add(result)
-            session.flush()
         elif verified is not None:
             result.verified = verified
         if source:
@@ -775,46 +766,37 @@ class BaseUtils:
                              "or IPv4 network")
         if service:
             additional_info = session.query(AdditionalInfo).filter_by(name=name,
-                                                                      service_id=service.id).one_or_none()
+                                                                      service=service).one_or_none()
             if not additional_info:
                 additional_info = AdditionalInfo(name=name, service=service)
                 session.add(additional_info)
-                session.flush()
         elif host_name:
             additional_info = session.query(AdditionalInfo).filter_by(name=name,
-                                                                      host_name_id=host_name.id).one_or_none()
+                                                                      host_name=host_name).one_or_none()
             if not additional_info:
                 additional_info = AdditionalInfo(name=name, host_name=host_name)
                 session.add(additional_info)
-                session.flush()
         elif email:
-            additional_info = session.query(AdditionalInfo).filter_by(name=name,
-                                                                      email_id=email.id).one_or_none()
+            additional_info = session.query(AdditionalInfo).filter_by(name=name, email=email).one_or_none()
             if not additional_info:
                 additional_info = AdditionalInfo(name=name, email=email)
                 session.add(additional_info)
-                session.flush()
         elif company:
-            additional_info = session.query(AdditionalInfo).filter_by(name=name,
-                                                                      company_id=company.id).one_or_none()
+            additional_info = session.query(AdditionalInfo).filter_by(name=name, company=company).one_or_none()
             if not additional_info:
                 additional_info = AdditionalInfo(name=name, company=company)
                 session.add(additional_info)
-                session.flush()
         elif host:
-            additional_info = session.query(AdditionalInfo).filter_by(name=name,
-                                                                      host_id=host.id).one_or_none()
+            additional_info = session.query(AdditionalInfo).filter_by(name=name, host=host).one_or_none()
             if not additional_info:
                 additional_info = AdditionalInfo(name=name, host=host)
                 session.add(additional_info)
-                session.flush()
         elif ipv4_network:
             additional_info = session.query(AdditionalInfo).filter_by(name=name,
-                                                                      ipv4_network_id=ipv4_network.id).one_or_none()
+                                                                      ipv4_network=ipv4_network).one_or_none()
             if not additional_info:
                 additional_info = AdditionalInfo(name=name, ipv4_network=ipv4_network)
                 session.add(additional_info)
-                session.flush()
         else:
             raise ValueError("additional info must be assigned to a service, host name, or a tag info")
         if additional_info:
@@ -865,7 +847,7 @@ class BaseUtils:
                            password=password,
                            domain=domain,
                            type=credential_type,
-                           service_id=service.id).one_or_none()
+                           service=service).one_or_none()
             if not credential:
                 credential = Credentials(username=username,
                                          password=password,
@@ -873,7 +855,6 @@ class BaseUtils:
                                          type=credential_type,
                                          service=service)
                 session.add(credential)
-                session.flush()
             credential.complete = password is not None
             if report_item:
                 if username is not None and password is not None:
@@ -892,7 +873,7 @@ class BaseUtils:
                            password=password,
                            domain=domain,
                            type=credential_type,
-                           email_id=email.id).one_or_none()
+                           email=email).one_or_none()
             if not credential:
                 credential = Credentials(username=username,
                                          password=password,
@@ -900,7 +881,6 @@ class BaseUtils:
                                          type=credential_type,
                                          email=email)
                 session.add(credential)
-                session.flush()
             # SNMP has only a password
             credential.complete = password is not None
             if report_item:
@@ -937,11 +917,10 @@ class BaseUtils:
         """
         rvalue = None
         if path and path_type:
-            rvalue = session.query(Path).filter_by(name=path, type=path_type, service_id=service.id).one_or_none()
+            rvalue = session.query(Path).filter_by(name=path, type=path_type, service=service).one_or_none()
             if not rvalue:
                 rvalue = Path(name=path, type=path_type, service=service)
                 session.add(rvalue)
-                session.flush()
             if size_bytes:
                 rvalue.size_bytes = size_bytes
             if return_code:
@@ -982,11 +961,10 @@ class BaseUtils:
         result = None
         if path and query:
             if len(query) < 2712:
-                result = session.query(HttpQuery).filter_by(query=query, path_id=path.id).one_or_none()
+                result = session.query(HttpQuery).filter_by(query=query, path=path).one_or_none()
                 if not result:
                     result = HttpQuery(query=query, path=path)
                     session.add(result)
-                    session.flush()
             else:
                 logger.warning("the query part of url '{}' could not be "
                                "added as it exceeds 2712 characters.".format(url))
@@ -1032,26 +1010,24 @@ class BaseUtils:
             result = session.query(Service) \
                 .filter(Service.port == port,
                         Service.protocol == protocol_type,
-                        Service.host_id == host.id).one_or_none()
+                        Service.host == host).one_or_none()
             if not result:
                 result = Service(port=port,
                                  protocol=protocol_type,
                                  state=state,
                                  host=host)
                 session.add(result)
-                session.flush()
         elif host_name:
             result = session.query(Service) \
                 .filter(Service.port == port,
                         Service.protocol == protocol_type,
-                        Service.host_name_id == host_name.id).one_or_none()
+                        Service.host_name == host_name).one_or_none()
             if not result:
                 result = Service(port=port,
                                  protocol=protocol_type,
                                  state=state,
                                  host_name=host_name)
                 session.add(result)
-                session.flush()
         else:
             raise ValueError("service must be assigned to host or host name")
         if result:
@@ -1096,12 +1072,12 @@ class BaseUtils:
             rvalue = session.query(Service) \
                 .filter(Service.port == port,
                         Service.protocol == protocol_type,
-                        Service.host_id == host.id).one_or_none()
+                        Service.host == host).one_or_none()
         elif host_name:
             rvalue = session.query(Service) \
                 .filter(Service.port == port,
                         Service.protocol == protocol_type,
-                        Service.host_name_id == host_name.id).one_or_none()
+                        Service.host_name == host_name).one_or_none()
         else:
             raise ValueError("service must be assigned to host or host name")
         return rvalue
@@ -1171,7 +1147,7 @@ class BaseUtils:
             return None
         sha256_value = hashlib.sha256(content).hexdigest()
         file = session.query(File).filter_by(sha256_value=sha256_value,
-                                             workspace_id=workspace.id,
+                                             workspace=workspace,
                                              type=file_type).one_or_none()
         if not file:
             file = File(sha256_value=sha256_value,
@@ -1181,14 +1157,12 @@ class BaseUtils:
             session.add(file)
             mapping = CommandFileMapping(command=command, file=file, file_name=file_name)
             session.add(mapping)
-            session.flush()
         else:
-            mapping = session.query(CommandFileMapping).filter_by(command_id=command.id,
-                                                                  file_id=file.id).one_or_none()
+            mapping = session.query(CommandFileMapping).filter_by(command=command,
+                                                                  file=file).one_or_none()
             if not mapping:
                 mapping = CommandFileMapping(command=command, file=file, file_name=file_name)
                 session.add(mapping)
-                session.flush()
             mapping.name = file_name
         if report_item:
             report_item.details = "add file content: {}".format(file_name)
@@ -1364,11 +1338,10 @@ class BaseUtils:
         :param report_item: Item that can be used for pushing information into the view
         :return:
         """
-        rvalue = session.query(TlsInfo).filter_by(service_id=service.id, version=version).one_or_none()
+        rvalue = session.query(TlsInfo).filter_by(service=service, version=version).one_or_none()
         if not rvalue:
             rvalue = TlsInfo(service=service, version=version, preference=preference, heartbleed=heartbleed)
             session.add(rvalue)
-            session.flush()
         if preference:
             rvalue.preference = preference
         if compressors:
@@ -1430,14 +1403,13 @@ class BaseUtils:
                 logger.warning("cipher suite '{}' not found.".format(gnutls_name))
             return None
         rvalue = session.query(TlsInfoCipherSuiteMapping) \
-            .filter_by(tls_info_id=tls_info.id,
-                       cipher_suite_id=cipher_suite.id).one_or_none()
+            .filter_by(tls_info=tls_info,
+                       cipher_suite=cipher_suite).one_or_none()
         if not rvalue:
             rvalue = TlsInfoCipherSuiteMapping(tls_info=tls_info,
                                                cipher_suite=cipher_suite,
                                                kex_algorithm_details=kex_algorithm_details)
             session.add(rvalue)
-            session.flush()
         if kex_algorithm_details and not rvalue.kex_algorithm_details:
             rvalue.kex_algorithm_details = kex_algorithm_details
         if prefered:
@@ -1521,13 +1493,13 @@ class BaseUtils:
         if (service and host_name) or (service and company) or (host_name and company):
             raise ValueError("cert info must either be assigned to a service, host name, or company")
         if service:
-            result = session.query(CertInfo).filter_by(service_id=service.id,
+            result = session.query(CertInfo).filter_by(service=service,
                                                        _sha256value=cert_info.sha256value).one_or_none()
         elif host_name:
-            result = session.query(CertInfo).filter_by(host_name_id=host_name.id,
+            result = session.query(CertInfo).filter_by(host_name=host_name,
                                                        _sha256value=cert_info.sha256value).one_or_none()
         elif company:
-            result = session.query(CertInfo).filter_by(company_id=company.id,
+            result = session.query(CertInfo).filter_by(company=company,
                                                        _sha256value=cert_info.sha256value).one_or_none()
         else:
             raise ValueError("cert info must have a service, host name, or company")
@@ -1539,7 +1511,6 @@ class BaseUtils:
                               pem=cert_info.pem_str,
                               cert_type=cert_info.cert_type)
             session.add(result)
-            session.flush()
         if source:
             source.cert_info.append(result)
         if not workspace:
@@ -1625,7 +1596,6 @@ class BaseUtils:
             if item:
                 if (host and item != host.address and item not in dedup) or (not host and item not in dedup):
                     self.add_dns_name(session, workspace, item, host, source)
-                    session.flush()
                     dedup[item] = True
         return list(dedup.values())
 
@@ -1699,14 +1669,12 @@ class BaseUtils:
         if not result:
             domain_name = DomainName(name=domain_name, workspace=workspace, scope=scope)
             session.add(domain_name)
-            session.flush()
-            host_name = session.query(HostName).filter_by(name=None, domain_name_id=domain_name.id).one_or_none()
+            host_name = session.query(HostName).filter_by(name=None, domain_name=domain_name).one_or_none()
             if not host_name:
                 host_name = HostName(name=None, domain_name=domain_name)
                 session.add(host_name)
-                session.flush()
         else:
-            host_name = session.query(HostName).filter_by(name=None, domain_name_id=result.id).one()
+            host_name = session.query(HostName).filter_by(name=None, domain_name=result).one()
         return host_name
 
     def add_dns_name(self,
@@ -1741,7 +1709,6 @@ class BaseUtils:
                                                      host_name=host_name,
                                                      source=source,
                                                      mapping_type=mapping_type)
-            session.flush()
             result = host_name
         # we have a host and domain name
         elif levels > 2:
@@ -1765,12 +1732,11 @@ class BaseUtils:
                 if last_char != "*" and last_char != ".":
                     host_name_object = session.query(HostName) \
                         .filter_by(name=host_name,
-                                   domain_name_id=domain_object.id).one_or_none()
+                                   domain_name=domain_object).one_or_none()
                     if not host_name_object:
                         host_name_object = HostName(name=host_name,
                                                     domain_name=domain_object)
                         session.add(host_name_object)
-                        session.flush()
                     if source:
                         host_name_object.sources.append(source)
                     if host:
@@ -1909,7 +1875,7 @@ class BaseUtils:
         if levels == 2:
             rvalue = session.query(HostName)\
                 .join(DomainName).filter(DomainName.name == host_name,
-                                         DomainName.workspace_id == workspace.id,
+                                         DomainName.workspace == workspace,
                                          HostName.name == None).one_or_none()
         # we have a host and domain name
         elif levels > 2:
@@ -1917,7 +1883,7 @@ class BaseUtils:
             domain_name = ".".join(host_name_items[-2:])
             rvalue = session.query(HostName)\
                 .join(DomainName).filter(DomainName.name == domain_name,
-                                         DomainName.workspace_id == workspace.id,
+                                         DomainName.workspace == workspace,
                                          HostName.name == host_name).one_or_none()
         return rvalue
 
@@ -2518,7 +2484,6 @@ class IpUtils(BaseUtils):
             if not result:
                 result = Network(network=local_network, workspace=workspace, scope=scope)
                 session.add(result)
-                session.flush()
             elif scope is not None:
                 result.scope = scope
             if result:
@@ -2630,11 +2595,10 @@ class IpUtils(BaseUtils):
             local_address = local_address.split("/")[0]
             is_valid = IpUtils.is_valid_address(local_address)
         if local_address and is_valid:
-            rvalue = session.query(Host).filter_by(address=local_address, workspace_id=workspace.id).one_or_none()
+            rvalue = session.query(Host).filter_by(address=local_address, workspace=workspace).one_or_none()
             if not rvalue:
                 rvalue = Host(address=local_address, workspace=workspace, in_scope=in_scope)
                 session.add(rvalue)
-                session.flush()
             if in_scope is not None:
                 rvalue.in_scope = in_scope
             if source:
@@ -2659,7 +2623,7 @@ class IpUtils(BaseUtils):
         :param address: IPv4/IPv6 address whose host object should be returned from the database
         :return: Database object
         """
-        return session.query(Host).filter_by(address=address.strip(), workspace_id=workspace.id).one_or_none()
+        return session.query(Host).filter_by(address=address.strip(), workspace=workspace).one_or_none()
 
     @staticmethod
     def delete_host(session: Session,
@@ -2692,7 +2656,7 @@ class IpUtils(BaseUtils):
                 host = session.query(Host) \
                     .join(Network) \
                     .join(Workspace) \
-                    .filter(Workspace.id == network.workspace_id,
+                    .filter(Workspace == network.workspace,
                             Network.id == network.id,
                             Host.address == address_str).one_or_none()
                 if host is None or not host.in_scope:

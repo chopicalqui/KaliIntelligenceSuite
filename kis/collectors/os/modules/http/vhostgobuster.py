@@ -89,7 +89,7 @@ class CollectorClass(BaseHttpGoBuster, ServiceCollector):
                 host_names = []
                 for host_name in session.query(HostName) \
                      .join(DomainName) \
-                     .filter(DomainName.workspace_id == service.workspace_id, HostName._in_scope):
+                     .filter(DomainName.workspace == service.workspace, HostName._in_scope):
                     resolves_to = host_name.get_host_host_name_mappings([DnsResourceRecordType.a,
                                                                          DnsResourceRecordType.aaaa])
                     if (not resolves_to and not self._blacklist_filter and not self._whitelist_filter) or \

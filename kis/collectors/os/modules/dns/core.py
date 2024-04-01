@@ -166,7 +166,6 @@ class BaseDnsHost(BaseDnsCollector):
                                                                       source=source,
                                                                       mapping_type=DnsResourceRecordType.a,
                                                                       report_item=report_item)
-                        session.flush()
                     else:
                         logger.debug("could not link host name '{}' with host '{}'".format(source_host_str, address))
                 if address and not host:
@@ -178,7 +177,6 @@ class BaseDnsHost(BaseDnsCollector):
                                                                   source=source,
                                                                   mapping_type=DnsResourceRecordType.a,
                                                                   report_item=report_item)
-                    session.flush()
             elif ipv6_match:
                 source_host_str = ipv6_match.group("domain").strip()
                 address = ipv6_match.group("address")
@@ -201,7 +199,6 @@ class BaseDnsHost(BaseDnsCollector):
                                                                       source=source,
                                                                       mapping_type=DnsResourceRecordType.aaaa,
                                                                       report_item=report_item)
-                        session.flush()
                     else:
                         logger.debug("could not link host name '{}' with host '{}'".format(source_host_str, address))
                 if address and not host:
@@ -213,7 +210,6 @@ class BaseDnsHost(BaseDnsCollector):
                                                                   source=source,
                                                                   mapping_type=DnsResourceRecordType.aaaa,
                                                                   report_item=report_item)
-                    session.flush()
             elif mx_host_match:
                 mx_host_name = mx_host_match.group("domain")
                 # Add host name to database

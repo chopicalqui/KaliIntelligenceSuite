@@ -69,13 +69,11 @@ class CollectorClass(BaseDnsCollector, DomainCollector):
         collectors = []
         if host_name and host_name.name is None:
             dkim_name = "_dmarc"
-            dkim_host_name = session.query(HostName).filter_by(domain_name_id=host_name.domain_name_id,
+            dkim_host_name = session.query(HostName).filter_by(domain_name=host_name.domain_name,
                                                                name=dkim_name).one_or_none()
             if not dkim_host_name:
-                dkim_host_name = HostName(domain_name_id=host_name.domain_name_id,
-                                          name=dkim_name)
+                dkim_host_name = HostName(domain_name=host_name.domain_name, name=dkim_name)
                 session.add(dkim_host_name)
-                session.flush()
             os_command = [self._path_dig,
                           '-t', "TXT",
                           dkim_host_name.full_name]

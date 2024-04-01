@@ -420,7 +420,6 @@ d0lIKO2d1xozclOzgjXPYovJJIultzkMu34qQb9Sz/yilrbCgj8=
         workspace = self.create_workspace(session, workspace=workspace_str)
         domain_name = self._engine.get_or_create(session, DomainName, workspace=workspace, name=host_name)
         domain_name.scope = scope
-        session.flush()
         return domain_name
 
     def create_collector_name(self,

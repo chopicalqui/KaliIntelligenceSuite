@@ -145,6 +145,8 @@ class SslyzeCollectorTestCase(BaseNmapCollectorTestCase):
                                               collector_name_type=CollectorType.host_service,
                                               service_port=443,
                                               scope=ScopeType.all)
+                session.commit()
+                session.refresh(command)
                 with open(os.path.join(os.path.dirname(__file__), "sslyze.json"), "r") as file:
                     json_text = file.read()
                     json_object = json.loads(json_text)

@@ -462,10 +462,11 @@ class TestAddHost(BaseKisTestCase):
                                              address=address,
                                              source=source,
                                              report_item=report_item)
+            session.commit()
             if valid:
                 self.assertIsNotNone(result)
                 self.assertEqual(item, result.workspace.name)
-                self.assertEqual(workspace.id, result.workspace_id)
+                self.assertEqual(workspace, result.workspace)
                 self.assertEqual(address, result.address)
                 results = session.query(Host) \
                     .join(Workspace).filter(Host.address == address,
@@ -645,12 +646,12 @@ class TestAddNetwork(BaseKisTestCase):
                                                 scope=scope,
                                                 source=source,
                                                 report_item=report_item)
+            session.commit()
             if valid:
                 self.assertIsNotNone(result)
-                self.assertEqual(item, result.workspace.name)
                 self.assertEqual(network, result.network)
                 self.assertEqual(scope, result.scope)
-                self.assertEqual(workspace.id, result.workspace_id)
+                self.assertEqual(workspace, result.workspace)
                 results = session.query(Network) \
                      .join(Workspace).filter(Network.network == network,
                                              Workspace.name == item).count()
@@ -1174,7 +1175,7 @@ class TestAddCredential(BaseKisTestCase):
             if service_port:
                 self.assertIsNotNone(result.service)
                 self.assertIsNone(result.email)
-                self.assertEqual(service.id, result.service_id)
+                self.assertEqual(service, result.service)
                 self.assertEqual(service_port, result.service.port)
                 results = session.query(Credentials) \
                     .join(Service) \
@@ -1212,7 +1213,7 @@ class TestAddCredential(BaseKisTestCase):
                 name_part, host_part, domain_part = self.split_email(email_address)
                 self.assertIsNotNone(result.email)
                 self.assertIsNone(result.service)
-                self.assertEqual(email.id, result.email_id)
+                self.assertEqual(email, result.email)
                 self.assertEqual(email_address, result.email.email_address)
                 results = session.query(Credentials) \
                     .join(Email) \
@@ -1405,16 +1406,18 @@ class TestAddServiceMethod(BaseKisTestCase):
                                                            service=service,
                                                            source=source,
                                                            report_item=report_item)
+            session.commit()
+            session.refresh(result)
             self.assertIsNotNone(result)
             self.assertIsNotNone(result.service)
-            self.assertEqual(service.id, result.service_id)
+            self.assertEqual(service, result.service)
             self.assertEqual(service_port, result.service.port)
             self.assertEqual(method, result.name)
             results = session.query(ServiceMethod) \
                 .join(Service) \
                 .join(Host) \
                 .join(Workspace).filter(ServiceMethod.name == method,
-                                        ServiceMethod.service_id == service.id,
+                                        ServiceMethod.service == service,
                                         Workspace.name == item).all()
             self.assertEqual(1, len(results))
             if source:
@@ -1424,7 +1427,7 @@ class TestAddServiceMethod(BaseKisTestCase):
                     .join(Host) \
                     .join(Workspace) \
                     .filter(ServiceMethod.name == method,
-                            ServiceMethod.service_id == service.id,
+                            ServiceMethod.service == service,
                             Service.port == service_port,
                             Workspace.name == item).count()
                 self.assertEqual(1, results)
@@ -1501,9 +1504,11 @@ class TestAddTlsInfo(BaseKisTestCase):
                                                      preference=preference,
                                                      compressors=compressors,
                                                      heartbleed=heartbleed)
+            session.commit()
+            session.refresh(result)
             self.assertIsNotNone(result)
             self.assertIsNotNone(result.service)
-            self.assertEqual(service.id, result.service_id)
+            self.assertEqual(service, result.service)
             self.assertEqual(service_port, result.service.port)
             self.assertEqual(version, result.version)
             self.assertEqual(preference, result.preference)
@@ -1513,7 +1518,7 @@ class TestAddTlsInfo(BaseKisTestCase):
                 .join(Service) \
                 .join(Host) \
                 .join(Workspace).filter(TlsInfo.version == result.version,
-                                        TlsInfo.service_id == service.id,
+                                        TlsInfo.service == service,
                                         Workspace.name == item).all()
             self.assertEqual(1, len(results))
         # we should have the same company name in different workspaces
@@ -1716,7 +1721,7 @@ class TestAddService(BaseKisTestCase):
             if address:
                 self.assertIsNotNone(result.host)
                 self.assertIsNone(result.host_name)
-                self.assertEqual(host.id, result.host_id)
+                self.assertEqual(host, result.host)
                 self.assertEqual(address, result.host.address)
                 results = session.query(Service) \
                      .join(Host) \
@@ -1740,7 +1745,7 @@ class TestAddService(BaseKisTestCase):
                 host_part, domain_part = self.split_domain_name(host_name_str)
                 self.assertIsNotNone(result.host_name)
                 self.assertIsNone(result.host)
-                self.assertEqual(host_name.id, result.host_name_id)
+                self.assertEqual(host_name, result.host_name)
                 self.assertEqual(host_name_str, result.host_name.full_name)
                 results = session.query(Service) \
                                  .join(HostName) \
@@ -2785,6 +2790,8 @@ class TestAddCommand(BaseKisTestCase):
                                                         output_path=output_path,
                                                         input_file=input_file,
                                                         binary_file=binary_file)
+                session.commit()
+                session.refresh(result)
                 self.assertIsNotNone(result)
             except Exception as ex:
                 if ex_message:
@@ -3109,6 +3116,8 @@ class TestAddHint(BaseKisTestCase):
         for item in self._workspaces:
             command = self.create_command(session=session,
                                           workspace_str=item)
+            session.commit()
+            session.refresh(command)
             self._domain_utils.add_hint(command=command,
                                         hint=hint,
                                         report_item=report_item)
@@ -3161,7 +3170,8 @@ class TestAddJsonResults(BaseKisTestCase):
         for item in self._workspaces:
             command = self.create_command(session=session,
                                           workspace_str=item)
-
+            session.commit()
+            session.refresh(command)
             self._domain_utils.add_json_results(command=command,
                                                 json_objects=json_objects)
             self.assertEqual(expected_count, len(command.json_output))
@@ -3396,7 +3406,7 @@ class TestAddUrlPath(BaseKisTestCase):
             if url.path:
                 self.assertIsNotNone(result)
                 self.assertIsNotNone(result.service)
-                self.assertEqual(service.id, result.service_id)
+                self.assertEqual(service, result.service)
                 # Check path settings
                 results = session.query(Path) \
                     .join(Service) \
@@ -3736,7 +3746,6 @@ class TestAddHostHostNameMapping(BaseKisTestCase):
                                                                    host=host,
                                                                    host_name=host_name,
                                                                    mapping_type=type_second_update)
-            session.flush()
             self.assertIsNotNone(result)
         # check database
         with self._engine.session_scope() as session:
@@ -4022,15 +4031,15 @@ LV7Xq47alFBvD8nLARX9mqLFXjaiMNLPihX/Oo3AJd+kXuDeJz6igUsf9UeIcbRc
             session.commit()
             if service_port:
                 result = session.query(CertInfo) \
-                    .filter(CertInfo.service_id == command.service.id).one()
+                    .filter(CertInfo.service == command.service).one()
                 self.assertEqual("01:a7:8a:7f:5e:bb:b7:ba:02:00:00:00:00:42:ff:ed", result.serial_number)
             elif host_name_str:
                 result = session.query(CertInfo) \
-                    .filter(CertInfo.host_name_id == command.host_name.id).one()
+                    .filter(CertInfo.host_name == command.host_name).one()
                 self.assertEqual("01:a7:8a:7f:5e:bb:b7:ba:02:00:00:00:00:42:ff:ed", result.serial_number)
             elif company_name_str:
                 result = session.query(CertInfo) \
-                    .filter(CertInfo.company_id == command.company.id).one()
+                    .filter(CertInfo.company == command.company).one()
                 self.assertEqual("01:a7:8a:7f:5e:bb:b7:ba:02:00:00:00:00:42:ff:ed", result.serial_number)
 
     def _unittest_add_cert_info(self,

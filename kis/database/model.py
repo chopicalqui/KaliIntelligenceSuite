@@ -67,6 +67,12 @@ DeclarativeBase = declarative_base()
 logger = logging.getLogger('model')
 
 
+class UserEnum(enum.Enum):
+    nobody = "nobody"
+    standard = "kali"
+    privileged = "root"
+
+
 class FontColor:
     RED = '\033[91m'
     BLUE = '\033[94m'

@@ -126,6 +126,8 @@ class HaveibeenbreachCollectorTestCase(BaseKaliCollectorTestCase):
                                               collector_name_type=CollectorType.email,
                                               scope=ScopeType.all,
                                               output_path=temp_dir)
+                session.commit()
+                session.refresh(command)
                 command_output = self.get_command_json_outputs()
                 command.json_output.extend(command_output[0])
                 test_suite.verify_results(session=session,
@@ -198,6 +200,8 @@ class HaveibeenpasteCollectorTestCase(BaseKaliCollectorTestCase):
                                               collector_name_type=CollectorType.email,
                                               scope=ScopeType.all,
                                               output_path=temp_dir)
+                session.commit()
+                session.refresh(command)
                 command_output = self.get_command_json_outputs()
                 command.json_output.extend(command_output[0])
                 test_suite.verify_results(session=session,

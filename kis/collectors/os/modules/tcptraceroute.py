@@ -116,7 +116,7 @@ class CollectorClass(BaseCollector, HostCollector):
         """
         collectors = []
         command = self._path_tcptraceroute
-        target_service = session.query(Service).filter(Service.host_id == host.id,
+        target_service = session.query(Service).filter(Service.host == host,
                                                        Service.state == ServiceState.Open,
                                                        Service.protocol == ProtocolType.tcp).order_by(Service.port).first()
         if target_service:

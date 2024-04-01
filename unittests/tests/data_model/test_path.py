@@ -103,6 +103,9 @@ class TestAddPath(BaseKisTestCase):
                                                  return_code=return_code,
                                                  source=source,
                                                  report_item=report_item)
+            session.commit()
+            session.refresh(service)
+            session.refresh(result)
             self.assertIsNotNone(result)
             self.assertIsNotNone(result.service)
             self.assertEqual(service.id, result.service_id)

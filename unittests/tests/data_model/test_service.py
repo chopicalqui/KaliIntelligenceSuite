@@ -211,12 +211,14 @@ class TestServiceSyncTriggers(BaseTestServiceSyncTriggersTestCase):
             host_name = self.create_hostname(session=session,
                                              workspace_str=workspace_str,
                                              host_name="www.test1.com", scope=ScopeType.all)
-            host_name_id = host_name.id
             self._domain_utils.add_host_host_name_mapping(session=session,
                                                           host=host,
                                                           host_name=host_name,
                                                           source=source,
                                                           mapping_type=DnsResourceRecordType.a)
+            session.commit()
+            session.refresh(host_name)
+            host_name_id = host_name.id
         # test trigger
         with self._engine.session_scope() as session:
             service = self.create_service(session=session,

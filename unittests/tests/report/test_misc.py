@@ -84,7 +84,8 @@ class TestReportCreation(BaseReportTestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             self.execute(subcommand="file", arguments="-w {} -o {}".format(workspaces, temp_dir))
             result = os.listdir(temp_dir)
-            self.assertListEqual(['test_001', 'test'], result)
+            result.sort()
+            self.assertListEqual(sorted(['test_001', 'test']), result)
 
     def test_text_creation(self):
         self.init_db(load_cipher_suites=True)

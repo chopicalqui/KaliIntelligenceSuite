@@ -1177,7 +1177,6 @@ class Engine:
         if not instance:
             instance = model(**kwargs)
             session.add(instance)
-            session.flush()
         return instance
 
     def _add_cipher_suites(self):
