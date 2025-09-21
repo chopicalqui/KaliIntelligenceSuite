@@ -30,6 +30,7 @@ import ipaddress
 import re
 import pwd
 import json
+import datetime
 import sqlalchemy as sa
 from database.config import BaseConfig
 from sqlalchemy import Column
@@ -60,6 +61,7 @@ from typing import Dict
 from urllib.parse import urlparse
 from OpenSSL import crypto
 from cryptography import x509
+from cryptography.hazmat.primitives import hashes
 
 
 DeclarativeBase = declarative_base()
@@ -2192,6 +2194,18 @@ class Source(DeclarativeBase):
         return self.name == other.name
 
 
+class ServiceCpe(DeclarativeBase):
+    """This class holds all information about supported service methods like OPTIONS or PUT."""
+
+    __tablename__ = "service_cpe"
+    id = Column(Integer, primary_key=True)
+    name = Column(Text, nullable=False, unique=False)
+    service_id = Column(Integer, ForeignKey("service.id", ondelete='cascade'), nullable=False, unique=False)
+    creation_date = Column(DateTime, nullable=False, default=datetime.utcnow())
+    last_modified = Column(DateTime, nullable=True, onupdate=datetime.utcnow())
+    __table_args__ = (UniqueConstraint('name', 'service_id', name='_service_cpe_unique'),)
+
+
 class ServiceMethod(DeclarativeBase):
     """This class holds all information about supported service methods like OPTIONS or PUT."""
 
@@ -2244,6 +2258,10 @@ class Service(DeclarativeBase):
                                    backref=backref("service"),
                                    cascade="all",
                                    order_by="asc(ServiceMethod.name)")
+    service_cpes = relationship("ServiceCpe",
+                                backref=backref("service"),
+                                cascade="all",
+                                order_by="asc(ServiceCpe.name)")
     paths = relationship("Path",
                          backref=backref("service"),
                          cascade="all",
@@ -2384,6 +2402,10 @@ class Service(DeclarativeBase):
         Returns list of vulnerabilities
         """
         return [item for item in self.additional_info if item.name == "CVEs"]
+
+    @property
+    def cpes_str(self) -> str:
+        return ", ".join([item.name for item in self.service_cpes])
 
     def has_given_collectors(self, include_collectors: List[str] = [], **kwargs) -> bool:
         """
@@ -3852,7 +3874,7 @@ class CertInfo(DeclarativeBase):
 
     @property
     def sha256value(self):
-        return hashlib.sha256(self._pem.encode()).hexdigest()
+        return self._crypto.fingerprint(hashes.SHA256()).hex()
 
     @property
     def pem(self):
@@ -4038,7 +4060,14 @@ class CertInfo(DeclarativeBase):
         try:
             for point in self._crypto.extensions.get_extension_for_oid(x509.oid.ExtensionOID.CRL_DISTRIBUTION_POINTS).value:
                 for item in point.full_name:
-                    result.append(item.value)
+                    if isinstance(item, x509.general_name.UniformResourceIdentifier):
+                        result.append(item.value)
+                    elif isinstance(item, str):
+                        result.append(item)
+                    elif isinstance(item, x509.general_name.DirectoryName):
+                        result.append(item.value.rfc4514_string())
+                    else:
+                        raise NotImplementedError(type(item))
         except x509.ExtensionNotFound:
             result = []
         return result
@@ -4131,7 +4160,20 @@ class CertInfo(DeclarativeBase):
         return all([self.matches_host_name(item) for item in host_names])
 
     def has_exired(self):
-        return self._certificate.has_expired()
+        """
+        Determines whether the certificate was expired at the time of the collection.
+        """
+        access_date = self.creation_date
+        if self.last_modified and access_date < self.last_modified:
+            access_date = self.last_modified
+        time_bytes = self._certificate.get_notAfter()
+        if time_bytes is None:
+            raise ValueError("Unable to determine notAfter")
+        time_string = time_bytes.decode("utf-8")
+        not_after = datetime.strptime(time_string, "%Y%m%d%H%M%SZ")
+
+        return not_after < datetime.utcnow()
+        # return self._certificate.has_expired()
 
     def verify(self, x509_store: crypto.X509Store, chain=[]):
         """

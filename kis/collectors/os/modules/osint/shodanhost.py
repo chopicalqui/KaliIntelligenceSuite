@@ -51,7 +51,8 @@ class CollectorClass(BaseKisImportHost, HostCollector):
                          argument_name="--shodan-host",
                          ip_support=IpSupport.all,
                          source=BaseShodan.SOURCE_NAME,
-                         delay_min=1,
+                         delay_min=2,
+                         delay_max=5,
                          **kwargs)
         self._json_utils = JsonUtils()
 

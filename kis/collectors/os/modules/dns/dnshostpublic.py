@@ -45,9 +45,8 @@ class CollectorClass(BaseDnsHost, DomainCollector):
 
     def __init__(self, **kwargs):
         super().__init__(priority=312,
-                         active_collector=False,
+                         active_collector=True,
                          timeout=0,
-                         delay_min=1,
                          **kwargs)
 
     @staticmethod

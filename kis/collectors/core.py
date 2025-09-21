@@ -48,6 +48,7 @@ from database.model import Path
 from database.model import PathType
 from database.model import HttpQuery
 from database.model import Service
+from database.model import ServiceCpe
 from database.model import Command
 from database.model import CollectorType
 from database.model import File
@@ -83,12 +84,12 @@ from database.utils import CredentialType
 from database.model import CertType
 from database.utils import ServiceMethod
 from view.core import ReportItem
-from OpenSSL import crypto
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives import asymmetric
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.serialization import Encoding
+from sqlalchemy import and_
 from sqlalchemy.orm.session import Session
 
 BaseCollector = TypeVar('collectors.os.collector.BaseCollector')
@@ -967,7 +968,22 @@ class BaseUtils:
                     session.add(result)
             else:
                 logger.warning("the query part of url '{}' could not be "
-                               "added as it exceeds 2712 characters.".format(url))
+                               "added as it exceeds 2712 characters.".format(query))
+        return result
+
+    @staticmethod
+    def add_service_cpe(session: Session, service: Service, name: str):
+        """
+        This method assigns the given CPE to the given service.
+        """
+        if not service:
+            raise ValueError("Argument service is required.")
+        if not name:
+            raise ValueError("Argument name is required.")
+        result = session.query(ServiceCpe).filter(and_(ServiceCpe.service == service, ServiceCpe.name == name)).one_or_none()
+        if not result:
+            result = ServiceCpe(service=service, name=name)
+            session.add(result)
         return result
 
     @staticmethod
@@ -1902,12 +1918,14 @@ class BaseUtils:
         elif host_name:
             session.delete(host_name)
 
-    def extract_domain_name_from_host_name(self, name: str):
+    def extract_domain_name_from_host_name(self, name: str, throw: bool = True):
         """
         This method extracts the second-level domain from the given host name.
         """
         host_name_items = self.split_host_name(name)
         if not host_name_items or len(host_name_items) < 2:
+            if not throw:
+                return None
             raise ValueError("{} is not a valid sub-domain".format(name))
         return ".".join(host_name_items[-2:])
 

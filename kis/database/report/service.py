@@ -293,6 +293,7 @@ class ReportClass(BaseReport):
                    "Nmap Name Original",
                    "Nmap Product",
                    "Version",
+                   "CPEs",
                    "Product Summary",
                    "Sources (Host)",
                    "Sources (SRV)",
@@ -341,6 +342,7 @@ class ReportClass(BaseReport):
                                            service.nmap_service_name_original_with_confidence,  # Nmap Name Original
                                            service.nmap_product,  # Nmap Product
                                            service.nmap_version,  # Version
+                                           service.cpes_str,  # CPEs
                                            service.nmap_product_version,  # Product Summary
                                            host_sources,  # Sources (Host)
                                            service.sources_str,  # Sources (SRV)
@@ -371,6 +373,7 @@ class ReportClass(BaseReport):
                                        None,  # Nmap Name Original
                                        None,  # Nmap Product
                                        None,  # Version
+                                       None,  # CPEs
                                        None,  # Product Summary
                                        host_sources,  # Sources (Host)
                                        None,  # Sources (SRV)
@@ -406,6 +409,7 @@ class ReportClass(BaseReport):
                    "Nmap Name Original",
                    "Nmap Product",
                    "Version",
+                   "CPEs",
                    "Product Summary",
                    "Sources (HN)",
                    "Sources (SRV)",
@@ -452,6 +456,7 @@ class ReportClass(BaseReport):
                                                service.nmap_service_name_original_with_confidence,  # Nmap Name Original
                                                service.nmap_product,  # Nmap Product
                                                service.nmap_version,  # Version
+                                               service.cpes_str,  # CPEs
                                                service.nmap_product_version,  # Product Summary
                                                host_name_sources,  # Sources (HN)
                                                service.sources_str,  # Sources (SRV)
@@ -486,6 +491,7 @@ class ReportClass(BaseReport):
                                            None,  # Nmap Name Original
                                            None,  # Nmap Product
                                            None,  # Version
+                                           None,  # CPEs
                                            None,  # Product Summary
                                            host_name_sources,  # Sources (HN)
                                            None,  # Sources (SRV)
@@ -529,6 +535,7 @@ class ReportClass(BaseReport):
                    "State (SRV)",
                    "Reason State",
                    "Banner Information",
+                   "CPEs",
                    "TLS",
                    "Is HTTP",
                    "URL",
@@ -625,6 +632,7 @@ class ReportClass(BaseReport):
                                            service.state_str if service else None,  # State (SRV)
                                            service.nmap_service_state_reason if service else None,  # Reason State
                                            service.nmap_product_version if service else None,  # Banner Information
+                                           service.cpes_str if service else None,  # CPEs
                                            service.tls if service else None,  # TLS
                                            is_http,  # Is HTTP
                                            url_str,  # URL

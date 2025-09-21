@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-run tool nmap on any open in-scope service to obtain additional intelligence. this collector useful after
-importing masscan scan results or after executing collector tcpmasscannetwork. with this collector, nmap obtains the
-service name (e.g, ssh or http) from non-standard ports, which allows subsequently executed collectors to determine
+run tool nmap on any open/closed/filtered in-scope service to obtain additional intelligence. this collector is useful
+after importing masscan scan results or after executing collector tcpmasscannetwork. with this collector, nmap obtains
+the service name (e.g, ssh or http) from non-standard ports, which allows subsequently executed collectors to determine
 whether they apply
 """
 
@@ -54,6 +54,8 @@ class CollectorClass(BaseNmap, ServiceCollector):
         super().__init__(priority=1350,
                          exec_user="root",
                          service_descriptors=[HttpServiceDescriptor()],
+                         #delay_min=3,
+                         #delay_max=5,
                          timeout=0,
                          **kwargs)
 
@@ -77,7 +79,7 @@ class CollectorClass(BaseNmap, ServiceCollector):
         :return: List of Collector instances that shall be processed.
         """
         collectors = []
-        if service.state == ServiceState.Open:
+        if True: # service.state == ServiceState.Open:
             # UDP scans require root privileges on Windows.
             if not self._nmap_privileged and service.protocol == ProtocolType.udp:
                 return collectors

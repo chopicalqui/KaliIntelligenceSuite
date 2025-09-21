@@ -25,9 +25,12 @@ __version__ = 0.1
 import argparse
 from typing import List
 from openpyxl import Workbook
+from database.model import Command
 from database.model import HostName
 from database.model import ProtocolType
 from database.model import ServiceState
+from database.model import CommandStatus
+from database.model import CollectorName
 from database.model import CollectorType
 from database.model import ReportScopeType
 from database.model import ReportVisibility
@@ -242,6 +245,7 @@ class ReportClass(BaseReport):
                  "In Scope (HN)",
                  "In Scope (Vhost)",
                  "In Scope (Company)",
+                 "Resolves To Host",
                  "Subdomain Only (HN)",
                  "Environment (HN)",
                  "Sources (HN)",
@@ -270,6 +274,12 @@ class ReportClass(BaseReport):
                 companies_verified = domain.companies_verified_str
                 # Obtain statistics about subdomains
                 for host_name in domain.host_names:
+                    command = self._session.query(Command) \
+                        .join(CollectorName) \
+                        .filter(Command.host_name_id == host_name.id) \
+                        .filter(CollectorName.name.in_(["dnshost", "dnshostpublic", "dnsgobuster"])) \
+                        .filter(Command.status == CommandStatus.completed).one_or_none()
+                    resolved = command is not None
                     stats = HostNameStatistics(self._protocols)
                     no_resolved_ips = 0
                     no_resolved_private_ips = 0
@@ -305,6 +315,7 @@ class ReportClass(BaseReport):
                                      host_name._in_scope,                               # In Scope (HN)
                                      host_name.in_scope(CollectorType.vhost_service),   # In Scope (Vhost)
                                      any_company_in_scope,                              # In Scope (Company)
+                                     resolved,                                          # Resolves To Host
                                      host_name.name,                                    # Subdomain Only (HN)
                                      environment,                                       # Environment (HN)
                                      sources,                                           # Sources (HN)

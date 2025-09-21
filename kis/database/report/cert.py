@@ -22,9 +22,11 @@ __version__ = 0.1
 
 import argparse
 from typing import List
+from collectors.core import DomainUtils
 from database.model import CertType
 from database.model import CertInfo
 from database.model import ScopeType
+from database.model import DomainName
 from database.model import ServiceState
 from database.model import DnsResourceRecordType
 from collectors.os.modules.http.core import HttpServiceDescriptor
@@ -42,6 +44,7 @@ class ReportClass(BaseReport):
                          title="Overview Certificates",
                          description="The table provides an overview of all identified certificates.",
                          **kwargs)
+        self._domain_utils = DomainUtils()
 
     def _filter(self, cert_info: CertInfo) -> bool:
         """
@@ -50,6 +53,23 @@ class ReportClass(BaseReport):
         return cert_info.is_processable(included_items=self._included_items,
                                         excluded_items=self._excluded_items,
                                         scope=self.scope)
+
+    def _certificate_in_scope(self, cert_info: CertInfo) -> ScopeType.all:
+        """
+        Checks if the subject or one of the subject alternative names contain an in-scope domain.
+        """
+        host_names = cert_info.subject_common_names
+        host_names.extend(cert_info.subject_alt_names)
+        domain_names = set(
+            [self._domain_utils.extract_domain_name_from_host_name(item, throw=False) for item in host_names])
+        result = [item[0] for item in self._session.query(DomainName.scope).filter(DomainName.name.in_(domain_names)).all()]
+        if ScopeType.all in result:
+            return ScopeType.all
+        elif ScopeType.vhost in result:
+            return ScopeType.vhost
+        elif ScopeType.strict in result:
+            return ScopeType.strict
+        return ScopeType.exclude
 
     @staticmethod
     def get_add_argparse_arguments(parser_cert: argparse.ArgumentParser):
@@ -111,6 +131,8 @@ class ReportClass(BaseReport):
                    "URL",
                    "HN Coverage",
                    "Cert. Type",
+                   "Cert. Scope",
+                   "CertNmap",
                    "X509 Version",
                    "Subject",
                    "Issuer",
@@ -132,6 +154,7 @@ class ReportClass(BaseReport):
                    "OCSP Server",
                    "CRL",
                    "Serial Number",
+                   "Fingerprint",
                    "DB ID (NW)",
                    "DB ID (IP)",
                    "DB ID (HN)",
@@ -161,6 +184,8 @@ class ReportClass(BaseReport):
                             if is_http else []
                         for cert_info in service.cert_info:
                             if self._filter(cert_info):
+                                # Obtain all SLDs to determine whether the certificate contains in-scope domains.
+                                cert_scope = self._certificate_in_scope(cert_info)
                                 try:
                                     chain = cert_info.chain
                                     cert_info.verify(x509_store=self._domain_config.x509_store,
@@ -170,8 +195,9 @@ class ReportClass(BaseReport):
                                     verification = str(ex)
                                 matching_host = "n/a"
                                 extensions = cert_info.extensions_dict
+                                sources_str = cert_info.sources_str
                                 result.append([workspace.name,  # Workspace
-                                               "Host",  # Type
+                                               "host",  # Type
                                                network_str,  # Network (NW)
                                                network_scope,  # Scope (NW)
                                                network_companies,  # Company (NW)
@@ -200,6 +226,8 @@ class ReportClass(BaseReport):
                                                url_str[0] if url_str else None,  # URL
                                                matching_host,  # HN Coverage
                                                cert_info.cert_type_str,  # Cert. Type
+                                               cert_scope.name if cert_scope else None,  # Cert. Scope
+                                               "certnmap" in sources_str,  # CertNmap
                                                cert_info.version,  # X509 Version
                                                cert_info.subject,  # Subject
                                                cert_info.issuer,  # Issuer
@@ -215,12 +243,13 @@ class ReportClass(BaseReport):
                                                cert_info.has_exired(),  # Has Expired
                                                cert_info.has_recommended_duration(),  # Recommended Duration
                                                cert_info.subject_alt_names_str,  # Subject Alternative Names
-                                               str(extensions["keyUsage"]),  # Key Usage
-                                               str(extensions["extendedKeyUsage"]),  # Extended Key Usage
+                                               str(extensions["keyUsage"]) if "keyUsage" in extensions else None,  # Key Usage
+                                               str(extensions["extendedKeyUsage"]) if "extendedKeyUsage" in extensions else None,  # Extended Key Usage
                                                cert_info.critical_extensions_str,  # Critical Extensions
                                                cert_info.ocsp_servers_str,  # OCSP Server
                                                cert_info.crl_distribution_points_str,  # CRL
                                                cert_info.serial_number,  # Serial Number
+                                               cert_info.sha256value,  # Fingerprint
                                                network_id,  # DB ID (NW)
                                                host.id,  # DB ID (IP)
                                                None,  # DB ID (HN)
@@ -230,19 +259,20 @@ class ReportClass(BaseReport):
                                                host_sources,  # Source (IP)
                                                None,  # Source (HN)
                                                service.sources_str,  # Source (SRV)
-                                               cert_info.sources_str])
+                                               sources_str])
                 for host_name in host_names:
                     environment = self._domain_config.get_environment(host_name)
                     host_name_sources = host_name.sources_str
                     network_str = host.ipv4_network.network if host.ipv4_network else None
                     for service in host_name.services:
-                        if service.state in [ServiceState.Open, ServiceState.Closed] and \
-                                descriptor.match_nmap_service_name(service):
+                        if service.state in [ServiceState.Open, ServiceState.Closed]:
                             is_http = descriptor.match_nmap_service_name(service)
                             url_str = [path.get_urlparse().geturl() for path in service.paths if path.name == "/"] \
                                 if is_http else []
                             for cert_info in service.cert_info:
                                 if self._filter(cert_info):
+                                    # Obtain all SLDs to determine whether the certificate contains in-scope domains.
+                                    cert_scope = self._certificate_in_scope(cert_info)
                                     try:
                                         chain = cert_info.chain
                                         cert_info.verify(x509_store=self._domain_config.x509_store,
@@ -253,8 +283,9 @@ class ReportClass(BaseReport):
                                     extensions = cert_info.extensions_dict
                                     matching_host = cert_info.matches_host_name(host_name) \
                                         if cert_info.cert_type == CertType.identity else None
+                                    sources_str = cert_info.sources_str
                                     result.append([workspace.name,  # Workspace
-                                                   "Host",  # Type
+                                                   "vhost",  # Type
                                                    network_str,  # Network (NW)
                                                    network_scope,  # Scope (NW)
                                                    network_companies,  # Company (NW)
@@ -283,6 +314,8 @@ class ReportClass(BaseReport):
                                                    url_str[0] if url_str else None,  # URL
                                                    matching_host,  # HN Coverage
                                                    cert_info.cert_type_str,  # Cert. Type
+                                                   cert_scope.name if cert_scope else None,  # Cert. Scope
+                                                   "certnmap" in sources_str,  # CertNmap
                                                    cert_info.version,  # X509 Version
                                                    cert_info.subject,  # Subject
                                                    cert_info.issuer,  # Issuer
@@ -298,12 +331,13 @@ class ReportClass(BaseReport):
                                                    cert_info.has_exired(),  # Has Expired
                                                    cert_info.has_recommended_duration(),  # Recommended Duration
                                                    cert_info.subject_alt_names_str,  # Subject Alternative Names
-                                                   str(extensions["keyUsage"]),  # Key Usage
-                                                   str(extensions["extendedKeyUsage"]),  # Extended Key Usage
+                                                   str(extensions["keyUsage"]) if "keyUsage" in extensions else None,  # Key Usage
+                                                   str(extensions["extendedKeyUsage"]) if "extendedKeyUsage" in extensions else None,  # Extended Key Usage
                                                    cert_info.critical_extensions_str,  # Critical Extensions
                                                    cert_info.ocsp_servers_str,  # OCSP Server
                                                    cert_info.crl_distribution_points_str,  # CRL
                                                    cert_info.serial_number,  # Serial Number
+                                                   cert_info.sha256value,  # Fingerprint
                                                    network_id,  # DB ID (NW)
                                                    host.id,  # DB ID (IP)
                                                    host_name.id,  # DB ID (HN)

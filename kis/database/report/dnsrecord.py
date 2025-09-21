@@ -25,9 +25,12 @@ __version__ = 0.1
 import argparse
 from typing import List
 from database.model import Host
+from database.model import Command
 from database.model import HostName
 from database.model import Workspace
 from database.model import DomainName
+from database.model import CollectorName
+from database.model import CommandStatus
 from database.model import CollectorType
 from database.model import ReportScopeType
 from database.model import HostHostNameMapping
@@ -95,6 +98,7 @@ class ReportClass(BaseReport):
                    "Host Name (HN)",
                    "In Scope (HN)",
                    "In Scope (HN or Host/HN)",
+                   "Resolves To Host",
                    "Name Only (HN)",
                    "Company All (HN)",
                    "Company Verified (HN)",
@@ -121,9 +125,15 @@ class ReportClass(BaseReport):
                    "Source (NW)"]]
         for workspace in self._workspaces:
             for mapping in self._session.query(HostHostNameMapping) \
-                .join(Host) \
-                .join(Workspace) \
-                .filter(Workspace.id == workspace.id):
+                    .join(Host) \
+                    .join(Workspace) \
+                    .filter(Workspace.id == workspace.id):
+                command = self._session.query(Command) \
+                    .join(CollectorName) \
+                    .filter(Command.host_name_id == mapping.host_name.id) \
+                    .filter(CollectorName.name.in_(["dnshost", "dnshostpublic", "dnsgobuster"])) \
+                    .filter(Command.status == CommandStatus.completed).one_or_none()
+                resolved = command is not None
                 for mapping_type in DnsResourceRecordType:
                     if (mapping.type & mapping_type) == mapping_type:
                         domain_name = mapping.host_name.domain_name.name
@@ -167,7 +177,8 @@ class ReportClass(BaseReport):
                                        domain_name_scope,  # Scope (SLD)
                                        host_name,  # Host Name (HN)
                                        host_name_scope,  # In Scope (HN)
-                                       host_or_host_name_scope, # In Scope (HN or Host/HN)
+                                       host_or_host_name_scope,  # In Scope (HN or Host/HN)
+                                       resolved,  # Resolves To Host
                                        host_name_only,  # Name Only (HN)
                                        host_name_companies,  # Company All (HN)
                                        host_name_companies_verified,  # Company Verified (HN)
@@ -193,10 +204,16 @@ class ReportClass(BaseReport):
                                        host_source,  # Source (Host/HN)
                                        network_sources])  # Source (NW)
             for mapping in self._session.query(HostNameHostNameMapping) \
-                .join(HostName, HostNameHostNameMapping.source_host_name) \
-                .join(DomainName) \
-                .join(Workspace) \
-                .filter(Workspace.id == workspace.id):
+                    .join(HostName, HostNameHostNameMapping.source_host_name) \
+                    .join(DomainName) \
+                    .join(Workspace) \
+                    .filter(Workspace.id == workspace.id):
+                command = self._session.query(Command) \
+                    .join(CollectorName) \
+                    .filter(Command.host_name_id == mapping.source_host_name_id) \
+                    .filter(CollectorName.name.in_(["dnshost", "dnshostpublic", "dnsgobuster"])) \
+                    .filter(Command.status == CommandStatus.completed).one_or_none()
+                resolved = command is not None
                 for mapping_type in DnsResourceRecordType:
                     if (mapping.type & mapping_type) == mapping_type:
                         domain_name = mapping.source_host_name.domain_name.name
@@ -232,6 +249,7 @@ class ReportClass(BaseReport):
                                        host_name,  # Host Name (HN)
                                        host_name_scope,  # In Scope (HN)
                                        host_name_or_host_name_scope,  # In Scope (HN or Host/HN)
+                                       resolved,  # Resolves To Host
                                        host_name_only,  # Name Only (HN)
                                        host_name_companies,  # Company All (HN)
                                        host_name_companies_verified,  # Company Verified (HN)

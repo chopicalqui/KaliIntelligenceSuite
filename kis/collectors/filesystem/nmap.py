@@ -179,7 +179,9 @@ class DatabaseImporter(BaseDatabaseXmlImporter):
                 raise NotImplementedError("case IPv4 and IPv6 address available at the same time is not implemented")
             host_created = False
             for port in port_tags:
-                port_state_tag = port.findall("state[1]")[0].attrib
+                if len(port.findall("state")) > 1:
+                    raise NotImplementedError()
+                port_state_tag = port.findall("state")[0].attrib
                 port_state = DatabaseImporter.get_xml_attribute("state", port_state_tag)
                 extra_reason = DatabaseImporter.get_xml_attribute("reason", port_state_tag)
                 service_protocol = DatabaseImporter.get_xml_attribute("protocol", port.attrib)
@@ -205,7 +207,7 @@ class DatabaseImporter(BaseDatabaseXmlImporter):
                                                              source=source,
                                                              report_item=self._report_item)
                     service.nmap_service_state_reason = extra_reason
-                    services = port.findall("service[1]")
+                    services = port.findall("service")
                     if len(services) == 1:
                         service_tag = services[0]
                         nmap_service_confidence = DatabaseImporter.get_xml_attribute("conf", service_tag.attrib)
@@ -230,6 +232,12 @@ class DatabaseImporter(BaseDatabaseXmlImporter):
                         for item in ["debian", "ubuntu"]:
                             if service.nmap_version and item in service.nmap_version.lower() and host.os_family is None:
                                 host.os_family = "linux"
+                        # Extract CPEs
+                        cpes = service_tag.findall("cpe")
+                        for cpe in cpes:
+                            self._domain_utils.add_service_cpe(session=self._session,
+                                                               service=service,
+                                                               name=cpe.text)
                         hostname = DatabaseImporter.get_xml_attribute("hostname", service_tag.attrib)
                         hostname_levels = len(hostname.split(".")) if hostname else 0
                         if hostname:
